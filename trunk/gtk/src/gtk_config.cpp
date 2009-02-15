@@ -1234,7 +1234,7 @@ Snes9xConfig::rebind_keys (void)
 
     for (int i = NUM_JOYPAD_LINKS; b_links[i].snes9x_name; i++)
     {
-        snprintf (buf, 256, b_links[i].snes9x_name);
+        snprintf (buf, 256, "%s", b_links[i].snes9x_name);
         cmd = S9xGetPortCommandT (buf);
         S9xMapButton (shortcut[i - NUM_JOYPAD_LINKS].base_hex (),
                       cmd,

@@ -7,7 +7,7 @@ AC_SUBST(VERSION)
 AC_INIT([snes9x-gtk], 1.51)
 dnl Set CFLAGS, CXXFLAGS to something 
 dnl before doing AC_PROG_CC, AC_PROG_CXX to avoid default -g
-CFLAGS="-O2 -fomit-frame-pointer -Wall -W -pedantic -Wno-unused-parameter -pipe $CFLAGS"
+CFLAGS="-O2 -Wall -W -pedantic -Wno-unused-parameter -pipe $CFLAGS"
 CXXFLAGS="$CFLAGS"
 
 AC_PROG_CC
@@ -135,6 +135,8 @@ AC_ARG_WITH(png,
 
 if test yes = "$with_debug" ; then
   CFLAGS="$CFLAGS -g"
+else
+  CFLAGS="$CFLAGS -fomit-frame-pointer"
 fi
 
 ZSNESFX='#ZSNESFX=yes'
@@ -411,6 +413,7 @@ AM_CONDITIONAL(NETPLAY, [test yes = "$NETPLAY"])
 AM_CONDITIONAL(JMA, [test yes = "$JMA"])
 AM_CONDITIONAL(OPENGL, [test yes = "$OPENGL"])
 AM_CONDITIONAL(XV, [test yes = "$XV"])
+AM_CONDITIONAL(DEBUG, [test yes = "$with_debug" ])
 
 AC_SUBST(NASM)
 AC_SUBST(NASM_FLAGS)

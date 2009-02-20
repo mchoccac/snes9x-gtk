@@ -2,7 +2,10 @@ SUBDIRS = data po
 
 bin_PROGRAMS = snes9x-gtk
 snes9x_gtk_LDADD =
+if DEBUG
+else
 snes9x_gtk_CXXFLAGS = -fno-exceptions -fno-rtti
+endif
 noinst_LIBRARIES =
 
 INCLUDES = -I$(top_srcdir) -I.. -DSNES9XLOCALEDIR=\""$(snes9xlocaledir)"\"

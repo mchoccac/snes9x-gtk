@@ -374,7 +374,7 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = data po
 snes9x_gtk_LDADD = $(am__append_7)
-snes9x_gtk_CXXFLAGS = -fno-exceptions -fno-rtti
+@DEBUG_FALSE@snes9x_gtk_CXXFLAGS = -fno-exceptions -fno-rtti
 noinst_LIBRARIES = $(am__append_8)
 INCLUDES = -I$(top_srcdir) -I.. -DSNES9XLOCALEDIR=\""$(snes9xlocaledir)"\"
 EXTRA_DIST = intltool-extract.in intltool-merge.in intltool-update.in

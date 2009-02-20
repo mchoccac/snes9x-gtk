@@ -1464,6 +1464,19 @@ int S9xUnfreezeFromStream (STREAM stream)
  			UnfreezeStructFromCopy (&GSU, SnapFX, COUNT (SnapFX), local_superfx, version);
 			GSU.pfPlot = fx_apfPlotTable[GSU.vMode];
 			GSU.pfRpix = fx_apfPlotTable[GSU.vMode + 5];
+
+                        /* Sanity check */
+                        if (GSU.pvSreg <  &GSU.avReg[0] ||
+                            GSU.pvSreg >= ((uint32 *) &GSU.avReg[0]) + 16)
+                        {
+                            GSU.pvSreg = &GSU.avReg[0];
+                        }
+
+                        if (GSU.pvDreg <  &GSU.avReg[0] ||
+                            GSU.pvDreg >= ((uint32 *) &GSU.avReg[0]) + 16)
+                        {
+                            GSU.pvDreg = &GSU.avReg[0];
+                        }
 		}
 #endif
 		if(GFX.Screen)

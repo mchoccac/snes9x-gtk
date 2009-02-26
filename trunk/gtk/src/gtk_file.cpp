@@ -487,7 +487,57 @@ extern "C"
 
 extern "C" char *osd_GetPackDir (void)
 {
-    return NULL;
+    static char filename[_MAX_PATH];
+    memset (filename, 0, _MAX_PATH);
+
+    if (strlen (S9xGetDirectory (PATCH_DIR)) != 0)
+        strcpy (filename, S9xGetDirectory (PATCH_DIR));
+    else
+    {
+        char dir [_MAX_DIR + 1];
+        char drive [_MAX_DRIVE + 1];
+        char name [_MAX_FNAME + 1];
+        char ext [_MAX_EXT + 1];
+        _splitpath (Memory.ROMFilename, drive, dir, name, ext);
+        _makepath (filename, drive, dir, NULL, NULL);
+    }
+
+    if (!strncmp ((char*) &Memory.ROM [0xffc0], "SUPER POWER LEAG 4   ", 21))
+    {
+        if (getenv ("SPL4PACK"))
+            return getenv ("SPL4PACK");
+        else
+            strcat (filename, "/SPL4-SP7");
+    }
+
+    else if (!strncmp ((char*) &Memory.ROM [0xffc0], "MOMOTETSU HAPPY      ", 21))
+    {
+        if (getenv ("MDHPACK"))
+            return getenv ("MDHPACK");
+        else
+            strcat (filename, "/SMHT-SP7");
+    }
+
+    else if (!strncmp((char*) &Memory.ROM [0xffc0], "HU TENGAI MAKYO ZERO ", 21))
+    {
+        if (getenv ("FEOEZPACK"))
+            return getenv ("FEOEZPACK");
+        else
+            strcat (filename, "/FEOEZSP7");
+    }
+
+    else if (!strncmp ((char*) &Memory.ROM [0xffc0], "JUMP TENGAIMAKYO ZERO", 21))
+    {
+        if (getenv ("SJNSPACK"))
+            return getenv ("SJNSPACK");
+        else
+            strcat (filename, "/SJUMPSP7");
+    }
+
+    else
+        strcat (filename, "/MISC-SP7");
+
+    return filename;
 }
 
 void

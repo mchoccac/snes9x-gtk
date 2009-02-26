@@ -258,7 +258,7 @@ main (int argc, char *argv[])
                                     NULL,
                                     NULL);
 
-    g_timeout_add (10000, S9xScreenSaverCheckFunc, NULL);
+    g_timeout_add (1000, S9xScreenSaverCheckFunc, NULL);
 
     S9xNoROMLoaded ();
 
@@ -504,7 +504,10 @@ S9xIdleFunc (gpointer data)
 gboolean
 S9xScreenSaverCheckFunc (gpointer data)
 {
-    if (gui_config->screensaver_needs_reset || gui_config->prevent_screensaver)
+
+    if (!Settings.Paused &&
+        (gui_config->screensaver_needs_reset ||
+         gui_config->prevent_screensaver))
         top_level->reset_screensaver ();
 
     return TRUE;

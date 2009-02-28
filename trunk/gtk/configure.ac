@@ -280,7 +280,7 @@ if test yes = "$with_correct_vram_reads"; then
 fi
 
 if test yes = "$with_debugger"; then
-   CFLAGS="$CFLAGS -DDEBUGGER'"
+   CFLAGS="$CFLAGS -DDEBUGGER"
 fi
 
 

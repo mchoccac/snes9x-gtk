@@ -171,7 +171,9 @@
 #include "gtk_display.h"
 #include "gtk_display_driver.h"
 #include "gtk_display_driver_gtk.h"
+#ifdef USE_XV
 #include "gtk_display_driver_xv.h"
+#endif
 #include "snes_ntsc.h"
 #ifdef USE_OPENGL
 #include "gtk_display_driver_opengl.h"

@@ -399,7 +399,7 @@ S9xXVDisplayDriver::update_image_size (int width, int height)
                 fprintf (stderr, "Couldn't reallocate shared memory.\n");
                 S9xExit ();
             }
-            else
+            else if (shm.shmaddr != (void *) -1)
             {
                 break;
             }

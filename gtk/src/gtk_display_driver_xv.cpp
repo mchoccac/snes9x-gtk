@@ -375,6 +375,9 @@ S9xXVDisplayDriver::update_image_size (int width, int height)
     if (desired_width != width || desired_height != height)
     {
         XShmDetach (display, &shm);
+        XSync (display, 0);
+
+        shmctl (shm.shmid, IPC_RMID, 0);
         shmdt (shm.shmaddr);
 
         xv_image = XvShmCreateImage (display,
@@ -605,13 +608,16 @@ void
 S9xXVDisplayDriver::deinit (void)
 {
     XShmDetach (display, &shm);
+    XSync (display, 0);
+
+    free (buffer[0]);
+    free (buffer[1]);
+
+    shmctl (shm.shmid, IPC_RMID, 0);
     shmdt (shm.shmaddr);
 
     padded_buffer[0] = NULL;
     padded_buffer[1] = NULL;
-
-    free (buffer[0]);
-    free (buffer[1]);
 
     return;
 }

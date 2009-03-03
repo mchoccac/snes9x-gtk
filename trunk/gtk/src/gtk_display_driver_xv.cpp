@@ -389,7 +389,22 @@ S9xXVDisplayDriver::update_image_size (int width, int height)
                                      &shm);
 
         shm.shmid = shmget (IPC_PRIVATE, xv_image->data_size, IPC_CREAT | 0777);
-        shm.shmaddr = (char *) shmat (shm.shmid, 0, 0);
+        for (int tries = 0; tries <= 10; tries++)
+        {
+            shm.shmaddr = (char *) shmat (shm.shmid, 0, 0);
+            
+            if (shm.shmaddr == (void *) -1 && tries >= 10)
+            {   
+                /* Can't recover, send exit. */
+                fprintf (stderr, "Couldn't reallocate shared memory.\n");
+                S9xExit ();
+            }
+            else
+            {
+                break;
+            }
+        }
+
         shm.readOnly = FALSE;
 
         xv_image->data = shm.shmaddr;
@@ -562,6 +577,12 @@ S9xXVDisplayDriver::init (void)
 
     shm.shmid = shmget (IPC_PRIVATE, xv_image->data_size, IPC_CREAT | 0777);
     shm.shmaddr = (char *) shmat (shm.shmid, 0, 0);
+    if (shm.shmaddr == (void *) -1)
+    {
+        fprintf (stderr, "Could not attach shared memory segment.\n");
+        return -1;
+    }
+
     shm.readOnly = FALSE;
 
     xv_image->data = shm.shmaddr;

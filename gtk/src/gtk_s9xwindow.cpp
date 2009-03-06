@@ -361,24 +361,6 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
     return FALSE; /* Pass the key to GTK */
 }
 
-static void
-event_double_size (GtkWidget *widget, gpointer data)
-{
-    GtkWidget    *item;
-    int          y_padding = 0;
-    Snes9xWindow *window = (Snes9xWindow *) data;
-
-    item = window->get_widget ("menubar");
-    y_padding += GTK_WIDGET_VISIBLE (item) ? item->allocation.height : 0;
-
-    item = window->get_widget ("statusbar");
-    y_padding += GTK_WIDGET_VISIBLE (item) ? item->allocation.height : 0;
-
-    window->resize (512, 224 * 2 + y_padding);
-
-    return;
-}
-
 gboolean
 event_motion_notify (GtkWidget      *widget,
                      GdkEventMotion *event,
@@ -463,21 +445,83 @@ event_fullscreen (GtkWidget *widget, gpointer data)
     return;
 }
 
+
 static void
-event_native_size (GtkWidget *widget, gpointer data)
+event_exact_pixels_1x (GtkWidget *widget, gpointer data)
 {
-    GtkWidget *item;
-    int       y_padding = 0;
+    ((Snes9xWindow *) data)->resize_viewport (256, 224);
 
-    Snes9xWindow *window = (Snes9xWindow *) data;
+    return;
+}
 
-    item = window->get_widget ("menubar");
-    y_padding += GTK_WIDGET_VISIBLE (item) ? item->allocation.height : 0;
+static void
+event_exact_pixels_2x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (256 * 2, 224 * 2);
 
-    item = window->get_widget ("statusbar");
-    y_padding += GTK_WIDGET_VISIBLE (item) ? item->allocation.height : 0;
+    return;
+}
 
-    window->resize (256, 224 + y_padding);
+static void
+event_exact_pixels_3x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (256 * 3, 224 * 3);
+
+    return;
+}
+
+static void
+event_exact_pixels_4x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (256 * 4, 224 * 4);
+
+    return;
+}
+
+static void
+event_exact_pixels_5x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (256 * 5, 224 * 5);
+
+    return;
+}
+
+static void
+event_correct_aspect_1x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (224 * 4 / 3, 224);
+
+    return;
+}
+
+static void
+event_correct_aspect_2x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (224 * 4 * 2 / 3, 224 * 2);
+
+    return;
+}
+
+static void
+event_correct_aspect_3x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (224 * 4 * 3 / 3, 224 * 3);
+
+    return;
+}
+
+static void
+event_correct_aspect_4x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (224 * 4 * 4 / 3, 224 * 4);
+
+    return;
+}
+
+static void
+event_correct_aspect_5x (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->resize_viewport (224 * 4 * 5 / 3, 224 * 5);
 
     return;
 }
@@ -706,8 +750,6 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
         { "on_drawingarea_expose", G_CALLBACK (event_drawingarea_expose) },
         { "main_window_key_press_event", G_CALLBACK (event_key) },
         { "main_window_key_release_event", G_CALLBACK (event_key) },
-        { "on_double_size_item_activate", G_CALLBACK (event_double_size) },
-        { "on_native_size_item_activate", G_CALLBACK (event_native_size) },
         { "on_fullscreen_item_activate", G_CALLBACK (event_fullscreen) },
         { "on_open_rom_activate", G_CALLBACK (event_open_rom) },
         { "on_reset_item_activate", G_CALLBACK (event_reset) },
@@ -734,6 +776,17 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
         { "sync_clients", G_CALLBACK (event_sync_clients) },
         { "toggle_interface", G_CALLBACK (event_toggle_interface) },
         { "show_statusbar", G_CALLBACK (event_show_statusbar) },
+        { "exact_1x", G_CALLBACK (event_exact_pixels_1x) },
+        { "exact_2x", G_CALLBACK (event_exact_pixels_2x) },
+        { "exact_3x", G_CALLBACK (event_exact_pixels_3x) },
+        { "exact_4x", G_CALLBACK (event_exact_pixels_4x) },
+        { "exact_5x", G_CALLBACK (event_exact_pixels_5x) },
+        { "correct_1x", G_CALLBACK (event_correct_aspect_1x) },
+        { "correct_2x", G_CALLBACK (event_correct_aspect_2x) },
+        { "correct_3x", G_CALLBACK (event_correct_aspect_3x) },
+        { "correct_4x", G_CALLBACK (event_correct_aspect_4x) },
+        { "correct_5x", G_CALLBACK (event_correct_aspect_5x) },
+
         { NULL, NULL }
     };
 
@@ -1778,6 +1831,23 @@ Snes9xWindow::draw_background (int rect_x, int rect_y, int rect_w, int rect_h)
     cairo_destroy (cr);
 
     gdk_window_end_paint (widget->window);
+
+    return;
+}
+
+void
+Snes9xWindow::resize_viewport (int width, int height)
+{
+    GtkWidget *item;
+    int       y_padding = 0;
+
+    item = get_widget ("menubar");
+    y_padding += GTK_WIDGET_VISIBLE (item) ? item->allocation.height : 0;
+
+    item = get_widget ("statusbar");
+    y_padding += GTK_WIDGET_VISIBLE (item) ? item->allocation.height : 0;
+
+    resize (width, height + y_padding);
 
     return;
 }

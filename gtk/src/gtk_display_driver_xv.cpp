@@ -280,14 +280,14 @@ S9xXVDisplayDriver::update (int width, int height)
 
     if (config->scale_to_fit)
     {
-        if (config->maintain_aspect_ratio)
+        double screen_aspect = (double) c_width / (double) c_height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (c_width, c_height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
         {
-            float snes_aspect;
-            float screen_aspect;
-
-            snes_aspect = 8.0 / 7.0;
-            screen_aspect = (float) c_width / (float) c_height;
-
             if (screen_aspect > snes_aspect)
             {
                 XvShmPutImage (display,
@@ -392,9 +392,9 @@ S9xXVDisplayDriver::update_image_size (int width, int height)
         for (int tries = 0; tries <= 10; tries++)
         {
             shm.shmaddr = (char *) shmat (shm.shmid, 0, 0);
-            
+
             if (shm.shmaddr == (void *) -1 && tries >= 10)
-            {   
+            {
                 /* Can't recover, send exit. */
                 fprintf (stderr, "Couldn't reallocate shared memory.\n");
                 S9xExit ();
@@ -672,13 +672,15 @@ S9xXVDisplayDriver::clear (void)
 
     if (config->scale_to_fit)
     {
-        if (config->maintain_aspect_ratio)
+        double screen_aspect = (double) c_width / (double) c_height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (c_width, c_height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
         {
             int bar_size;
-            double screen_aspect;
-            double snes_aspect = 8.0 / 7.0;
-
-            screen_aspect = (double) c_width / c_height;
 
             if (screen_aspect > snes_aspect)
             {

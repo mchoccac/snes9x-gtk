@@ -558,6 +558,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_check ("multithreading",            config->multithreading);
     set_check ("force_hires",               config->force_hires);
     set_check ("maintain_aspect_ratio",     config->maintain_aspect_ratio);
+    set_combo ("aspect_ratio",              config->aspect_ratio);
     set_check ("rom_folder_radio",          config->data_location==DIR_ROM);
     set_check ("config_folder_radio",       config->data_location==DIR_CONFIG);
     set_check ("custom_folder_radio",       config->data_location==DIR_CUSTOM);
@@ -703,6 +704,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->scale_to_fit              = get_check ("scale_to_fit");
     config->overscan                  = get_check ("overscan");
     config->maintain_aspect_ratio     = get_check ("maintain_aspect_ratio");
+    config->aspect_ratio              = get_combo ("aspect_ratio");
     config->xrr_index                 = get_combo ("resolution_combo");
     config->scale_method              = get_combo ("scale_method_combo");
     config->force_hires               = get_check ("force_hires");

@@ -222,6 +222,7 @@ class Snes9xConfig
         unsigned int  xrr_index;
         unsigned char scale_to_fit;
         unsigned char maintain_aspect_ratio;
+        int           aspect_ratio;
         unsigned int  scale_method;
         unsigned char overscan;
         unsigned char multithreading;

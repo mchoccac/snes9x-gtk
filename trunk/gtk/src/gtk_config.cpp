@@ -290,6 +290,7 @@ Snes9xConfig::load_defaults (void)
     xrr_index = 0;
     scale_to_fit = 1;
     maintain_aspect_ratio = 0;
+    aspect_ratio = 0;
     scale_method = 0;
     overscan = 0;
     data_location = DIR_ROM;
@@ -445,6 +446,7 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "video_mode", xrr_index);
     xml_out_int (xml, "scale_to_fit", scale_to_fit);
     xml_out_int (xml, "maintain_aspect_ratio", maintain_aspect_ratio);
+    xml_out_int (xml, "aspect_ratio", aspect_ratio);
     xml_out_int (xml, "scale_method", scale_method);
     xml_out_int (xml, "overscan", overscan);
     xml_out_int (xml, "force_hires", force_hires);
@@ -610,6 +612,10 @@ Snes9xConfig::set_option (const char *name, const char *value)
     else if (!strcasecmp (name, "maintain_aspect_ratio"))
     {
         maintain_aspect_ratio = atoi (value);
+    }
+    else if (!strcasecmp (name, "aspect_ratio"))
+    {
+        aspect_ratio = atoi (value);
     }
     else if (!strcasecmp (name, "force_hires"))
     {

@@ -231,6 +231,7 @@ class Snes9xWindow : public GladeWindow
         void reset_screensaver (void);
         void update_accels (void);
         void toggle_ui (void);
+        void resize_viewport (int width, int height);
 
         Snes9xConfig   *config;
         unsigned char  user_pause;

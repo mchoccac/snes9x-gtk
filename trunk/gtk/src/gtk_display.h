@@ -219,6 +219,7 @@ thread_job_t;
 
 void S9xRegisterYUVTables (uint8 *y, uint8 *u, uint8 *v);
 void S9xSetEndianess (int type);
+double S9xGetAspect (void);
 
 void S9xConvertYUV (void *src_buffer,
                     void *dst_buffer,

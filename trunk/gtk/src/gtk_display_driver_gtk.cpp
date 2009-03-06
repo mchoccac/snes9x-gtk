@@ -236,14 +236,14 @@ S9xGTKDisplayDriver::update (int width, int height)
 
     if (config->scale_to_fit)
     {
-        if (config->maintain_aspect_ratio)
+        double screen_aspect = (double) c_width / (double) c_height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (c_width, c_height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
         {
-            float snes_aspect;
-            float screen_aspect;
-
-            snes_aspect = 8.0 / 7.0;
-            screen_aspect = (float) c_width / (float) c_height;
-
             if (screen_aspect > snes_aspect)
             {
                 output (final_buffer,
@@ -500,14 +500,15 @@ S9xGTKDisplayDriver::clear (void)
 
     if (config->scale_to_fit)
     {
-        if (config->maintain_aspect_ratio)
+        double screen_aspect = (double) c_width / (double) c_height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (c_width, c_height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
         {
             int    bar_size;
-            double screen_aspect;
-            double snes_aspect = 8.0 / 7.0;
-
-            screen_aspect = (double) c_width / c_height;
-
             if (screen_aspect > snes_aspect)
             {
                 /* Black bars on left and right */

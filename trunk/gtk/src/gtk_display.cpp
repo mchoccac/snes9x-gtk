@@ -234,6 +234,15 @@ S9xSetEndianess (int type)
     return;
 }
 
+double
+S9xGetAspect (void)
+{
+    if (gui_config->aspect_ratio)
+        return (4.0 / 3.0);
+    else
+        return (8.0 / 7.0);
+}
+
 void
 S9xRegisterYUVTables (uint8 *y, uint8 *u, uint8 *v)
 {

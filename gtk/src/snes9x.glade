@@ -547,9 +547,17 @@
                           <widget class="GtkMenu" id="menu1">
                             <property name="visible">True</property>
                             <child>
+                              <widget class="GtkMenuItem" id="menuitem1">
+                                <property name="visible">True</property>
+                                <property name="sensitive">False</property>
+                                <property name="label" translatable="yes">Exact Pixels</property>
+                                <property name="use_underline">True</property>
+                              </widget>
+                            </child>
+                            <child>
                               <widget class="GtkMenuItem" id="exact_pixels_1x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">_1x Exact Pixels</property>
+                                <property name="label" translatable="yes">_1x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="exact_1x"/>
                               </widget>
@@ -557,7 +565,7 @@
                             <child>
                               <widget class="GtkMenuItem" id="exact_pixels_2x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">_2x Exact Pixels</property>
+                                <property name="label" translatable="yes">_2x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="exact_2x"/>
                               </widget>
@@ -565,7 +573,7 @@
                             <child>
                               <widget class="GtkMenuItem" id="exact_pixels_3x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">_3x Exact Pixels</property>
+                                <property name="label" translatable="yes">_3x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="exact_3x"/>
                               </widget>
@@ -573,7 +581,7 @@
                             <child>
                               <widget class="GtkMenuItem" id="exact_pixels_4x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">_4x Exact Pixels</property>
+                                <property name="label" translatable="yes">_4x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="exact_4x"/>
                               </widget>
@@ -581,7 +589,7 @@
                             <child>
                               <widget class="GtkMenuItem" id="exact_pixels_5x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">_5x Exact Pixels</property>
+                                <property name="label" translatable="yes">_5x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="exact_5x"/>
                               </widget>
@@ -592,9 +600,17 @@
                               </widget>
                             </child>
                             <child>
+                              <widget class="GtkMenuItem" id="menuitem2">
+                                <property name="visible">True</property>
+                                <property name="sensitive">False</property>
+                                <property name="label" translatable="yes">Correct Aspect</property>
+                                <property name="use_underline">True</property>
+                              </widget>
+                            </child>
+                            <child>
                               <widget class="GtkMenuItem" id="native_aspect_1x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">1x Correct Aspect</property>
+                                <property name="label" translatable="yes">1x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="correct_1x"/>
                               </widget>
@@ -602,7 +618,7 @@
                             <child>
                               <widget class="GtkMenuItem" id="native_aspect_2x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">2x Correct Aspect</property>
+                                <property name="label" translatable="yes">2x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="correct_2x"/>
                               </widget>
@@ -610,7 +626,7 @@
                             <child>
                               <widget class="GtkMenuItem" id="native_aspect_3x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">3x Correct Aspect</property>
+                                <property name="label" translatable="yes">3x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="correct_3x"/>
                               </widget>
@@ -618,7 +634,7 @@
                             <child>
                               <widget class="GtkMenuItem" id="native_aspect_4x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">4x Correct Aspect</property>
+                                <property name="label" translatable="yes">4x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="correct_4x"/>
                               </widget>
@@ -626,7 +642,7 @@
                             <child>
                               <widget class="GtkMenuItem" id="native_aspect_5x_item">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">5x Correct Aspect</property>
+                                <property name="label" translatable="yes">5x</property>
                                 <property name="use_underline">True</property>
                                 <signal name="activate" handler="correct_5x"/>
                               </widget>

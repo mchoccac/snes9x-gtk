@@ -273,7 +273,6 @@ Snes9xConfig::Snes9xConfig (void)
     joystick = NULL;
     joystick_threshold = 50;
 #endif
-    audio_stream = NULL;
 
 #ifdef USE_OPENGL
     opengl_activated = FALSE;
@@ -311,6 +310,7 @@ Snes9xConfig::load_defaults (void)
     statusbar_visible = TRUE;
     default_esc_behavior = TRUE;
     prevent_screensaver = FALSE;
+    sound_driver = 0;
     sound_buffer_size = 32;
     last_directory[0] = '\0';
     window_width = -1;
@@ -504,6 +504,7 @@ Snes9xConfig::save_config_file (void)
 
     xml_out_int (xml, "mute_sound", mute_sound);
     xml_out_int (xml, "sound_buffer_size", sound_buffer_size);
+    xml_out_int (xml, "sound_driver", sound_driver);
 
     /* Snes9X core-stored variables */
     xml_out_int (xml, "transparency", Settings.Transparency);
@@ -877,6 +878,10 @@ Snes9xConfig::set_option (const char *name, const char *value)
     else if (!strcasecmp (name, "sound_buffer_size"))
     {
         sound_buffer_size = atoi (value);
+    }
+    else if (!strcasecmp (name, "sound_driver"))
+    {
+        sound_driver = atoi (value);
     }
     else if (!strcasecmp (name, "prevent_screensaver"))
     {

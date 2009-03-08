@@ -67,6 +67,18 @@ AC_ARG_WITH(xrandr,
   [],
   [with_xrandr=yes])
 
+AC_ARG_WITH(portaudio, 
+  [AS_HELP_STRING([--with(out)-portaudio],
+    [Enable PortAudio sound driver support (default: with)])],
+  [],
+  [with_portaudio=yes])
+
+AC_ARG_WITH(oss, 
+  [AS_HELP_STRING([--with(out)-oss],
+    [Enable OSS sound driver support (default: with)])],
+  [],
+  [with_oss=yes])
+
 AC_ARG_WITH(assembler,
   [AS_HELP_STRING([--with(out)-assembler],
     [Use assembler cores if available (default: with)])],
@@ -169,7 +181,6 @@ if test yes = "$with_gtk" ; then
     PKG_CHECK_MODULES([GLIB], [gthread-2.0 >= 2.6 gobject-2.0 >= 2.6])
     PKG_CHECK_MODULES([GLADE], [libglade-2.0 >= 2.0])
     PKG_CHECK_MODULES([LIBXML], [libxml-2.0 >= 2.0])
-    PKG_CHECK_MODULES([PORTAUDIO], [portaudio-2.0 >= 10])
     PKG_CHECK_MODULES([XTEST], [xtst])
                               
     if test yes = "$with_opengl" ; then
@@ -213,6 +224,31 @@ if test yes = "$with_gtk" ; then
             echo "--> Disabling Xv support."
         ])
     fi
+
+    PORTAUDIO=0
+    PORTAUDIO_CFLAGS=""
+    PORTAUDIO_LDFLAGS=""
+    if test yes = "$with_portaudio" ; then
+        PKG_CHECK_MODULES([PORTAUDIO], [portaudio-2.0 >= 10],[
+            PORTAUDIO=yes
+            CFLAGS="$CFLAGS -DUSE_PORTAUDIO"
+        ],[
+            echo "Cannot find PortAudio."
+            echo "--> Disabling PortAudio support"
+        ])
+    fi
+
+    OSS=0
+    if test yes = "$with_oss" ; then
+
+        AC_CHECK_HEADER(sys/soundcard.h, [
+          CFLAGS="$CFLAGS -DUSE_OSS"
+          OSS=yes
+        ],[
+            echo "Cannot find OSS headers."
+            echo "--> Disabling OSS support"
+        ])    
+    fi
    
     XRANDR=0
     XRANDR_CFLAGS=""
@@ -228,8 +264,8 @@ if test yes = "$with_gtk" ; then
     fi
     PKG_CHECK_MODULES([LIBPNG],libpng)
 
-    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $GTKGL_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $XTEST_CFLAGS"
-    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $GTKGL_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $XTEST_LIBS"
+    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $GTKGL_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $XTEST_CFLAGS $PORTAUDIO_CFLAGS"
+    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $GTKGL_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $XTEST_LIBS $PORTAUDIO_LIBS"
 fi
 
 
@@ -413,6 +449,8 @@ AM_CONDITIONAL(NETPLAY, [test yes = "$NETPLAY"])
 AM_CONDITIONAL(JMA, [test yes = "$JMA"])
 AM_CONDITIONAL(OPENGL, [test yes = "$OPENGL"])
 AM_CONDITIONAL(XV, [test yes = "$XV"])
+AM_CONDITIONAL(PORTAUDIO, [test yes = "$PORTAUDIO"])
+AM_CONDITIONAL(OSS, [test yes = "$OSS"])
 AM_CONDITIONAL(DEBUG, [test yes = "$with_debug" ])
 
 AC_SUBST(NASM)
@@ -470,3 +508,9 @@ else
 fi
 
 echo ""
+
+if ! test yes = "$PORTAUDIO" ; then
+    if ! test yes = "$OSS" ; then
+        echo "ERROR: No audio driver is selected or available. Snes9x will not build."
+    fi
+fi

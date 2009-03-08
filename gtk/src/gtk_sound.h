@@ -160,7 +160,7 @@
 
 /**********************************************************************************
   Snes9x GTK Port
-  
+
   (c) Copyright 2007 - 2008  Brandon Wright (bearoso@gmail.com)
 **********************************************************************************/
 
@@ -174,5 +174,6 @@ void S9xSoundStop (void);
 
 extern int playback_rates[8];
 extern int buffer_sizes[8];
+extern double d_playback_rates[8];
 
 #endif /* __GTK_SOUND_H */

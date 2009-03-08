@@ -164,15 +164,18 @@
   (c) Copyright 2007 - 2008  Brandon Wright (bearoso@gmail.com)
 **********************************************************************************/
 
-#include <portaudio.h>
-#include <pthread.h>
 #include <errno.h>
 
 #include "gtk_s9x.h"
 #include "gtk_sound.h"
+#include "gtk_sound_driver.h"
 
-/* Save the number of times Pa_Initialize is called and succeeds */
-static int sound_refcount = 0;
+#ifdef USE_PORTAUDIO
+#include "gtk_sound_driver_portaudio.h"
+#endif
+#ifdef USE_OSS
+#include "gtk_sound_driver_oss.h"
+#endif
 
 int playback_rates[8] =
 {
@@ -184,32 +187,28 @@ double d_playback_rates[8] =
     0.0, 8000.0, 11025.0, 16000.0, 22050.0, 32000.0, 44100.0, 48000.0
 };
 
-static int
-port_audio_callback (const void *input,
-                     void *output,
-                     unsigned long frameCount,
-                     const PaStreamCallbackTimeInfo* timeInfo,
-                     PaStreamCallbackFlags statusFlags,
-                     void *userData)
-{
-    S9xMixSamples ((uint8 *) output, frameCount * (so.stereo ? 2 : 1));
-
-    return 0;
-}
+S9xSoundDriver *driver;
 
 void
 S9xPortSoundInit (void)
 {
-    PaError err;
+#ifdef USE_PORTAUDIO
+#ifdef USE_OSS
+    if (gui_config->sound_driver == 0)
+        driver = new S9xPortAudioSoundDriver ();
+    else
+        driver = new S9xOSSSoundDriver ();
+#else
+    driver = new S9xPortAudioSoundDriver ();
+#endif
+#endif
+#ifdef USE_OSS
+#ifndef USE_PORTAUDIO
+    driver = new S9xOSSSoundDriver ();
+#endif
+#endif
 
-    err = Pa_Initialize ();
-
-    if (err != paNoError)
-        fprintf (stderr,
-                 "Couldn't initialize PortAudio: %s\n",
-                 Pa_GetErrorText (err));
-
-    sound_refcount++;
+    driver->init ();
 
     S9xInitSound (Settings.SoundPlaybackRate,
                   Settings.Stereo,
@@ -225,11 +224,9 @@ S9xPortSoundDeinit (void)
 {
     S9xSoundStop ();
 
-    if (sound_refcount)
-    {
-        Pa_Terminate ();
-        sound_refcount--;
-    }
+    driver->terminate ();
+
+    delete driver;
 
     return;
 }
@@ -237,20 +234,7 @@ S9xPortSoundDeinit (void)
 void
 S9xSoundStart (void)
 {
-    PaError err;
-
-    if (gui_config->audio_stream != NULL && !(gui_config->mute_sound))
-    {
-        if ((Pa_IsStreamActive (gui_config->audio_stream)))
-            return;
-
-        err = Pa_StartStream (gui_config->audio_stream);
-
-        if (err != paNoError)
-        {
-            fprintf (stderr, "Error: %s\n", Pa_GetErrorText (err));
-        }
-    }
+    driver->start ();
 
     return;
 }
@@ -258,10 +242,7 @@ S9xSoundStart (void)
 void
 S9xSoundStop (void)
 {
-    if (gui_config->audio_stream != NULL)
-    {
-        Pa_StopStream (gui_config->audio_stream);
-    }
+    driver->stop ();
 
     return;
 }
@@ -269,35 +250,15 @@ S9xSoundStop (void)
 void
 S9xGenerateSound (void)
 {
+    driver->mix ();
+
     return;
 }
 
 bool8
 S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
 {
-    int                 sample_count;
-    PaStreamParameters  param;
-    const PaDeviceInfo  *device_info;
-    const PaHostApiInfo *hostapi_info;
-    PaError             err = paNoError;
-
-    if (gui_config->audio_stream != NULL)
-    {
-        printf ("Shutting down sound for reset\n");
-        err = Pa_CloseStream (gui_config->audio_stream);
-
-        if (err != paNoError)
-        {
-            fprintf (stderr,
-                     "Couldn't reset audio stream.\nError: %s\n",
-                     Pa_GetErrorText (err));
-            return TRUE;
-        }
-
-        gui_config->audio_stream = NULL;
-    }
-
-    if (Settings.APUEnabled == FALSE || gui_config->mute_sound)
+    if (Settings.APUEnabled == FALSE)
         return FALSE;
 
     so.playback_rate = playback_rates[Settings.SoundPlaybackRate];
@@ -308,8 +269,6 @@ S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
 
     so.buffer_size = (gui_config->sound_buffer_size * so.playback_rate) / 1000;
 
-    sample_count = buffer_size;
-
     if (so.stereo)
         so.buffer_size *= 2;
     if (so.sixteen_bit)
@@ -317,74 +276,10 @@ S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
     if (so.buffer_size >= MAX_BUFFER_SIZE)
         so.buffer_size = MAX_BUFFER_SIZE;
 
-    param.channelCount = Settings.Stereo ? 2 : 1;
-    param.sampleFormat = Settings.SixteenBitSound ? paInt16 : paUInt8;
-    param.hostApiSpecificStreamInfo = NULL;
-
-    printf ("Initializing sound...\n");
-
-    for (int i = 0; i < Pa_GetHostApiCount (); i++)
-    {
-        printf ("    --> ");
-
-        hostapi_info = Pa_GetHostApiInfo (i);
-        if (!hostapi_info)
-        {
-            printf ("Host API #%d has no info\n", i);
-            err = paNotInitialized;
-            continue;
-        }
-
-        device_info = Pa_GetDeviceInfo (hostapi_info->defaultOutputDevice);
-        if (!device_info)
-        {
-            printf ("(%s)...No device info available.\n", hostapi_info->name);
-            err = paNotInitialized;
-            continue;
-        }
-
-        param.device = hostapi_info->defaultOutputDevice;
-        param.suggestedLatency = gui_config->sound_buffer_size * 0.001;
-
-        printf ("(%s : %s, latency %dms)...",
-                hostapi_info->name,
-                device_info->name,
-                (int) (param.suggestedLatency * 1000.0));
-
-        fflush (stdout);
-
-        err = Pa_OpenStream (&gui_config->audio_stream,
-                             NULL,
-                             &param,
-                             d_playback_rates[Settings.SoundPlaybackRate],
-                             sample_count,
-                             paNoFlag,
-                             port_audio_callback,
-                             NULL);
-
-        if (err == paNoError)
-        {
-            printf ("OK\n");
-            break;
-        }
-        else
-        {
-            printf ("Failed (%s)\n",
-                    Pa_GetErrorText (err));
-        }
-    }
-
-    if (err != paNoError || Pa_GetHostApiCount () < 1)
-    {
-        fprintf (stderr,
-                 "Couldn't initialize sound\n");
+    if (gui_config->mute_sound)
         return FALSE;
-    }
 
-    fflush (stdout);
-    fflush (stderr);
-
-    return TRUE;
+    return driver->open_device (mode, stereo, buffer_size);
 }
 
 /* This really shouldn't be in the port layer */

@@ -167,7 +167,6 @@
 #ifndef __GTK_CONFIG_H
 #define __GTK_CONFIG_H
 
-#include <portaudio.h>
 #include <libxml/parser.h>
 #include <X11/Xlib.h>
 #ifdef USE_XRANDR
@@ -265,7 +264,7 @@ class Snes9xConfig
         int           netplay_server_up;
 
         /* Operational */
-        PaStream      *audio_stream;
+        int           sound_driver;
         int           mute_sound;
         int           sound_buffer_size;
         int           rom_loaded;

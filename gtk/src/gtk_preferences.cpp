@@ -573,6 +573,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_check ("prevent_screensaver",       config->prevent_screensaver);
     set_check ("force_inverted_byte_order", config->force_inverted_byte_order);
     set_check ("hdma_check",                !(Settings.DisableHDMA));
+    set_combo ("sound_driver",              config->sound_driver);
     set_check ("16bit_check",               Settings.SixteenBitSound);
     set_check ("stereo_check",              Settings.Stereo);
     set_check ("reverse_stereo_check",      Settings.ReverseStereo);
@@ -651,7 +652,8 @@ Snes9xPreferences::get_settings_from_dialog (void)
     int sound_needs_restart = 0;
     int gfx_needs_restart = 0;
 
-    if ((config->mute_sound         != get_check ("mute_sound_check"))      ||
+    if ((config->sound_driver       != get_combo ("sound_driver"))          ||
+        (config->mute_sound         != get_check ("mute_sound_check"))      ||
         (config->sound_buffer_size  != (int) get_spin ("sound_buffer_size"))||
         (Settings.Stereo            != get_check ("stereo_check"))          ||
         (Settings.SoundPlaybackRate !=
@@ -723,6 +725,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
     Settings.BlockInvalidVRAMAccess   = get_check ("block_invalid_vram_access");
     Settings.UpAndDown                = get_check ("upanddown");
     Settings.ShutdownMaster           = get_check ("speedhacks_check");
+    config->sound_driver              = get_combo ("sound_driver");
     Settings.SixteenBitSound          = get_check ("16bit_check");
     Settings.Stereo                   = get_check ("stereo_check");
     Settings.ReverseStereo            = get_check ("reverse_stereo_check");
@@ -789,9 +792,8 @@ Snes9xPreferences::get_settings_from_dialog (void)
 
     if (sound_needs_restart)
     {
-        S9xInitSound (Settings.SoundPlaybackRate,
-                      Settings.Stereo,
-                      Settings.SoundBufferSize);
+        S9xPortSoundDeinit ();
+        S9xPortSoundInit ();
     }
 
     if (gfx_needs_restart)
@@ -926,6 +928,17 @@ Snes9xPreferences::show (void)
     if (config->allow_xv)
         gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
                                    _("XVideo - Use hardware video blitter"));
+
+    combo = get_widget ("sound_driver");
+
+#ifdef USE_PORTAUDIO
+    gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
+                               _("PortAudio"));
+#endif
+#ifdef USE_OSS
+    gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
+                               _("Open Sound System"));
+#endif
 
     move_settings_to_dialog ();
 

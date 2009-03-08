@@ -492,6 +492,7 @@ S9xIdleFunc (gpointer data)
     {
 #endif
     S9xMainLoop ();
+    S9xGenerateSound ();
 
 #ifdef NETPLAY_SUPPORT
         S9xNetplayPop ();

@@ -940,6 +940,10 @@ Snes9xPreferences::show (void)
                                _("Open Sound System"));
 #endif
 
+#if !defined(USE_PORTAUDIO) || !defined(USE_OSS)
+    config->sound_driver = 0;
+#endif
+
     move_settings_to_dialog ();
 
 #ifdef USE_JOYSTICK

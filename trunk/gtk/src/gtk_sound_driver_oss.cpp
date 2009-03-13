@@ -5,7 +5,28 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <fcntl.h>
-#include <math.h>
+
+static int 
+base2log (int num)
+{
+    int power;
+
+    if (num < 1)
+        return 0;
+
+    for (power = 0; num > 1; power++)
+    {
+        num >>= 1;
+    }
+
+    return power;
+}
+
+static int
+powerof2 (int num)
+{
+    return (1 << num);
+}
 
 gpointer
 oss_thread (gpointer data)
@@ -131,8 +152,8 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     /* OSS requires a power-of-two buffer size, first 16 bits are the number
      * of fragments to generate, second 16 are the respective power-of-two. */
-    temp = (2 << 16) | (int) (log2 (so.buffer_size));
-    so.buffer_size = (int) exp2 ((double) (temp & 0xffff));
+    temp = (2 << 16) | base2log (so.buffer_size);
+    so.buffer_size = powerof2 (temp & 0xffff);
     printf ("    --> (Buffer size: %d bytes, %dms latency)...",
             so.buffer_size,
             (((so.buffer_size * 1000) >> (so.stereo ? 1 : 0))

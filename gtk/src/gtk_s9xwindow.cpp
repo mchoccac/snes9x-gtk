@@ -1618,9 +1618,7 @@ Snes9xWindow::reset_screensaver (void)
     Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
 
     XTestFakeKeyEvent (display, 255, True, 0);
-    XSync (display, False);
-    XTestFakeKeyEvent (display, 255, False, 0);
-    XSync (display, False);
+    XTestFakeKeyEvent (display, 255, False, 100);
 
     config->screensaver_needs_reset = FALSE;
 

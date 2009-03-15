@@ -194,7 +194,7 @@ if test yes = "$with_gtk" ; then
 
     GTKJOY=0
     SDL_CFLAGS=""
-    SDL_LDFLAGS=""
+    SDL_LIBS=""
     if test yes = "$with_joystick"; then
         PKG_CHECK_MODULES([SDL],[sdl],[
             GTKJOY=yes
@@ -204,7 +204,7 @@ if test yes = "$with_gtk" ; then
             
             if test yes = "$SDLCONFIGFOUND" ; then
                 SDL_CFLAGS="-DUSE_JOYSTICK `sdl-config --cflags`"
-                SDL_LDFLAGS="`sdl-config --libs`"
+                SDL_LIBS="`sdl-config --libs`"
                 GTKJOY=yes
             else
                 echo "Cannot find SDL. Disabling joystick support."
@@ -214,7 +214,7 @@ if test yes = "$with_gtk" ; then
 
     XV=0
     XV_CFLAGS=""
-    XV_LDFLAGS=""
+    XV_LIBS=""
     if test yes = "$with_xv" ; then
         PKG_CHECK_MODULES([XV],[xv],[
             XV=yes
@@ -227,7 +227,7 @@ if test yes = "$with_gtk" ; then
 
     PORTAUDIO=0
     PORTAUDIO_CFLAGS=""
-    PORTAUDIO_LDFLAGS=""
+    PORTAUDIO_LIBS=""
     if test yes = "$with_portaudio" ; then
         PKG_CHECK_MODULES([PORTAUDIO], [portaudio-2.0 >= 10],[
             PORTAUDIO=yes
@@ -252,7 +252,7 @@ if test yes = "$with_gtk" ; then
    
     XRANDR=0
     XRANDR_CFLAGS=""
-    XRANDR_LDFLAGS=""
+    XRANDR_LIBS=""
     if test yes = "$with_xrandr" ; then
         PKG_CHECK_MODULES([XRANDR],[xrandr],[
             XRANDR=yes

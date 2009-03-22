@@ -228,6 +228,14 @@ event_calibrate (GtkButton *widget, gpointer data)
 #endif
 
 static void
+event_style_set (GtkWidget *widget, GtkStyle *previous_style, gpointer data)
+{
+    ((Snes9xPreferences *) data)->fix_style ();
+
+    return;
+}
+
+static void
 event_control_toggle (GtkToggleButton *widget, gpointer data)
 {
     Snes9xPreferences    *window = (Snes9xPreferences *) data;
@@ -477,6 +485,7 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
         { "hw_accel_changed", G_CALLBACK (event_hw_accel_changed) },
         { "reset_current_joypad", G_CALLBACK (event_reset_current_joypad) },
         { "swap_with", G_CALLBACK (event_swap_with) },
+        { "style_set", G_CALLBACK (event_style_set) },
 #ifdef USE_JOYSTICK
         { "calibrate", G_CALLBACK (event_calibrate) },
 #endif
@@ -530,15 +539,7 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
     gtk_image_set_from_pixbuf (GTK_IMAGE (get_widget ("preferences_splash")),
                                top_level->splash);
 
-    GtkStyle *style = gtk_rc_get_style (get_widget ("preferences_notebook"));
-
-    gtk_widget_set_style (get_widget ("display_viewport"), style);
-    gtk_widget_set_style (get_widget ("sound_viewport"), style);
-    gtk_widget_set_style (get_widget ("emulation_viewport"), style);
-    gtk_widget_set_style (get_widget ("shortcut_viewport1"), style);
-    gtk_widget_set_style (get_widget ("shortcut_viewport2"), style);
-    gtk_widget_set_style (get_widget ("shortcut_viewport3"), style);
-    gtk_widget_set_style (get_widget ("shortcut_viewport4"), style);
+    fix_style ();
 
     gtk_widget_realize (window);
 
@@ -552,6 +553,22 @@ Snes9xPreferences::~Snes9xPreferences (void)
     g_object_unref (glade);
     g_object_unref (size_group[0]);
     g_object_unref (size_group[1]);
+
+    return;
+}
+
+void
+Snes9xPreferences::fix_style (void)
+{
+    GtkStyle *style = gtk_rc_get_style (get_widget ("preferences_notebook"));
+
+    gtk_widget_set_style (get_widget ("display_viewport"), style);
+    gtk_widget_set_style (get_widget ("sound_viewport"), style);
+    gtk_widget_set_style (get_widget ("emulation_viewport"), style);
+    gtk_widget_set_style (get_widget ("shortcut_viewport1"), style);
+    gtk_widget_set_style (get_widget ("shortcut_viewport2"), style);
+    gtk_widget_set_style (get_widget ("shortcut_viewport3"), style);
+    gtk_widget_set_style (get_widget ("shortcut_viewport4"), style);
 
     return;
 }

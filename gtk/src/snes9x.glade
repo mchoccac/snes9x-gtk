@@ -5,13 +5,13 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="delete_event" handler="main_window_delete_event"/>
-    <signal name="window_state_event" handler="main_window_state_event"/>
+    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
+    <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
     <signal name="size_allocate" handler="size_allocate"/>
-    <signal name="key_release_event" handler="main_window_key_release_event"/>
-    <signal name="focus_out_event" handler="focus_out_event"/>
+    <signal name="delete_event" handler="main_window_delete_event"/>
+    <signal name="window_state_event" handler="main_window_state_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -28,7 +28,7 @@
                   <widget class="GtkMenu" id="file_menu_item_menu">
                     <child>
                       <widget class="GtkImageMenuItem" id="open_rom_item">
-                        <property name="label">_Open ROM...</property>
+                        <property name="label" translatable="yes">_Open ROM...</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -57,7 +57,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="open_netplay_item">
-                        <property name="label">Open with _NetPlay...</property>
+                        <property name="label" translatable="yes">Open with _NetPlay...</property>
                         <property name="visible">True</property>
                         <property name="tooltip" translatable="yes">Open a ROM to use with NetPlay</property>
                         <property name="use_underline">True</property>
@@ -278,7 +278,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="save_spc_item">
-                        <property name="label">Save SPC...</property>
+                        <property name="label" translatable="yes">Save SPC...</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -299,7 +299,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="rom_info_item">
-                        <property name="label">Show ROM _Info...</property>
+                        <property name="label" translatable="yes">Show ROM _Info...</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -320,7 +320,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="exit_item">
-                        <property name="label">_Quit</property>
+                        <property name="label" translatable="yes">_Quit</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -347,7 +347,7 @@
                   <widget class="GtkMenu" id="emulation_menu_item_menu">
                     <child>
                       <widget class="GtkImageMenuItem" id="continue_item">
-                        <property name="label">Run / _Continue</property>
+                        <property name="label" translatable="yes">Run / _Continue</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -363,7 +363,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="pause_item">
-                        <property name="label">_Pause</property>
+                        <property name="label" translatable="yes">_Pause</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -385,7 +385,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="open_movie_item">
-                        <property name="label">Load _Movie...</property>
+                        <property name="label" translatable="yes">Load _Movie...</property>
                         <property name="visible">True</property>
                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                         <property name="use_underline">True</property>
@@ -402,7 +402,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="record_movie_item">
-                        <property name="label">R_ecord Movie...</property>
+                        <property name="label" translatable="yes">R_ecord Movie...</property>
                         <property name="visible">True</property>
                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                         <property name="use_underline">True</property>
@@ -419,7 +419,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="stop_recording_item">
-                        <property name="label">_Stop Recording</property>
+                        <property name="label" translatable="yes">_Stop Recording</property>
                         <property name="visible">True</property>
                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                         <property name="use_underline">True</property>
@@ -436,7 +436,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="jump_to_frame_item">
-                        <property name="label">_Jump to Frame...</property>
+                        <property name="label" translatable="yes">_Jump to Frame...</property>
                         <property name="visible">True</property>
                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                         <property name="use_underline">True</property>
@@ -458,7 +458,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="sync_clients_item">
-                        <property name="label">Sy_nc Clients</property>
+                        <property name="label" translatable="yes">Sy_nc Clients</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -479,7 +479,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="hard_reset_item">
-                        <property name="label">Reset</property>
+                        <property name="label" translatable="yes">Reset</property>
                         <property name="visible">True</property>
                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                         <property name="use_underline">True</property>
@@ -496,7 +496,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="reset_item">
-                        <property name="label">Soft _Reset</property>
+                        <property name="label" translatable="yes">Soft _Reset</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -524,7 +524,7 @@
                   <widget class="GtkMenu" id="view_menu_menu">
                     <child>
                       <widget class="GtkImageMenuItem" id="hide_ui">
-                        <property name="label">_Hide Menu</property>
+                        <property name="label" translatable="yes">_Hide Menu</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -553,7 +553,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="change_size_item">
-                        <property name="label">_Change Size</property>
+                        <property name="label" translatable="yes">_Change Size</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -679,7 +679,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="fullscreen_item">
-                        <property name="label">_Fullscreen</property>
+                        <property name="label" translatable="yes">_Fullscreen</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>
@@ -824,7 +824,7 @@
                     </child>
                     <child>
                       <widget class="GtkImageMenuItem" id="preferences_item">
-                        <property name="label">_Preferences...</property>
+                        <property name="label" translatable="yes">_Preferences...</property>
                         <property name="visible">True</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">False</property>

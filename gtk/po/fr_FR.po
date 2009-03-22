@@ -1471,7 +1471,6 @@ msgid "_Preferences..."
 msgstr "_Préférences..."
 
 #: ../src/snes9x.glade.h:317
-#, fuzzy
 msgid "_Quit"
 msgstr "_Quitter"
 

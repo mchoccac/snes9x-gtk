@@ -530,6 +530,16 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
     gtk_image_set_from_pixbuf (GTK_IMAGE (get_widget ("preferences_splash")),
                                top_level->splash);
 
+    GtkStyle *style = gtk_rc_get_style (get_widget ("preferences_notebook"));
+
+    gtk_widget_set_style (get_widget ("display_viewport"), style);
+    gtk_widget_set_style (get_widget ("sound_viewport"), style);
+    gtk_widget_set_style (get_widget ("emulation_viewport"), style);
+    gtk_widget_set_style (get_widget ("shortcut_viewport1"), style);
+    gtk_widget_set_style (get_widget ("shortcut_viewport2"), style);
+    gtk_widget_set_style (get_widget ("shortcut_viewport3"), style);
+    gtk_widget_set_style (get_widget ("shortcut_viewport4"), style);
+
     gtk_widget_realize (window);
 
     signal_connect (callbacks);

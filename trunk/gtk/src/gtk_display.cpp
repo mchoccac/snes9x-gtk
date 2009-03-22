@@ -2112,4 +2112,16 @@ S9xSetPalette (void)
     return;
 }
 
+void
+S9xTextMode (void)
+{
+    return;
+}
+
+void
+S9xGraphicsMode (void)
+{
+    return;
+}
+
 

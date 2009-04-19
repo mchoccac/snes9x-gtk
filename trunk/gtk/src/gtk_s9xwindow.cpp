@@ -1626,7 +1626,6 @@ Snes9xWindow::show_mouse_cursor (void)
 void
 Snes9xWindow::show (void)
 {
-    gtk_widget_realize (window);
     gtk_widget_show (window);
 
     if (!recent_menu)

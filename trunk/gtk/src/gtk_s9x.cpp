@@ -212,9 +212,6 @@ main (int argc, char *argv[])
 
     gtk_init (&argc, &argv);
     glade_init ();
-#ifdef USE_OPENGL
-    gtk_gl_init (&argc, &argv);
-#endif
 
     bindtextdomain (GETTEXT_PACKAGE, SNES9XLOCALEDIR);
     bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
@@ -232,9 +229,6 @@ main (int argc, char *argv[])
 
     gui_config->load_config_file ();
 
-    top_level = new Snes9xWindow (gui_config);
-    top_level->show ();
-
     char *rom_filename = S9xParseArgs (argv, argc);
 
     S9xReportControllers ();
@@ -242,11 +236,14 @@ main (int argc, char *argv[])
     if (!Memory.Init () || !S9xInitAPU ())
         exit (3);
 
+    top_level = new Snes9xWindow (gui_config);
+    S9xInitDisplay (argc, argv);
+    top_level->show ();
+
     Memory.PostRomInitFunc = S9xPostRomInit;
 
     S9xPortSoundInit ();
 
-    S9xInitDisplay (argc, argv);
 
     gui_config->reconfigure ();
     top_level->update_accels ();

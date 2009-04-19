@@ -1,169 +1,3 @@
-/**********************************************************************************
-  Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
-
-  (c) Copyright 1996 - 2002  Gary Henderson (gary.henderson@ntlworld.com),
-                             Jerremy Koot (jkoot@snes9x.com)
-
-  (c) Copyright 2002 - 2004  Matthew Kendora
-
-  (c) Copyright 2002 - 2005  Peter Bortas (peter@bortas.org)
-
-  (c) Copyright 2004 - 2005  Joel Yliluoma (http://iki.fi/bisqwit/)
-
-  (c) Copyright 2001 - 2006  John Weidman (jweidman@slip.net)
-
-  (c) Copyright 2002 - 2006  funkyass (funkyass@spam.shaw.ca),
-                             Kris Bleakley (codeviolation@hotmail.com)
-
-  (c) Copyright 2002 - 2007  Brad Jorsch (anomie@users.sourceforge.net),
-                             Nach (n-a-c-h@users.sourceforge.net),
-                             zones (kasumitokoduck@yahoo.com)
-
-  (c) Copyright 2006 - 2007  nitsuja
-
-
-  BS-X C emulator code
-  (c) Copyright 2005 - 2006  Dreamer Nom,
-                             zones
-
-  C4 x86 assembler and some C emulation code
-  (c) Copyright 2000 - 2003  _Demo_ (_demo_@zsnes.com),
-                             Nach,
-                             zsKnight (zsknight@zsnes.com)
-
-  C4 C++ code
-  (c) Copyright 2003 - 2006  Brad Jorsch,
-                             Nach
-
-  DSP-1 emulator code
-  (c) Copyright 1998 - 2006  _Demo_,
-                             Andreas Naive (andreasnaive@gmail.com)
-                             Gary Henderson,
-                             Ivar (ivar@snes9x.com),
-                             John Weidman,
-                             Kris Bleakley,
-                             Matthew Kendora,
-                             Nach,
-                             neviksti (neviksti@hotmail.com)
-
-  DSP-2 emulator code
-  (c) Copyright 2003         John Weidman,
-                             Kris Bleakley,
-                             Lord Nightmare (lord_nightmare@users.sourceforge.net),
-                             Matthew Kendora,
-                             neviksti
-
-
-  DSP-3 emulator code
-  (c) Copyright 2003 - 2006  John Weidman,
-                             Kris Bleakley,
-                             Lancer,
-                             z80 gaiden
-
-  DSP-4 emulator code
-  (c) Copyright 2004 - 2006  Dreamer Nom,
-                             John Weidman,
-                             Kris Bleakley,
-                             Nach,
-                             z80 gaiden
-
-  OBC1 emulator code
-  (c) Copyright 2001 - 2004  zsKnight,
-                             pagefault (pagefault@zsnes.com),
-                             Kris Bleakley,
-                             Ported from x86 assembler to C by sanmaiwashi
-
-  SPC7110 and RTC C++ emulator code
-  (c) Copyright 2002         Matthew Kendora with research by
-                             zsKnight,
-                             John Weidman,
-                             Dark Force
-
-  S-DD1 C emulator code
-  (c) Copyright 2003         Brad Jorsch with research by
-                             Andreas Naive,
-                             John Weidman
-
-  S-RTC C emulator code
-  (c) Copyright 2001-2006    byuu,
-                             John Weidman
-
-  ST010 C++ emulator code
-  (c) Copyright 2003         Feather,
-                             John Weidman,
-                             Kris Bleakley,
-                             Matthew Kendora
-
-  Super FX x86 assembler emulator code
-  (c) Copyright 1998 - 2003  _Demo_,
-                             pagefault,
-                             zsKnight,
-
-  Super FX C emulator code
-  (c) Copyright 1997 - 1999  Ivar,
-                             Gary Henderson,
-                             John Weidman
-
-  Sound DSP emulator code is derived from SNEeSe and OpenSPC:
-  (c) Copyright 1998 - 2003  Brad Martin
-  (c) Copyright 1998 - 2006  Charles Bilyue'
-
-  SH assembler code partly based on x86 assembler code
-  (c) Copyright 2002 - 2004  Marcus Comstedt (marcus@mc.pp.se)
-
-  2xSaI filter
-  (c) Copyright 1999 - 2001  Derek Liauw Kie Fa
-
-  HQ2x, HQ3x, HQ4x filters
-  (c) Copyright 2003         Maxim Stepin (maxim@hiend3d.com)
-
-  Win32 GUI code
-  (c) Copyright 2003 - 2006  blip,
-                             funkyass,
-                             Matthew Kendora,
-                             Nach,
-                             nitsuja
-
-  Mac OS GUI code
-  (c) Copyright 1998 - 2001  John Stiles
-  (c) Copyright 2001 - 2007  zones
-
-
-  Specific ports contains the works of other authors. See headers in
-  individual files.
-
-
-  Snes9x homepage: http://www.snes9x.com
-
-  Permission to use, copy, modify and/or distribute Snes9x in both binary
-  and source form, for non-commercial purposes, is hereby granted without
-  fee, providing that this license information and copyright notice appear
-  with all copies and any derived work.
-
-  This software is provided 'as-is', without any express or implied
-  warranty. In no event shall the authors be held liable for any damages
-  arising from the use of this software or it's derivatives.
-
-  Snes9x is freeware for PERSONAL USE only. Commercial users should
-  seek permission of the copyright holders first. Commercial use includes,
-  but is not limited to, charging money for Snes9x or software derived from
-  Snes9x, including Snes9x or derivatives in commercial game bundles, and/or
-  using Snes9x as a promotion for your commercial product.
-
-  The copyright holders request that bug fixes and improvements to the code
-  should be forwarded to them so everyone can benefit from the modifications
-  in future versions.
-
-  Super NES and Super Nintendo Entertainment System are trademarks of
-  Nintendo Co., Limited and its subsidiary companies.
-**********************************************************************************/
-
-/**********************************************************************************
-  Snes9x GTK Port
-
-  (c) Copyright 2007 - 2008  Brandon Wright (bearoso@gmail.com)
-**********************************************************************************/
-
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
@@ -729,18 +563,6 @@ event_port (GtkWidget *widget, gpointer data)
 Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
     GladeWindow (snes9x_glade, snes9x_glade_size, "main_window")
 {
-#ifdef USE_XV
-    unsigned int p_version,
-                 p_release,
-                 p_request_base,
-                 p_event_base,
-                 p_error_base;
-#endif
-#ifdef USE_XRANDR
-    int          error_base_p,
-                 event_base_p;
-#endif
-
     GladeWindowCallbacks callbacks[] =
     {
         { "main_window_delete_event", G_CALLBACK (event_main_window_delete) },
@@ -809,39 +631,6 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
     drawing_area = GTK_DRAWING_AREA (get_widget ("drawingarea"));
     gtk_widget_set_double_buffered (GTK_WIDGET (drawing_area), FALSE);
 
-#ifdef USE_OPENGL
-    /* See if we can can create an OpenGL context. We have to do this at
-     * window creation, so we need to allocate it now in case we want to
-     * switch to OpenGL in the future. */
-    GdkGLConfig *glconfig = NULL;
-
-    glconfig =
-        gdk_gl_config_new_by_mode ((GdkGLConfigMode)
-                                   (GDK_GL_MODE_RGB    |
-                                    GDK_GL_MODE_DOUBLE |
-                                    GDK_GL_MODE_DEPTH));
-    if (!glconfig)
-    {
-        config->allow_opengl = 0;
-        if (config->hw_accel == HWA_OPENGL)
-            config->hw_accel = HWA_NONE;
-    }
-    else
-    {
-        config->allow_opengl = 1;
-
-        gtk_widget_set_gl_capability (GTK_WIDGET (drawing_area),
-                                      glconfig,
-                                      NULL,
-                                      TRUE,
-                                      GDK_GL_RGBA_TYPE);
-
-        gtk_widget_realize (GTK_WIDGET (drawing_area));
-    }
-#else
-    config->allow_opengl = 0;
-#endif
-
     gtk_widget_realize (window);
 
     gtk_check_menu_item_set_active (
@@ -854,56 +643,6 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
     gtk_widget_hide (get_widget ("netplay_separator"));
     gtk_widget_hide (get_widget ("sync_clients_item"));
     gtk_widget_hide (get_widget ("sync_clients_separator"));
-#endif
-
-    /* TODO: Move extension queries to display code */
-#if defined(USE_XRANDR) || defined(USE_XV)
-    Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
-    GdkScreen *screen = gtk_widget_get_screen (window);
-    GdkWindow *root = gdk_screen_get_root_window (screen);
-#endif
-
-    /* Fill up XRR size configurables */
-#ifdef USE_XRANDR
-    config->allow_xrandr = 1;
-
-    if (!XRRQueryExtension (display, &event_base_p, &error_base_p))
-    {
-        config->allow_xrandr = 0;
-        config->change_display_resolution = FALSE;
-    }
-
-    if (config->allow_xrandr)
-    {
-        config->xrr_config = XRRGetScreenInfo (display,
-                                               GDK_WINDOW_XWINDOW (root));
-        config->xrr_original_size =
-            XRRConfigCurrentConfiguration (config->xrr_config,
-                                           &(config->xrr_rotation));
-        config->xrr_sizes = XRRConfigSizes (config->xrr_config,
-                                            &(config->xrr_num_sizes));
-    }
-#else
-    config->allow_xrandr = 0;
-#endif
-
-#ifdef USE_XV
-    config->allow_xv = 1;
-    /* Test if XV and SHM are feasible */
-    if (!XShmQueryExtension (display))
-    {
-        config->allow_xv = 0;
-    }
-
-    if (XvQueryExtension (display,
-                          &p_version,
-                          &p_release,
-                          &p_request_base,
-                          &p_event_base,
-                          &p_error_base) != Success)
-        config->allow_xv = 0;
-#else
-    config->allow_xv = 0;
 #endif
 
     signal_connect (callbacks);
@@ -1807,10 +1546,6 @@ Snes9xWindow::draw_background (int rect_x, int rect_y, int rect_w, int rect_h)
     cairo_rectangle (cr, 0.0, 0.0, (double) w, (double) h);
     cairo_fill (cr);
 
-/*
-    gdk_gc_set_rgb_fg_color (gc, &from);
-    gdk_draw_rectangle (widget->window, gc, TRUE, 0, 0, w, h);
-*/
     /* Put the Snes9x logo in the center */
     gdk_draw_pixbuf (widget->window,
                      gc,
@@ -1891,6 +1626,7 @@ Snes9xWindow::show_mouse_cursor (void)
 void
 Snes9xWindow::show (void)
 {
+    gtk_widget_realize (window);
     gtk_widget_show (window);
 
     if (!recent_menu)

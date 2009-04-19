@@ -224,7 +224,8 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
         uint16 *get_next_buffer (void);
         uint16 *get_current_buffer (void);
         void push_buffer (uint16 *src);
-        void reconfigure (void);
+        void reconfigure (int width, int height);
+        static int query_availability (void);
 
     private:
         void opengl_defaults (void);

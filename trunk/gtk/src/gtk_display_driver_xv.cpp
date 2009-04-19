@@ -830,8 +830,36 @@ S9xXVDisplayDriver::clear_buffers (void)
     return;
 }
 
+int
+S9xXVDisplayDriver::query_availability (void)
+{
+    unsigned int p_version,
+                 p_release,
+                 p_request_base,
+                 p_event_base,
+                 p_error_base;
+
+    /* Test if XV and SHM are feasible */
+    if (!XShmQueryExtension (GDK_DISPLAY ()))
+    {
+        return 0;
+    }
+
+    if (XvQueryExtension (GDK_DISPLAY (),
+                          &p_version,
+                          &p_release,
+                          &p_request_base,
+                          &p_event_base,
+                          &p_error_base) != Success)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
 void
-S9xXVDisplayDriver::reconfigure (void)
+S9xXVDisplayDriver::reconfigure (int width, int height)
 {
     return;
 }

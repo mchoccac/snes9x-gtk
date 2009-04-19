@@ -269,6 +269,7 @@ void S9xDisplayRefresh (int width, int height);
 void S9xDisplayClearBuffers (void);
 void S9xReinitDisplay (void);
 void S9xDisplayReconfigure (void);
+void S9xQueryDrivers (void);
 
 
 #endif /* __GTK_DISPLAY_H */

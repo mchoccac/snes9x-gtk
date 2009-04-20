@@ -184,12 +184,14 @@ if test yes = "$with_gtk" ; then
     PKG_CHECK_MODULES([XTEST], [xtst])
                               
     if test yes = "$with_opengl" ; then
-        PKG_CHECK_EXISTS([gtkglext-1.0 >= 1.0],[OPENGL=yes],[OPENGL=0])
 
-        if test yes = "$OPENGL" ; then
-    	    PKG_CHECK_MODULES([GTKGL], [gtkglext-1.0 > 1.0])
+        AC_CHECK_LIB(GL,glGetString,[
+            OPENGL=yes
             CFLAGS="$CFLAGS -DUSE_OPENGL"
-        fi
+            LIBS="-lGL"
+        ],[
+            OPENGL=0
+        ])
     fi
 
     GTKJOY=0
@@ -264,8 +266,8 @@ if test yes = "$with_gtk" ; then
     fi
     PKG_CHECK_MODULES([LIBPNG],libpng)
 
-    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $GTKGL_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $XTEST_CFLAGS"
-    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $GTKGL_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $XTEST_LIBS"
+    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $XTEST_CFLAGS"
+    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $XTEST_LIBS"
 fi
 
 

@@ -170,7 +170,6 @@
 #include <gtk/gtk.h>
 
 #ifdef USE_OPENGL
-#include <gtk/gtkgl.h>
 #include <GL/gl.h>
 #endif
 

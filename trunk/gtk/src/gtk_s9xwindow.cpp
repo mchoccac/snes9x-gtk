@@ -45,7 +45,6 @@ event_main_window_state_event (GtkWidget           *widget,
     return FALSE;
 }
 
-
 static gboolean
 event_continue_item_activate (GtkWidget *widget, gpointer data)
 {

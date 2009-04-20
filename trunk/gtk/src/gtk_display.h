@@ -271,5 +271,4 @@ void S9xReinitDisplay (void);
 void S9xDisplayReconfigure (void);
 void S9xQueryDrivers (void);
 
-
 #endif /* __GTK_DISPLAY_H */

@@ -479,9 +479,9 @@ S9xOpenGLDisplayDriver::load_pixel_buffer_functions (void)
 void
 S9xOpenGLDisplayDriver::opengl_defaults (void)
 {
-    XVisualInfo             *vi;
-    int                     glx_attribs[] = { GLX_RGBA, GLX_DOUBLEBUFFER, None };
-    Display                 *display = GDK_DISPLAY ();
+    XVisualInfo *vi;
+    int         glx_attribs[] = { GLX_RGBA, GLX_DOUBLEBUFFER, None };
+    Display     *display = GDK_DISPLAY ();
 
     vi = glXChooseVisual (display, DefaultScreen (display), glx_attribs);
 
@@ -733,6 +733,8 @@ S9xOpenGLDisplayDriver::gl_swap (void)
 void
 S9xOpenGLDisplayDriver::deinit (void)
 {
+    glXDestroyContext (GDK_DISPLAY (), glx_context);
+
     GFX.Screen = NULL;
 
     padded_buffer[0] = NULL;

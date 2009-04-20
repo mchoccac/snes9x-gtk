@@ -237,8 +237,9 @@ main (int argc, char *argv[])
         exit (3);
 
     top_level = new Snes9xWindow (gui_config);
-    S9xInitDisplay (argc, argv);
     top_level->show ();
+
+    S9xInitDisplay (argc, argv);
 
     Memory.PostRomInitFunc = S9xPostRomInit;
 

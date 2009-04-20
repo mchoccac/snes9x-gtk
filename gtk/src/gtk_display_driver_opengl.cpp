@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
-#include <gtk/gtkgl.h>
 #include <gdk/gdkx.h>
+#include <X11/Xlib.h>
 #include <GL/glx.h>
 #include <GL/glxext.h>
 #include <dlfcn.h>
@@ -67,8 +67,6 @@ S9xOpenGLDisplayDriver::S9xOpenGLDisplayDriver (Snes9xWindow *window,
 
     this->window = window;
     this->config = config;
-    gl_drawable = NULL;
-    gl_context = NULL;
     this->drawing_area = GTK_WIDGET (window->drawing_area);
 
     dl_handle = dlopen (NULL, RTLD_LAZY);
@@ -426,8 +424,9 @@ S9xOpenGLDisplayDriver::update_texture_size (int width, int height)
 int
 S9xOpenGLDisplayDriver::load_pixel_buffer_functions (void)
 {
-    if (gdk_gl_query_gl_extension ("GL_ARB_pixel_buffer_object") ||
-        gdk_gl_query_gl_extension ("GL_EXT_pixel_buffer_object"))
+    const char *extensions = (const char *) glGetString (GL_EXTENSIONS);
+
+    if (strstr (extensions, "pixel_buffer_object"))
     {
         pboGenBuffers =
             (glGenBuffersProc)
@@ -480,10 +479,21 @@ S9xOpenGLDisplayDriver::load_pixel_buffer_functions (void)
 void
 S9xOpenGLDisplayDriver::opengl_defaults (void)
 {
-    gl_drawable = gtk_widget_get_gl_drawable (drawing_area);
-    gl_context = gtk_widget_get_gl_context (drawing_area);
+    XVisualInfo             *vi;
+    int                     glx_attribs[] = { GLX_RGBA, GLX_DOUBLEBUFFER, None };
+    Display                 *display = GDK_DISPLAY ();
+
+    vi = glXChooseVisual (display, DefaultScreen (display), glx_attribs);
+
+    glx_context = glXCreateContext (display,
+                                    vi,
+                                    0,
+                                    1);
+    glXMakeCurrent (display, GDK_WINDOW_XWINDOW (drawing_area->window), glx_context);
 
     gl_lock ();
+
+    const char *extensions = (const char *) glGetString (GL_EXTENSIONS);
 
     using_pbos = 0;
     if (config->use_pbos)
@@ -507,16 +517,14 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
 
     if (config->npot_textures)
     {
-        if (gdk_gl_query_gl_extension ("GL_ARB_texture_rectangle") ||
-            gdk_gl_query_gl_extension ("GL_NV_texture_rectangle") ||
-            gdk_gl_query_gl_extension ("GL_EXT_texture_rectangle"))
+        if (strstr (extensions, "_texture_rectangle"))
         {
             tex_target = GL_TEXTURE_RECTANGLE;
             texture_width = scaled_max_width;
             texture_height = scaled_max_height;
             dyn_resizing = TRUE;
         }
-        else if (gdk_gl_query_gl_extension ("GL_ARB_texture_non_power_of_two"))
+        else if (strstr (extensions, "GL_ARB_texture_non_power_of_two"))
         {
             dyn_resizing = TRUE;
         }
@@ -703,7 +711,6 @@ S9xOpenGLDisplayDriver::get_current_buffer (void)
 void
 S9xOpenGLDisplayDriver::gl_lock (void)
 {
-    gdk_gl_drawable_gl_begin (gl_drawable, gl_context);
 
     return;
 }
@@ -711,7 +718,6 @@ S9xOpenGLDisplayDriver::gl_lock (void)
 void
 S9xOpenGLDisplayDriver::gl_unlock (void)
 {
-    gdk_gl_drawable_gl_end (gl_drawable);
 
     return;
 }
@@ -719,7 +725,7 @@ S9xOpenGLDisplayDriver::gl_unlock (void)
 void
 S9xOpenGLDisplayDriver::gl_swap (void)
 {
-    gdk_gl_drawable_swap_buffers (gl_drawable);
+    glXSwapBuffers (GDK_DISPLAY (), GDK_WINDOW_XWINDOW (drawing_area->window));
 
     return;
 }
@@ -759,30 +765,14 @@ S9xOpenGLDisplayDriver::reconfigure (int width, int height)
 int
 S9xOpenGLDisplayDriver::query_availability (void)
 {
-    GdkGLConfig *glconfig = NULL;
+    int errorBase, eventBase;
 
-    glconfig =
-        gdk_gl_config_new_by_mode ((GdkGLConfigMode)
-                                   (GDK_GL_MODE_RGB    |
-                                    GDK_GL_MODE_DOUBLE |
-                                    GDK_GL_MODE_DEPTH));
-    if (!glconfig)
+    if (glXQueryExtension (GDK_DISPLAY (), &errorBase, &eventBase) == False)
     {
         if (gui_config->hw_accel == HWA_OPENGL)
             gui_config->hw_accel = HWA_NONE;
         return 0;
     }
-
-    if (GTK_WIDGET_REALIZED (GTK_WIDGET (top_level->drawing_area)))
-        gtk_widget_unrealize (GTK_WIDGET (top_level->drawing_area));
-
-    gtk_widget_set_gl_capability (top_level->get_widget ("drawingarea"),
-                                  glconfig,
-                                  NULL,
-                                  TRUE,
-                                  GDK_GL_RGBA_TYPE);
-
-    gtk_widget_realize (GTK_WIDGET (top_level->drawing_area));
 
     return 1;
 

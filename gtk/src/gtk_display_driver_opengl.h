@@ -171,7 +171,7 @@
 #include "gtk_display_driver.h"
 
 #include <GL/gl.h>
-#include <gdk/gdkgl.h>
+#include <GL/glx.h>
 
 #define PBO_FMT_16 0
 #define PBO_FMT_24 1
@@ -245,6 +245,7 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
         glMapBufferProc     pboMapBuffer;
         glUnmapBufferProc   pboUnmapBuffer;
         glDeleteBuffersProc pboDeleteBuffers;
+
         GLint               texture_width;
         GLint               texture_height;
         GLfloat             vertices[8];
@@ -252,11 +253,11 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
         GLuint              texmap;
         GLuint              pbo;
         GLenum              tex_target;
+
         int                 dyn_resizing;
         int                 filtering;
         int                 using_pbos;
-        GdkGLDrawable       *gl_drawable;
-        GdkGLContext        *gl_context;
+        GLXContext          glx_context;
 };
 
 #endif /* __GTK_DISPLAY_DRIVER_OPENGL_H */

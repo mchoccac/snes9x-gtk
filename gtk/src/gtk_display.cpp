@@ -1767,9 +1767,6 @@ S9xDisplayReconfigure (void)
 {
     ntsc_filter_init ();
 
-    /* TODO: add correct window widths */
-    driver->reconfigure (-1, -1);
-
     if (pool)
     {
         g_thread_pool_set_max_threads (pool, gui_config->num_threads - 1, NULL);
@@ -1915,11 +1912,6 @@ S9xInitDisplay (int argc, char **argv)
     Settings.SupportHiRes = TRUE;
     S9xSetRenderPixelFormat (RGB555);
     InitLUTs ();
-
-#ifdef USE_OPENGL
-    gtk_gl_init (&argc, &argv);
-#endif
-
     S9xQueryDrivers ();
     S9xInitDriver ();
     S9xGraphicsInit ();

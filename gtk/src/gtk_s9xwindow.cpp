@@ -12,7 +12,6 @@
 
 #include "gtk_s9x.h"
 #include "gtk_preferences.h"
-#include "gtk_icon.h"
 #include "gtk_splash.h"
 #include "gtk_display.h"
 #include "gtk_file.h"
@@ -624,8 +623,7 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
 
     splash = gdk_pixbuf_new_from_inline (-1, image_splash, FALSE, NULL);
 
-    icon = gdk_pixbuf_new_from_inline (-1, app_icon, FALSE, NULL);
-    gtk_window_set_default_icon (icon);
+    gtk_window_set_default_icon_name ("snes9x");
 
     drawing_area = GTK_DRAWING_AREA (get_widget ("drawingarea"));
     gtk_widget_set_double_buffered (GTK_WIDGET (drawing_area), FALSE);

@@ -243,7 +243,7 @@ class Snes9xWindow : public GladeWindow
         int            maximized_state;
         int            paused_from_focus_loss;
         uint16         mouse_loc_x, mouse_loc_y;
-        GdkPixbuf      *icon, *splash;
+        GdkPixbuf      *splash;
         GdkCursor      *cursor;
         GtkDrawingArea *drawing_area;
         GtkWidget      *recent_menu;

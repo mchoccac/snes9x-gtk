@@ -174,8 +174,16 @@ event_drawingarea_expose (GtkWidget       *widget,
 static gboolean
 event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
-    Snes9xWindow *window = (Snes9xWindow *) data;
-    Binding      b;
+    Snes9xWindow        *window = (Snes9xWindow *) data;
+    static unsigned int keyval  = 0;
+    static GdkEventType type    = GDK_NOTHING;
+    Binding             b;
+
+    /* Ignore multiple identical keypresses to discard repeating keys */
+    if (event->keyval == keyval && event->type == type)
+    {
+        return TRUE;
+    }
 
     /* Provide escape key to get out of fullscreen */
     if (event->keyval == GDK_Escape && event->type == GDK_KEY_RELEASE)
@@ -189,6 +197,9 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
     b = Binding (event);
 
     S9xReportButton (b.hex (), (event->type == GDK_KEY_PRESS));
+
+    keyval = event->keyval;
+    type = event->type;
 
     return FALSE; /* Pass the key to GTK */
 }

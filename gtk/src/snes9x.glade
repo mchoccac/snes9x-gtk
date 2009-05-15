@@ -5,12 +5,12 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_EXPOSURE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="delete_event" handler="main_window_delete_event"/>
+    <signal name="window_state_event" handler="main_window_state_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
     <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
-    <signal name="window_state_event" handler="main_window_state_event"/>
     <signal name="key_release_event" handler="main_window_key_release_event"/>
+    <signal name="delete_event" handler="main_window_delete_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -898,6 +898,9 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="tab_pos">left</property>
+                <property name="tab_border">1</property>
+                <property name="tab_hborder">1</property>
+                <property name="tab_vborder">1</property>
                 <signal name="switch_page" handler="change_current_page"/>
                 <child>
                   <widget class="GtkScrolledWindow" id="scrolledwindow1">
@@ -3846,7 +3849,7 @@ RGB</property>
                     <child>
                       <widget class="GtkLabel" id="label14">
                         <property name="visible">True</property>
-                        <property name="label" translatable="yes">SNES Joypads</property>
+                        <property name="label" translatable="yes">Joypads</property>
                         <property name="wrap">True</property>
                       </widget>
                       <packing>

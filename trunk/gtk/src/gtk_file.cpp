@@ -29,8 +29,8 @@ S9xChooseFilename (bool8 read_only)
 void
 _splitpath (const char *path, char *drive, char *dir, char *fname, char *ext)
 {
-    char *slash = strrchr (path, SLASH_CHAR);
-    char *dot   = strrchr (path, '.');
+    char *slash = strrchr ((char *) path, SLASH_CHAR);
+    char *dot   = strrchr ((char *) path, '.');
 
     *drive = '\0';
 

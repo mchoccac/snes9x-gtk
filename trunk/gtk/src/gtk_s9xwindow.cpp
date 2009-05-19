@@ -649,6 +649,8 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
     gtk_widget_set_double_buffered (GTK_WIDGET (drawing_area), FALSE);
 
     gtk_widget_realize (window);
+    gtk_widget_realize (GTK_WIDGET (drawing_area));
+    gdk_window_set_back_pixmap (GTK_WIDGET (drawing_area)->window, NULL, FALSE);
 
     gtk_check_menu_item_set_active (
         GTK_CHECK_MENU_ITEM (get_widget ("show_statusbar_item")),

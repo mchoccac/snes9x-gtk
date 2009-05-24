@@ -143,7 +143,8 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
-    sound_buffer = (uint8 *) malloc (so.buffer_size);
+    sound_buffer = (uint8 *)
+        malloc (((so.playback_rate / 100) << (so.stereo ? 1 : 0)) << (so.sixteen_bit ? 1 : 0));
 
     return TRUE;
 
@@ -166,6 +167,11 @@ S9xOSSSoundDriver::mix (void)
 void
 S9xOSSSoundDriver::mixer_thread (void)
 {
+    int samples_to_mix = so.playback_rate / 100;
+
+    if (so.stereo)
+        samples_to_mix << 1;
+
     while (1)
     {
         if (thread_die)
@@ -174,9 +180,9 @@ S9xOSSSoundDriver::mixer_thread (void)
         }
         else
         {
-            S9xMixSamples (sound_buffer, so.buffer_size >> (so.sixteen_bit ? 1 : 0));
+            S9xMixSamples (sound_buffer, samples_to_mix);
 
-            write (filedes, (char *) sound_buffer, so.buffer_size);
+            write (filedes, (char *) sound_buffer, samples_to_mix << (so.sixteen_bit ? 1 : 0));
         }
     }
 

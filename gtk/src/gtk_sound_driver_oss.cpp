@@ -6,28 +6,6 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
-static int 
-base2log (int num)
-{
-    int power;
-
-    if (num < 1)
-        return 0;
-
-    for (power = 0; num > 1; power++)
-    {
-        num >>= 1;
-    }
-
-    return power;
-}
-
-static int
-powerof2 (int num)
-{
-    return (1 << num);
-}
-
 gpointer
 oss_thread (gpointer data)
 {
@@ -35,7 +13,7 @@ oss_thread (gpointer data)
     return NULL;
 }
 
-S9xOSSSoundDriver::S9xOSSSoundDriver(void)
+S9xOSSSoundDriver::S9xOSSSoundDriver (void)
 {
     filedes = -1;
     sound_buffer = NULL;

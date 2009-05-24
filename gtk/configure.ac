@@ -454,6 +454,7 @@ AM_CONDITIONAL(XV, [test yes = "$XV"])
 AM_CONDITIONAL(PORTAUDIO, [test yes = "$PORTAUDIO"])
 AM_CONDITIONAL(OSS, [test yes = "$OSS"])
 AM_CONDITIONAL(DEBUG, [test yes = "$with_debug" ])
+AM_CONDITIONAL(SDL, [test yes = "$GTKJOY"])
 
 AC_SUBST(NASM)
 AC_SUBST(NASM_FLAGS)

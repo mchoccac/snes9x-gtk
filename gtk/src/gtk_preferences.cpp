@@ -434,7 +434,6 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_check ("prevent_screensaver",       config->prevent_screensaver);
     set_check ("force_inverted_byte_order", config->force_inverted_byte_order);
     set_check ("hdma_check",                !(Settings.DisableHDMA));
-    set_combo ("sound_driver",              config->sound_driver);
     set_check ("16bit_check",               Settings.SixteenBitSound);
     set_check ("stereo_check",              Settings.Stereo);
     set_check ("reverse_stereo_check",      Settings.ReverseStereo);
@@ -448,6 +447,25 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_spin  ("num_threads",               config->num_threads);
     set_check ("mute_sound_check",          config->mute_sound);
     set_spin  ("sound_buffer_size",         config->sound_buffer_size);
+
+    int num_sound_drivers = 0;
+#ifdef USE_PORTAUDIO
+    num_sound_drivers++;
+#endif
+#ifdef USE_OSS
+    num_sound_drivers++;
+#endif
+#ifdef USE_JOYSTICK
+    num_sound_drivers++;
+#endif
+
+#if !defined(USE_PORTAUDIO) || !defined(USE_OSS)
+    config->sound_driver = 0;
+#endif
+    if (config->sound_driver >= num_sound_drivers)
+        config->sound_driver = 0;
+
+    set_combo ("sound_driver",              config->sound_driver);
 
     if (config->scale_method == FILTER_NTSC)
     {
@@ -800,9 +818,9 @@ Snes9xPreferences::show (void)
     gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
                                _("Open Sound System"));
 #endif
-
-#if !defined(USE_PORTAUDIO) || !defined(USE_OSS)
-    config->sound_driver = 0;
+#ifdef USE_JOYSTICK
+    gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
+                               _("SDL"));
 #endif
 
     move_settings_to_dialog ();

@@ -24,6 +24,10 @@ if OSS
 snes9x_gtk_SOURCES += src/gtk_sound_driver_oss.h src/gtk_sound_driver_oss.cpp
 endif
 
+if SDL
+snes9x_gtk_SOURCES += src/gtk_sound_driver_sdl.h src/gtk_sound_driver_sdl.cpp
+endif
+
 if ZSNESFX
 snes9x_gtk_SOURCES += ../i386/fxemu2b.asm ../i386/fxemu2.asm ../i386/fxemu2c.asm ../i386/fxtable.asm ../i386/sfxproc.asm ../i386/ZSNES.ASM
 else

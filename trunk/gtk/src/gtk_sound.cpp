@@ -10,6 +10,9 @@
 #ifdef USE_OSS
 #include "gtk_sound_driver_oss.h"
 #endif
+#ifdef USE_JOYSTICK
+#include "gtk_sound_driver_sdl.h"
+#endif
 
 int playback_rates[8] =
 {
@@ -23,32 +26,87 @@ double d_playback_rates[8] =
 
 S9xSoundDriver *driver;
 
+int
+base2log (int num)
+{
+    int power;
+
+    if (num < 1)
+        return 0;
+
+    for (power = 0; num > 1; power++)
+    {
+        num >>= 1;
+    }
+
+    return power;
+}
+
+int
+powerof2 (int num)
+{
+    return (1 << num);
+}
+
 void
 S9xPortSoundInit (void)
 {
+    int pao_driver = 0;
+    int sdl_driver = 0;
+    int oss_driver = 0;
+    int max_driver = 0;
+
+    driver = NULL;
+
 #ifdef USE_PORTAUDIO
+    sdl_driver++;
+    oss_driver++;
+
+    max_driver++;
+#endif
+
 #ifdef USE_OSS
-    if (gui_config->sound_driver == 0)
+    sdl_driver++;
+
+    max_driver++;
+#endif
+
+#ifdef USE_JOYSTICK
+    max_driver++;
+#endif
+
+    if (gui_config->sound_driver >= max_driver)
+        gui_config->sound_driver = 0;
+
+#ifdef USE_PORTAUDIO
+    if (gui_config->sound_driver == pao_driver)
         driver = new S9xPortAudioSoundDriver ();
-    else
-        driver = new S9xOSSSoundDriver ();
-#else
-    driver = new S9xPortAudioSoundDriver ();
 #endif
-#endif
+
 #ifdef USE_OSS
-#ifndef USE_PORTAUDIO
-    driver = new S9xOSSSoundDriver ();
+    if (gui_config->sound_driver == oss_driver)
+        driver = new S9xOSSSoundDriver ();
 #endif
+
+#ifdef USE_JOYSTICK
+    if (gui_config->sound_driver == sdl_driver)
+        driver = new S9xSDLSoundDriver ();
 #endif
 
-    driver->init ();
+    if (driver != NULL)
+    {
+        driver->init ();
 
-    S9xInitSound (Settings.SoundPlaybackRate,
-                  Settings.Stereo,
-                  Settings.SoundBufferSize);
+        S9xInitSound (Settings.SoundPlaybackRate,
+                      Settings.Stereo,
+                      Settings.SoundBufferSize);
 
-    S9xSetSoundMute (FALSE);
+        S9xSetSoundMute (FALSE);
+    }
+    else
+    {
+        S9xSetSoundMute (TRUE);
+    }
 
     return;
 }

@@ -4,7 +4,15 @@
 static void
 sdl_audio_callback (void *userdata, Uint8 *stream, int len)
 {
-    S9xMixSamples (stream, len >> (so.sixteen_bit ? 1 : 0));
+    ((S9xSDLSoundDriver *) userdata)->mix ((unsigned char *) stream, len);
+
+    return;
+}
+
+void
+S9xSDLSoundDriver::mix (unsigned char *output, int bytes)
+{
+    mixer->write (output, bytes);
 
     return;
 }
@@ -37,6 +45,7 @@ S9xSDLSoundDriver::start (void)
 {
     if (!gui_config->mute_sound)
     {
+        mixer->start ();
         SDL_PauseAudio (0);
     }
 
@@ -46,6 +55,7 @@ S9xSDLSoundDriver::start (void)
 void
 S9xSDLSoundDriver::stop (void)
 {
+    mixer->stop ();
     SDL_PauseAudio (1);
 
     return;
@@ -54,13 +64,6 @@ S9xSDLSoundDriver::stop (void)
 bool8
 S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 {
-    if (audiospec != NULL)
-    {
-        SDL_CloseAudio ();
-        free (audiospec);
-        audiospec = NULL;
-    }
-
     audiospec = (SDL_AudioSpec *) malloc (sizeof (SDL_AudioSpec));
 
     audiospec->freq = playback_rates [Settings.SoundPlaybackRate];
@@ -68,7 +71,9 @@ S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     audiospec->format = Settings.SixteenBitSound ? AUDIO_S16SYS : AUDIO_U8;
     audiospec->samples = gui_config->sound_buffer_size * audiospec->freq / 1000;
     audiospec->samples = powerof2 (base2log (audiospec->samples));
+    so.buffer_size = (audiospec->samples << (so.stereo ? 1 : 0)) << (so.sixteen_bit ? 1 : 0);
     audiospec->callback = sdl_audio_callback;
+    audiospec->userdata = this;
 
     printf ("SDL sound driver initializing...\n");
     printf ("    --> (Frequency: %dhz, Latency: %dms)...",
@@ -86,6 +91,8 @@ S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     }
 
     printf ("OK\n");
+
+    mixer = new GtkAudioMixer (so.buffer_size);
 
     return TRUE;
 }

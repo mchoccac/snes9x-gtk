@@ -2,6 +2,8 @@
 #include "gtk_audio_mixer.h"
 #include <sys/time.h>
 
+#define MIX_INTERVAL 2
+
 gpointer
 gtk_audio_mixer_thread (gpointer data)
 {
@@ -12,17 +14,15 @@ gtk_audio_mixer_thread (gpointer data)
 
 GtkAudioMixer::GtkAudioMixer (int buffer_size)
 {
-    /* Round up buffer size to nearest multiple of 2ms to ensure we can fulfill
-     * a full-buffer order. Add an extra byte to avoid ever being completely
-     * full. */
-    int two_ms = (2 * so.playback_rate) * (so.stereo ? 2 : 1) * (so.sixteen_bit ? 2 : 1) / 1000;
+    /* Round up buffer size to nearest multiple of interval to ensure we can
+     * fulfill a full-buffer order. */
+    int interval = (MIX_INTERVAL * so.playback_rate) * (so.stereo ? 2 : 1) * (so.sixteen_bit ? 2 : 1) / 1000;
 
     for (this->buffer_size = 0; this->buffer_size < buffer_size;)
     {
-        this->buffer_size += two_ms;
+        this->buffer_size += interval;
     }
 
-    this->buffer_size++;
     internal_buffer = new unsigned char[this->buffer_size];
     buffer_mutex = NULL;
     thread = NULL;
@@ -46,7 +46,7 @@ GtkAudioMixer::start (void)
     thread_die = 0;
 
     start_byte = 0;
-    end_byte = 0;
+    used = 0;
 
     buffer_mutex = g_mutex_new ();
 
@@ -96,6 +96,7 @@ GtkAudioMixer::write (unsigned char *output, int bytes)
         }
 
         start_byte = (start_byte + bytes) % buffer_size;
+        used -= bytes;
 
         g_mutex_unlock (buffer_mutex);
 
@@ -110,11 +111,12 @@ GtkAudioMixer::mixer_thread (void)
 {
     int            samples_to_mix;
     int            space_needed;
+    int            end_byte;
     int            bytes_to_write;
     struct timeval now, next;
 
-    /* Mix at 2ms intervals */
-    samples_to_mix = (2 * so.playback_rate) / 1000 << (so.stereo ? 1 : 0);
+    /* Mix at MIX_INTERVAL intervals */
+    samples_to_mix = (MIX_INTERVAL * so.playback_rate) / 1000 << (so.stereo ? 1 : 0);
     space_needed   = samples_to_mix << (so.sixteen_bit ? 1 : 0);
 
     unsigned char *temp = new unsigned char[space_needed];
@@ -143,6 +145,8 @@ GtkAudioMixer::mixer_thread (void)
 
         g_mutex_lock (buffer_mutex);
 
+        end_byte = (start_byte + used) % buffer_size;
+
         bytes_to_write = MIN (space_needed, buffer_size - end_byte);
 
         memcpy (internal_buffer + end_byte, temp, bytes_to_write);
@@ -154,11 +158,11 @@ GtkAudioMixer::mixer_thread (void)
                     space_needed - bytes_to_write);
         }
 
-        end_byte = (end_byte + space_needed) % buffer_size;
+        used += space_needed;
 
         g_mutex_unlock (buffer_mutex);
 
-        next.tv_usec += 2000;
+        next.tv_usec += MIX_INTERVAL * 1000;
         if (next.tv_usec >= 1000000)
         {
             next.tv_sec++;
@@ -185,7 +189,7 @@ GtkAudioMixer::bytes_available (void)
     int bytes;
 
     g_mutex_lock (buffer_mutex);
-    bytes = end_byte - start_byte;
+    bytes = used;
     g_mutex_unlock (buffer_mutex);
 
     while (bytes < 0)

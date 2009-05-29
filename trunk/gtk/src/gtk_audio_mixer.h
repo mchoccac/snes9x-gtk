@@ -18,7 +18,7 @@ class GtkAudioMixer
         unsigned char *internal_buffer;
         int thread_die;
         int start_byte;
-        int end_byte;
+        int used;
         int buffer_size;
         GMutex *buffer_mutex;
         GThread *thread;

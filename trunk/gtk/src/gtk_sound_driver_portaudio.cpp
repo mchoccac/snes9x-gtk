@@ -9,9 +9,17 @@ port_audio_callback (const void *input,
                      PaStreamCallbackFlags statusFlags,
                      void *userData)
 {
-    S9xMixSamples ((uint8 *) output, frameCount * (so.stereo ? 2 : 1));
+    ((S9xPortAudioSoundDriver *) userData)->mix ((unsigned char *) output, frameCount * (so.stereo ? 2 : 1) * (so.sixteen_bit ? 2 : 1));
 
     return 0;
+}
+
+void
+S9xPortAudioSoundDriver::mix (unsigned char *output, int bytes)
+{
+    mixer->write (output, bytes);
+
+    return;
 }
 
 S9xPortAudioSoundDriver::S9xPortAudioSoundDriver(void)
@@ -39,6 +47,8 @@ S9xPortAudioSoundDriver::init (void)
 void
 S9xPortAudioSoundDriver::terminate (void)
 {
+    stop ();
+
     Pa_Terminate ();
 
     return;
@@ -54,10 +64,12 @@ S9xPortAudioSoundDriver::start (void)
         if ((Pa_IsStreamActive (audio_stream)))
             return;
 
+        mixer->start ();
         err = Pa_StartStream (audio_stream);
 
         if (err != paNoError)
         {
+            mixer->stop ();
             fprintf (stderr, "Error: %s\n", Pa_GetErrorText (err));
         }
     }
@@ -70,6 +82,7 @@ S9xPortAudioSoundDriver::stop (void)
 {
     if (audio_stream != NULL)
     {
+        mixer->stop ();
         Pa_StopStream (audio_stream);
     }
 
@@ -146,7 +159,7 @@ S9xPortAudioSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
                              sample_count,
                              paNoFlag,
                              port_audio_callback,
-                             NULL);
+                             this);
 
         if (err == paNoError)
         {
@@ -166,6 +179,8 @@ S9xPortAudioSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
                  "Couldn't initialize sound\n");
         return FALSE;
     }
+
+    mixer = new GtkAudioMixer (so.buffer_size);
 
     fflush (stdout);
     fflush (stderr);

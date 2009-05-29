@@ -6,6 +6,7 @@
 
 #include "gtk_sound.h"
 #include "gtk_sound_driver.h"
+#include "gtk_audio_mixer.h"
 
 class S9xPortAudioSoundDriver : public S9xSoundDriver
 {
@@ -17,9 +18,11 @@ class S9xPortAudioSoundDriver : public S9xSoundDriver
         void start (void);
         void stop (void);
         void mix (void);
+        void mix (unsigned char *output, int bytes);
 
     private:
         PaStream *audio_stream;
+        GtkAudioMixer *mixer;
 };
 
 

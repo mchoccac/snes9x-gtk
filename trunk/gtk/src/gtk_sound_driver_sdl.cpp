@@ -20,6 +20,7 @@ S9xSDLSoundDriver::mix (unsigned char *output, int bytes)
 S9xSDLSoundDriver::S9xSDLSoundDriver (void)
 {
     audiospec = NULL;
+    mixer = NULL;
 
     return;
 }
@@ -35,6 +36,10 @@ S9xSDLSoundDriver::init (void)
 void
 S9xSDLSoundDriver::terminate (void)
 {
+    stop ();
+
+    if (mixer)
+        delete mixer;
     SDL_QuitSubSystem (SDL_INIT_AUDIO);
 
     return;
@@ -67,8 +72,8 @@ S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     audiospec = (SDL_AudioSpec *) malloc (sizeof (SDL_AudioSpec));
 
     audiospec->freq = playback_rates [Settings.SoundPlaybackRate];
-    audiospec->channels = Settings.Stereo ? 2 : 1;
-    audiospec->format = Settings.SixteenBitSound ? AUDIO_S16SYS : AUDIO_U8;
+    audiospec->channels = so.stereo ? 2 : 1;
+    audiospec->format = so.sixteen_bit ? AUDIO_S16SYS : AUDIO_U8;
     audiospec->samples = gui_config->sound_buffer_size * audiospec->freq / 1000;
     audiospec->samples = powerof2 (base2log (audiospec->samples));
     so.buffer_size = (audiospec->samples << (so.stereo ? 1 : 0)) << (so.sixteen_bit ? 1 : 0);

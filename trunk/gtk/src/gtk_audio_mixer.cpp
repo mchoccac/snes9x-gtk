@@ -12,7 +12,17 @@ gtk_audio_mixer_thread (gpointer data)
 
 GtkAudioMixer::GtkAudioMixer (int buffer_size)
 {
-    this->buffer_size = buffer_size + 1;
+    /* Round up buffer size to nearest multiple of 2ms to ensure we can fulfill
+     * a full-buffer order. Add an extra byte to avoid ever being completely
+     * full. */
+    int two_ms = (2 * so.playback_rate) * (so.stereo ? 2 : 1) * (so.sixteen_bit ? 2 : 1) / 1000;
+
+    for (this->buffer_size = 0; this->buffer_size < buffer_size;)
+    {
+        this->buffer_size += two_ms;
+    }
+
+    this->buffer_size++;
     internal_buffer = new unsigned char[this->buffer_size];
     buffer_mutex = NULL;
     thread = NULL;

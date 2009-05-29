@@ -50,8 +50,11 @@ S9xSDLSoundDriver::start (void)
 {
     if (!gui_config->mute_sound)
     {
-        mixer->start ();
-        SDL_PauseAudio (0);
+        if (mixer)
+        {
+            mixer->start ();
+            SDL_PauseAudio (0);
+        }
     }
 
     return;
@@ -60,8 +63,11 @@ S9xSDLSoundDriver::start (void)
 void
 S9xSDLSoundDriver::stop (void)
 {
-    mixer->stop ();
-    SDL_PauseAudio (1);
+    if (mixer)
+    {
+        mixer->stop ();
+        SDL_PauseAudio (1);
+    }
 
     return;
 }

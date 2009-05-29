@@ -153,7 +153,7 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
-    sound_buffer = (uint8 *) malloc (so.buffer_size);
+    sound_buffer = (uint8 *) malloc ((((2 * so.playback_rate) / 1000) << (so.stereo ? 1 : 0)) << (so.sixteen_bit ? 1 : 0));
 
     mixer = new GtkAudioMixer (so.buffer_size);
 

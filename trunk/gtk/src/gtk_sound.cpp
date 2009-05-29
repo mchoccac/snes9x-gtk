@@ -159,6 +159,8 @@ S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
     so.sixteen_bit = Settings.SixteenBitSound;
     so.encoded = 1;
 
+    CLAMP (gui_config->sound_buffer_size, 2, 256);
+
     so.buffer_size = (gui_config->sound_buffer_size * so.playback_rate) / 1000;
 
     if (so.stereo)

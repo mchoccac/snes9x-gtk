@@ -19,6 +19,7 @@ S9xOSSSoundDriver::S9xOSSSoundDriver (void)
     sound_buffer = NULL;
     thread_die = 0;
     thread = NULL;
+    mixer = NULL;
 
     return;
 }
@@ -37,6 +38,9 @@ S9xOSSSoundDriver::terminate (void)
         close (filedes);
     }
 
+    if (mixer)
+        delete mixer;
+
     free (sound_buffer);
 
     return;
@@ -48,6 +52,7 @@ S9xOSSSoundDriver::start (void)
     if (!thread)
     {
         thread_die = 0;
+        mixer->start ();
         thread = g_thread_create (oss_thread,
                                   (gpointer) this,
                                   TRUE,
@@ -62,6 +67,7 @@ S9xOSSSoundDriver::stop (void)
 {
     if (thread != NULL)
     {
+        mixer->stop ();
         thread_die = 1;
         g_thread_join (thread);
         thread = NULL;
@@ -130,8 +136,10 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     /* OSS requires a power-of-two buffer size, first 16 bits are the number
      * of fragments to generate, second 16 are the respective power-of-two. */
-    temp = (2 << 16) | base2log (so.buffer_size);
-    so.buffer_size = powerof2 (temp & 0xffff);
+    temp = (4 << 16) | ((base2log (so.buffer_size / 4)));
+
+    so.buffer_size = powerof2 (temp & 0xffff) * 4;
+
     printf ("    --> (Buffer size: %d bytes, %dms latency)...",
             so.buffer_size,
             (((so.buffer_size * 1000) >> (so.stereo ? 1 : 0))
@@ -143,8 +151,9 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
-    sound_buffer = (uint8 *)
-        malloc (((so.playback_rate / 100) << (so.stereo ? 1 : 0)) << (so.sixteen_bit ? 1 : 0));
+    sound_buffer = (uint8 *) malloc (so.buffer_size);
+
+    mixer = new GtkAudioMixer (so.buffer_size);
 
     return TRUE;
 
@@ -167,22 +176,25 @@ S9xOSSSoundDriver::mix (void)
 void
 S9xOSSSoundDriver::mixer_thread (void)
 {
-    int samples_to_mix = so.playback_rate / 100;
+    int samples_to_mix = (2 * so.playback_rate) / 1000 << (so.stereo ? 1 : 0);
+    int bytes_to_write = samples_to_mix << (so.sixteen_bit ? 1 : 0);
+    unsigned int bytes_written;
 
-    if (so.stereo)
-        samples_to_mix << 1;
+    while (!thread_die && !mixer->is_ready ())
+        usleep (100);
 
-    while (1)
+    while (!thread_die)
     {
-        if (thread_die)
+        if (mixer->write (sound_buffer, bytes_to_write))
         {
-            return;
-        }
-        else
-        {
-            S9xMixSamples (sound_buffer, samples_to_mix);
+            bytes_written = 0;
 
-            write (filedes, (char *) sound_buffer, samples_to_mix << (so.sixteen_bit ? 1 : 0));
+            while (bytes_written < bytes_to_write)
+            {
+                bytes_written += write (filedes,
+                                        ((char *) sound_buffer) + bytes_written,
+                                        bytes_to_write - bytes_written);
+            }
         }
     }
 

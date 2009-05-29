@@ -15,6 +15,7 @@ GtkAudioMixer::GtkAudioMixer (int buffer_size)
     this->buffer_size = buffer_size + 1;
     internal_buffer = new unsigned char[this->buffer_size];
     buffer_mutex = NULL;
+    thread = NULL;
 
     return;
 }
@@ -29,7 +30,7 @@ GtkAudioMixer::~GtkAudioMixer (void)
 void
 GtkAudioMixer::start (void)
 {
-    if (buffer_mutex)
+    if (thread)
         return;
 
     thread_die = 0;
@@ -50,11 +51,15 @@ GtkAudioMixer::start (void)
 void
 GtkAudioMixer::stop (void)
 {
-    thread_die = 1;
-    g_thread_join (thread);
+    if (thread)
+    {
+        thread_die = 1;
+        g_thread_join (thread);
+        thread = NULL;
 
-    g_mutex_free (buffer_mutex);
-    buffer_mutex = NULL;
+        g_mutex_free (buffer_mutex);
+        buffer_mutex = NULL;
+    }
 
     return;
 }

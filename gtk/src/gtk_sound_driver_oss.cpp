@@ -33,6 +33,8 @@ S9xOSSSoundDriver::init (void)
 void
 S9xOSSSoundDriver::terminate (void)
 {
+    stop ();
+
     if (filedes >= 0)
     {
         close (filedes);

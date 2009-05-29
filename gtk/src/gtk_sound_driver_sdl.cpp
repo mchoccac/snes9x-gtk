@@ -39,7 +39,13 @@ S9xSDLSoundDriver::terminate (void)
     stop ();
 
     if (mixer)
+    {
+        SDL_CloseAudio ();
+        free (audiospec);
         delete mixer;
+        mixer = NULL;
+    }
+
     SDL_QuitSubSystem (SDL_INIT_AUDIO);
 
     return;

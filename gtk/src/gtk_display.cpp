@@ -1812,7 +1812,7 @@ S9xQueryDrivers (void)
                                             &(gui_config->xrr_num_sizes));
     }
 #else
-    config->allow_xrandr = 0;
+    gui_config->allow_xrandr = 0;
 #endif
 
     return;

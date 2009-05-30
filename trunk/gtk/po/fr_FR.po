@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-05-15 16:48-0500\n"
+"POT-Creation-Date: 2009-05-30 13:57+0200\n"
 "PO-Revision-Date: 2009-03-14 HO:MI+ZONE\n"
 "Last-Translator: tukuyomi <tsukuyomisan@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -15,64 +15,64 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../src/gtk_binding.cpp:340
+#: ../src/gtk_binding.cpp:174
 #, c-format
 msgid "Unknown"
 msgstr "Inconnu"
 
-#: ../src/gtk_binding.cpp:355
+#: ../src/gtk_binding.cpp:189
 #, c-format
 msgid "Keyboard %s%s%s%s"
 msgstr "Clavier %s%s%s%s"
 
-#: ../src/gtk_binding.cpp:366
+#: ../src/gtk_binding.cpp:200
 #, c-format
 msgid "Axis #%d %s %d%%"
 msgstr "Axe #%d %s %d%%"
 
-#: ../src/gtk_binding.cpp:371
+#: ../src/gtk_binding.cpp:205
 #, c-format
 msgid "Button %d"
 msgstr "Bouton %d"
 
-#: ../src/gtk_binding.cpp:373
+#: ../src/gtk_binding.cpp:207
 #, c-format
 msgid "Joystick %d %s"
 msgstr ""
 
-#: ../src/gtk_binding.cpp:378
+#: ../src/gtk_binding.cpp:212
 #, c-format
 msgid "Unset"
 msgstr "Non assigné"
 
-#: ../src/gtk_cheat.cpp:250
+#: ../src/gtk_cheat.cpp:84
 msgid "Description"
 msgstr ""
 
-#: ../src/gtk_cheat.cpp:258
+#: ../src/gtk_cheat.cpp:92
 msgid "Cheat"
 msgstr ""
 
-#: ../src/gtk_cheat.cpp:369 ../src/gtk_cheat.cpp:440
+#: ../src/gtk_cheat.cpp:203 ../src/gtk_cheat.cpp:274
 msgid "No description"
 msgstr "Pas de description"
 
-#: ../src/gtk_config.cpp:904
+#: ../src/gtk_config.cpp:738
 #, c-format
 msgid "bad option name: %s\n"
 msgstr "option non reconnue: %s\n"
 
-#: ../src/gtk_config.cpp:1151
+#: ../src/gtk_config.cpp:985
 #, c-format
 msgid "failure to read snes9x node"
 msgstr ""
 
-#: ../src/gtk_config.cpp:1188
+#: ../src/gtk_config.cpp:1022
 #, c-format
 msgid "Couldn't create config directory: %s\n"
 msgstr "Impossible de créer le répertoire de configuration: %s\n"
 
-#: ../src/gtk_config.cpp:1207
+#: ../src/gtk_config.cpp:1041
 #, c-format
 msgid "Couldn't open config file: %s\n"
 msgstr "Impossible d'ouvrir le fichier de configuration: %s\n"
@@ -82,19 +82,19 @@ msgstr "Impossible d'ouvrir le fichier de configuration: %s\n"
 msgid "pixel_buffer_object extension not supported.\n"
 msgstr "Extension pixel_buffer_object non supportée.\n"
 
-#: ../src/gtk_preferences.cpp:461
+#: ../src/gtk_preferences.cpp:295
 msgid "Rotate all axes to their maximum values, then press OK"
 msgstr "Pivoter tous les axes à leur maximum, puis presser OK"
 
-#: ../src/gtk_preferences.cpp:497
+#: ../src/gtk_preferences.cpp:331
 msgid "GTK port version: "
 msgstr "Version du port GTK: "
 
-#: ../src/gtk_preferences.cpp:499
+#: ../src/gtk_preferences.cpp:333
 msgid "English localization by Brandon Wright"
 msgstr "Régionalisation française par tukuyomi"
 
-#: ../src/gtk_preferences.cpp:503
+#: ../src/gtk_preferences.cpp:337
 msgid ""
 "\n"
 "Features enabled:<i>"
@@ -102,31 +102,31 @@ msgstr ""
 "\n"
 "Options activées:<i>"
 
-#: ../src/gtk_preferences.cpp:505
+#: ../src/gtk_preferences.cpp:339
 msgid " Only barebones features enabled<i>"
 msgstr ""
 
-#: ../src/gtk_preferences.cpp:508
+#: ../src/gtk_preferences.cpp:342
 msgid " OpenGL"
 msgstr ""
 
-#: ../src/gtk_preferences.cpp:511
+#: ../src/gtk_preferences.cpp:345
 msgid " XVideo"
 msgstr ""
 
-#: ../src/gtk_preferences.cpp:514
+#: ../src/gtk_preferences.cpp:348
 msgid " XRandR"
 msgstr ""
 
-#: ../src/gtk_preferences.cpp:517
+#: ../src/gtk_preferences.cpp:351
 msgid " Joystick"
 msgstr ""
 
-#: ../src/gtk_preferences.cpp:520
+#: ../src/gtk_preferences.cpp:354
 msgid " NetPlay"
 msgstr " Jeu en réseau"
 
-#: ../src/gtk_preferences.cpp:522
+#: ../src/gtk_preferences.cpp:356
 msgid ""
 "</i>\n"
 "\n"
@@ -136,28 +136,32 @@ msgstr ""
 "\n"
 "Version de Snes9x: "
 
-#: ../src/gtk_preferences.cpp:881
+#: ../src/gtk_preferences.cpp:733
 msgid "Select Folder"
 msgstr "Sélectionner un répertoire"
 
-#: ../src/gtk_preferences.cpp:949
+#: ../src/gtk_preferences.cpp:801
 msgid "None - Use software scaler"
 msgstr "Aucun - Utilisation du rendu logiciel"
 
-#: ../src/gtk_preferences.cpp:953
+#: ../src/gtk_preferences.cpp:805
 msgid "OpenGL - Use 3D graphics hardware"
 msgstr "OpenGL - Utilisation de l'accéléraion matérielle"
 
-#: ../src/gtk_preferences.cpp:957
+#: ../src/gtk_preferences.cpp:809
 msgid "XVideo - Use hardware video blitter"
 msgstr "XVideo - Utilise la sortie vidéo matérielle"
 
-#: ../src/gtk_preferences.cpp:963
+#: ../src/gtk_preferences.cpp:815
 msgid "PortAudio"
 msgstr ""
 
-#: ../src/gtk_preferences.cpp:967
+#: ../src/gtk_preferences.cpp:819
 msgid "Open Sound System"
+msgstr ""
+
+#: ../src/gtk_preferences.cpp:823
+msgid "SDL"
 msgstr ""
 
 #: ../src/gtk_s9x.cpp:175
@@ -165,75 +169,75 @@ msgstr ""
 msgid "Error opening: %s\n"
 msgstr "Erreur à l'ouverture de %s\n"
 
-#: ../src/gtk_s9xwindow.cpp:705
+#: ../src/gtk_s9xwindow.cpp:716
 msgid "Open SNES Movie"
 msgstr "Ouvrir une vidéo SNES"
 
-#: ../src/gtk_s9xwindow.cpp:724
+#: ../src/gtk_s9xwindow.cpp:735
 msgid "New SNES Movie"
 msgstr "Nouvelle vidéo SNES"
 
-#: ../src/gtk_s9xwindow.cpp:737
+#: ../src/gtk_s9xwindow.cpp:748
 msgid "SNES Movies"
 msgstr "Vidéos SNES"
 
-#: ../src/gtk_s9xwindow.cpp:745 ../src/gtk_s9xwindow.cpp:889
-#: ../src/gtk_s9xwindow.cpp:1034 ../src/gtk_s9xwindow.cpp:1101
+#: ../src/gtk_s9xwindow.cpp:756 ../src/gtk_s9xwindow.cpp:900
+#: ../src/gtk_s9xwindow.cpp:1045 ../src/gtk_s9xwindow.cpp:1112
 msgid "All Files"
 msgstr "Tous les fichiers"
 
-#: ../src/gtk_s9xwindow.cpp:806
+#: ../src/gtk_s9xwindow.cpp:817
 #, c-format
 msgid "Couldn't load file '%s'"
 msgstr "Impossible de charger le fichier '%s'"
 
-#: ../src/gtk_s9xwindow.cpp:862
+#: ../src/gtk_s9xwindow.cpp:873
 msgid "Load Saved State"
 msgstr "Charger une sauvegarde instantanée"
 
-#: ../src/gtk_s9xwindow.cpp:873 ../src/gtk_s9xwindow.cpp:1018
+#: ../src/gtk_s9xwindow.cpp:884 ../src/gtk_s9xwindow.cpp:1029
 #: ../src/snes9x.glade.h:209
 msgid "Save States"
 msgstr "Sauvegardes instantanées"
 
-#: ../src/gtk_s9xwindow.cpp:939
+#: ../src/gtk_s9xwindow.cpp:950
 #, c-format
 msgid "The current frame in the movie is <b>%d</b>."
 msgstr "L'image actuelle de la vidéo est <b>%d</b>."
 
-#: ../src/gtk_s9xwindow.cpp:1005
+#: ../src/gtk_s9xwindow.cpp:1016
 msgid "Save State"
 msgstr "Sauvegarde instantanée"
 
-#: ../src/gtk_s9xwindow.cpp:1082
+#: ../src/gtk_s9xwindow.cpp:1093
 msgid "Save SPC file..."
 msgstr "Sauver le fichier SPC..."
 
-#: ../src/gtk_s9xwindow.cpp:1095
+#: ../src/gtk_s9xwindow.cpp:1106
 msgid "SPC Files"
 msgstr "Fichiers SPC"
 
-#: ../src/gtk_s9xwindow.cpp:1126
+#: ../src/gtk_s9xwindow.cpp:1137
 #, c-format
 msgid "Couldn't save SPC file '%s'"
 msgstr "Impossible de sauver le fichier SPC '%s'"
 
-#: ../src/gtk_s9xwindow.cpp:1177
+#: ../src/gtk_s9xwindow.cpp:1188
 #, c-format
 msgid "%sHosting NetPlay - %s"
 msgstr "%sHôte du jeu en réseau -%s"
 
-#: ../src/gtk_s9xwindow.cpp:1178 ../src/gtk_s9xwindow.cpp:1186
-#: ../src/gtk_s9xwindow.cpp:1200
+#: ../src/gtk_s9xwindow.cpp:1189 ../src/gtk_s9xwindow.cpp:1197
+#: ../src/gtk_s9xwindow.cpp:1211
 msgid "Paused - "
 msgstr "Pause - "
 
-#: ../src/gtk_s9xwindow.cpp:1185
+#: ../src/gtk_s9xwindow.cpp:1196
 #, c-format
 msgid "%s%s on NetPlay %s:%d - Player %d"
 msgstr "%s%s en réseau %s:%d - Joueur %d"
 
-#: ../src/gtk_s9xwindow.cpp:1222
+#: ../src/gtk_s9xwindow.cpp:1233
 #, c-format
 msgid ""
 "<b>Information for %s</b>\n"
@@ -270,7 +274,7 @@ msgstr ""
 "<i>CRC32:</i> %08X\n"
 "<i>Revision:</i> %s<b><i>%s</i></b>"
 
-#: ../src/gtk_s9xwindow.cpp:1260
+#: ../src/gtk_s9xwindow.cpp:1271
 msgid ""
 "\n"
 "\n"
@@ -504,7 +508,7 @@ msgstr "Autoriser Haut/Bas et Gauche/Droite"
 #: ../src/snes9x.glade.h:72
 msgid ""
 "Allows games to use transparency effects. Recommended for correct graphics"
-msgstr "Effets de transparence dans les jeux. Recommandé"
+msgstr "Effets de transparence dans les jeux. Recommandé pour un affichage correct"
 
 #: ../src/snes9x.glade.h:73
 msgid "Allows scaling and filtering to use multiple processors"
@@ -520,7 +524,7 @@ msgstr "Artefacts"
 
 #: ../src/snes9x.glade.h:76
 msgid "Ask server to pause when"
-msgstr "Demander au serveur quand mettre en pause:"
+msgstr "Demander au serveur de mettre en pause"
 
 #: ../src/snes9x.glade.h:77
 msgid ""
@@ -553,8 +557,7 @@ msgid ""
 "Automatically save the game's SRAM at this interval. Setting this to 0 will "
 "only save when quitting or changing ROMs"
 msgstr ""
-"Sauver automatiquement la SRAM à cet interval. Régler à 0 pour ne sauver "
-"qu'en quittant ou en changeant de ROM"
+"Sauver automatiquement la SRAM à cet interval. Régler à 0 pour ne sauver qu'en quittant ou en changeant de ROM"
 
 #: ../src/snes9x.glade.h:89
 msgid "B"
@@ -562,7 +565,7 @@ msgstr ""
 
 #: ../src/snes9x.glade.h:90
 msgid "BG layering hack"
-msgstr "Hack pour le calque BG"
+msgstr ""
 
 #: ../src/snes9x.glade.h:91
 msgid "Begin movie recording"
@@ -615,7 +618,7 @@ msgstr "Seuil de détection des boutons pour les joysticks analogiques"
 
 #: ../src/snes9x.glade.h:103
 msgid "Changes the screen resolution when running Snes9x in fullscreen mode"
-msgstr "Change la résolution quand Snes9x tourne en plein-écran"
+msgstr "Change la résolution lorsque Snes9x utilise le plein-écran"
 
 #: ../src/snes9x.glade.h:104
 msgid "Clear entry"
@@ -641,9 +644,8 @@ msgstr "Se connecter à un autre ordinateur"
 
 #: ../src/snes9x.glade.h:110
 msgid "Connect to another computer that is running Snes9x NetPlay as a server"
-msgstr ""
-"Se connecter à un autre ordinateur qui utilise Snes9x Netplay faisant office "
-"de serveur"
+msgstr "Se connecter à un autre ordinateur qui héberge une partie avec Snes9x Netplay"
+
 
 #: ../src/snes9x.glade.h:111
 msgid "Connect to specified TCP port on remote computer"
@@ -683,9 +685,7 @@ msgstr "Description:"
 
 #: ../src/snes9x.glade.h:120
 msgid "Detects frames that are not output by Snes9x in hires, and scales them"
-msgstr ""
-"Detecter les images qui ne sont pas affichées par Snes9x en Hires, et les "
-"ajuster"
+msgstr "Detecter les images qui ne sont pas affichées par Snes9x en Hires, et les ajuster"
 
 #: ../src/snes9x.glade.h:121
 msgid "Different formats can yield highly different performance"
@@ -709,7 +709,7 @@ msgstr "Bas"
 
 #: ../src/snes9x.glade.h:126
 msgid "Echo effects"
-msgstr "Effets d'echo"
+msgstr "Effets d'écho"
 
 #: ../src/snes9x.glade.h:127
 msgid "Emulation"
@@ -725,9 +725,7 @@ msgstr "Activer HDMA. Requis pour la compatibilité avec certains jeux"
 
 #: ../src/snes9x.glade.h:130
 msgid "Enable hacks that may improve performance, but can cause errors"
-msgstr ""
-"Activer des hacks améliorant les performances, mais pouvant causer des "
-"erreurs"
+msgstr "Activer des hacks améliorant les performances, mais pouvant causer des erreurs"
 
 #: ../src/snes9x.glade.h:131
 msgid "Enable speed hacks"
@@ -806,9 +804,7 @@ msgstr "Reset matériel"
 msgid ""
 "Host a game on this computer as Player 1, requiring extra throughput to "
 "support multitple users"
-msgstr ""
-"Héberger une partie sur cet ordinateur en temps que 'Joueur 1', requiert un "
-"débit plus important pour supporter plusieurs utilisateurs"
+msgstr "Héberger une partie sur cet ordinateur en temps que 'Joueur 1', requiert un débit plus important pour supporter plusieurs utilisateurs"
 
 #: ../src/snes9x.glade.h:151
 msgid "Hue:"
@@ -826,9 +822,7 @@ msgstr "Augmenter le temps entre chaque image"
 msgid ""
 "Interpolates between samples. Smoothes the sound output to match the real "
 "SNES"
-msgstr ""
-"Interpole entre les samples. Fluidifie la sortie sonore pour correspondre au "
-"mieux à la SNES"
+msgstr "Interpole entre les samples. Fluidifie la sortie sonore pour correspondre au mieux à la SNES"
 
 #: ../src/snes9x.glade.h:155
 msgid "Joypad"
@@ -928,7 +922,7 @@ msgstr "Charger une image ROM pour jouer en réseau"
 
 #: ../src/snes9x.glade.h:183
 msgid "Open with _NetPlay..."
-msgstr "Ouvrir via le réseau (_N)..."
+msgstr "Ouvrir avec le réseau (_N)..."
 
 #: ../src/snes9x.glade.h:184
 msgid "Output two channels, left and right"
@@ -1072,9 +1066,7 @@ msgstr "Envoyer l'image ROM aux clients"
 msgid ""
 "Send the running game image to players instead of requiring them to have "
 "their own copies"
-msgstr ""
-"Envoyer l'image du jeu en cours aux joueurs plutot que de les obliger à "
-"posséder la leur"
+msgstr "Envoyer l'image du jeu en cours aux joueurs plutot que de les obliger à posséder leur propre copie"
 
 #: ../src/snes9x.glade.h:220
 msgid "Set new axis bindings at:"
@@ -1170,7 +1162,7 @@ msgstr ""
 
 #: ../src/snes9x.glade.h:243
 msgid "Smoothens (blurs) the image"
-msgstr "Adoucir l'image"
+msgstr "Adoucir (floue) l'image"
 
 #: ../src/snes9x.glade.h:244
 msgid "Snes9x"
@@ -1272,9 +1264,7 @@ msgstr "L'image actuelle de la vidéo est"
 msgid ""
 "The game chosen will be loaded before connecting. This field can be blank if "
 "the server will send the ROM image"
-msgstr ""
-"Le jeu choisi sera chargé avant la connection. Ce champ peut rester vide si "
-"le serveur envoie l'image ROM"
+msgstr "Le jeu choisi sera chargé avant la connection. Ce champ peut rester vide si le serveur envoie l'image ROM"
 
 #: ../src/snes9x.glade.h:269
 msgid "To _File..."
@@ -1282,19 +1272,19 @@ msgstr "Vers un _Fichier..."
 
 #: ../src/snes9x.glade.h:270
 msgid "Toggle BG layer 0"
-msgstr "Basculer l'affichage du calque BG 0"
+msgstr "Afficher/Masquer le calque BG 0"
 
 #: ../src/snes9x.glade.h:271
 msgid "Toggle BG layer 1"
-msgstr "Basculer l'affichage du calque BG 1"
+msgstr "Afficher/Masquer le calque BG 1"
 
 #: ../src/snes9x.glade.h:272
 msgid "Toggle BG layer 2"
-msgstr "Basculer l'affichage du calque BG 2"
+msgstr "Afficher/Masquer le calque BG 2"
 
 #: ../src/snes9x.glade.h:273
 msgid "Toggle BG layer 3"
-msgstr "Basculer l'affichage du calque BG 3"
+msgstr "Afficher/Masquer le calque BG 3"
 
 #: ../src/snes9x.glade.h:274
 msgid "Toggle all sound channels"
@@ -1342,7 +1332,7 @@ msgstr "Basculer l'interpolation du son"
 
 #: ../src/snes9x.glade.h:285
 msgid "Toggle sprites"
-msgstr "Basculer l'affichage des sprites"
+msgstr "Afficher/Masquer les sprites"
 
 #: ../src/snes9x.glade.h:286
 msgid "Toggle turbo"
@@ -1367,8 +1357,6 @@ msgstr "Utiliser "
 #: ../src/snes9x.glade.h:291
 msgid "Use SNES extended height. Will probably cause letterboxing"
 msgstr ""
-"Utiliser la hauteur étendue de la SNES. Affichera probablement des bandes "
-"noires"
 
 #: ../src/snes9x.glade.h:292
 msgid "Use fullscreen on ROM open"
@@ -1376,7 +1364,7 @@ msgstr "Plein-écran au chargement d'une image ROM"
 
 #: ../src/snes9x.glade.h:293
 msgid "Use overscanned height"
-msgstr "Utiliser la hauteur étendue"
+msgstr ""
 
 #: ../src/snes9x.glade.h:294
 msgid "Use pixel-buffer objects"
@@ -1424,7 +1412,7 @@ msgstr ""
 
 #: ../src/snes9x.glade.h:305
 msgid "_Change Size"
-msgstr "Changer la taille"
+msgstr "_Changer la taille"
 
 #: ../src/snes9x.glade.h:306
 msgid "_Cheats..."
@@ -1440,7 +1428,7 @@ msgstr "_Fichier"
 
 #: ../src/snes9x.glade.h:309
 msgid "_Fullscreen"
-msgstr "Plein-écran"
+msgstr "Plein-écran (_F)"
 
 #: ../src/snes9x.glade.h:310
 msgid "_Hide Menu"

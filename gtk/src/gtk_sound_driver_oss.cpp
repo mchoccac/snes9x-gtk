@@ -41,9 +41,16 @@ S9xOSSSoundDriver::terminate (void)
     }
 
     if (mixer)
+    {
         delete mixer;
+        mixer = NULL;
+    }
 
-    free (sound_buffer);
+    if (sound_buffer)
+    {
+        free (sound_buffer);
+        sound_buffer = NULL;
+    }
 
     return;
 }
@@ -51,7 +58,7 @@ S9xOSSSoundDriver::terminate (void)
 void
 S9xOSSSoundDriver::start (void)
 {
-    if (!thread)
+    if (mixer != NULL && !thread)
     {
         thread_die = 0;
         mixer->start ();

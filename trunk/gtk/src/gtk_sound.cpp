@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <unistd.h>
 
 #include "gtk_s9x.h"
 #include "gtk_sound.h"
@@ -109,6 +110,17 @@ S9xPortSoundInit (void)
     }
 
     return;
+}
+
+void
+S9xPortSoundReinit (void)
+{
+    S9xPortSoundDeinit ();
+
+    /* Ensure the sound device is released before trying to reopen it. */
+    sync ();
+
+    S9xPortSoundInit ();
 }
 
 void

@@ -3,6 +3,7 @@
 
 void S9xPortSoundInit (void);
 void S9xPortSoundDeinit (void);
+void S9xPortSoundReinit (void);
 void S9xSoundStart (void);
 void S9xSoundStop (void);
 

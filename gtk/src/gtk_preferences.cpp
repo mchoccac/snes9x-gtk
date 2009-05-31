@@ -671,8 +671,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
 
     if (sound_needs_restart)
     {
-        S9xPortSoundDeinit ();
-        S9xPortSoundInit ();
+        S9xPortSoundReinit ();
     }
 
     if (gfx_needs_restart)

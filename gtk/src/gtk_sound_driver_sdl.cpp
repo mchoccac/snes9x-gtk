@@ -12,7 +12,8 @@ sdl_audio_callback (void *userdata, Uint8 *stream, int len)
 void
 S9xSDLSoundDriver::mix (unsigned char *output, int bytes)
 {
-    mixer->write (output, bytes);
+    mixer->write (output, bytes >> 1);
+    mixer->write (output + (bytes >> 1), bytes - (bytes >> 1));
 
     return;
 }

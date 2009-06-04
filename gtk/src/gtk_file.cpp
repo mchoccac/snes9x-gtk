@@ -152,6 +152,8 @@ S9xGetDirectory (enum s9x_getdirtype dirtype)
             break;
 
         case PATCH_DIR:
+        case CHEAT_DIR:
+        case PACK_DIR:
         case SRAM_DIR:
         case ROMFILENAME_DIR:
             char *loc;
@@ -324,8 +326,8 @@ extern "C" char *osd_GetPackDir (void)
     static char filename[_MAX_PATH];
     memset (filename, 0, _MAX_PATH);
 
-    if (strlen (S9xGetDirectory (PATCH_DIR)) != 0)
-        strcpy (filename, S9xGetDirectory (PATCH_DIR));
+    if (strlen (S9xGetDirectory (PACK_DIR)) != 0)
+        strcpy (filename, S9xGetDirectory (PACK_DIR));
     else
     {
         char dir [_MAX_DIR + 1];
@@ -386,14 +388,14 @@ void
 S9xAutoSaveSRAM (void)
 {
     Memory.SaveSRAM (S9xGetFilename (".srm", SRAM_DIR));
-    S9xSaveCheatFile (S9xGetFilename (".cht", PATCH_DIR));
+    S9xSaveCheatFile (S9xGetFilename (".cht", CHEAT_DIR));
     return;
 }
 
 void
 S9xLoadState (const char *filename)
 {
-    if (S9xLoadSnapshot (filename))
+    if (S9xUnfreezeGame (filename))
     {
         sprintf (buf, "%s loaded", filename);
         S9xSetInfoString (buf);
@@ -409,7 +411,7 @@ S9xLoadState (const char *filename)
 void
 S9xSaveState (const char *filename)
 {
-    Snapshot (filename);
+    S9xFreezeGame (filename);
 
     sprintf (buf, "%s saved", filename);
     S9xSetInfoString (buf);
@@ -507,7 +509,7 @@ S9xQuickSaveSlot (int slot)
 
     S9xSetInfoString (buf);
 
-    Snapshot (filename);
+    S9xFreezeGame (filename);
 
     return;
 }
@@ -527,7 +529,7 @@ S9xQuickLoadSlot (int slot)
              S9xGetDirectory (SNAPSHOT_DIR), SLASH_STR, def,
              slot);
 
-    if (S9xLoadSnapshot (filename))
+    if (S9xUnfreezeGame (filename))
     {
         sprintf (buf, "%s.%03d loaded", def, slot);
         S9xSetInfoString (buf);
@@ -542,7 +544,7 @@ S9xQuickLoadSlot (int slot)
                  S9xGetDirectory (SNAPSHOT_DIR), SLASH_STR,
                  def, digits[slot]);
 
-        if (S9xLoadSnapshot (filename))
+        if (S9xUnfreezeGame (filename))
         {
             sprintf (buf,
                      "Loaded ZSNES freeze file %s.zs%c",

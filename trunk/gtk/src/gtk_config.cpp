@@ -195,9 +195,7 @@ Snes9xConfig::load_defaults (void)
     Settings.InterpolatedSound = TRUE;
     Settings.SoundEnvelopeHeightReading = FALSE;
     Settings.DisableSoundEcho = FALSE;
-    Settings.DisableMasterVolume = TRUE;
     Settings.SoundPlaybackRate = 5;
-    Settings.AltSampleDecode = 0;
     Settings.SoundSync = 0;
     Settings.DisableHDMA = 0;
     Settings.ShutdownMaster = 0;
@@ -209,13 +207,12 @@ Snes9xConfig::load_defaults (void)
     Settings.FrameTimePAL = 20000;
     Settings.FrameTime = Settings.FrameTimeNTSC;
     Settings.BlockInvalidVRAMAccess = TRUE;
-    ICPU.SavedAtOp = FALSE;
-    GFX.FrameDisplay = FALSE;
 
 #ifdef NETPLAY_SUPPORT
     Settings.NetPlay = FALSE;
     NetPlay.Paused = FALSE;
     NetPlay.MaxFrameSkip = 10;
+    GFX.FrameDisplay = FALSE;
 #endif
 
     memset (pad, 0, sizeof (JoypadBinding) * NUM_JOYPADS);
@@ -351,9 +348,7 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "gaussian_interpolation", Settings.InterpolatedSound);
     xml_out_int (xml, "envelope_reading", Settings.SoundEnvelopeHeightReading);
     xml_out_int (xml, "sound_echo", !(Settings.DisableSoundEcho));
-    xml_out_int (xml, "master_volume", !(Settings.DisableMasterVolume));
     xml_out_int (xml, "playback_rate", Settings.SoundPlaybackRate);
-    xml_out_int (xml, "sound_decoder", Settings.AltSampleDecode);
     xml_out_int (xml, "speedhacks", Settings.ShutdownMaster);
     xml_out_int (xml, "hdma", !(Settings.DisableHDMA));
     xml_out_int (xml, "block_invalid_vram_access", Settings.BlockInvalidVRAMAccess);
@@ -575,7 +570,6 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "master_volume"))
     {
-        Settings.DisableMasterVolume = !(atoi (value));
     }
     else if (!strcasecmp (name, "playback_rate"))
     {
@@ -583,7 +577,6 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "sound_decoder"))
     {
-        Settings.AltSampleDecode = atoi (value);
     }
     else if (!strcasecmp (name, "hdma"))
     {

@@ -440,7 +440,6 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_check ("gaussian_interpolation_check", Settings.InterpolatedSound);
     set_check ("vehr_check",                Settings.SoundEnvelopeHeightReading);
     set_check ("echo_check",                !(Settings.DisableSoundEcho));
-    set_check ("master_volume_check",       !(Settings.DisableMasterVolume));
     set_combo ("playback_combo",            7 - Settings.SoundPlaybackRate);
     set_combo ("hw_accel",                  combo_value (config->hw_accel));
     set_check ("pause_emulation_on_switch", config->pause_emulation_on_switch);
@@ -498,9 +497,6 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_combo ("frameskip_combo",
                Settings.SkipFrames == AUTO_FRAMERATE ?
                    0 : Settings.SkipFrames + 1);
-    set_combo ("sample_combo",              Settings.AltSampleDecode == 0 ?
-                                            0 : Settings.AltSampleDecode == 1 ?
-                                                    1 : 2);
 #ifdef USE_OPENGL
     set_check ("bilinear_filter",           config->bilinear_filter);
     set_check ("sync_to_vblank",            config->sync_to_vblank);
@@ -543,12 +539,8 @@ Snes9xPreferences::get_settings_from_dialog (void)
         (Settings.SoundEnvelopeHeightReading !=
             get_check ("vehr_check"))                                       ||
         (Settings.ReverseStereo     != get_check ("reverse_stereo_check"))  ||
-        (Settings.DisableMasterVolume !=
-            !(get_check ("master_volume_check")))                           ||
-        (Settings.DisableSoundEcho  != !(get_check ("echo_check")))         ||
-        (Settings.AltSampleDecode != (get_combo ("sample_combo") == 2 ?
-                                         3 :get_combo ("sample_combo")))
-                                         )
+        (Settings.DisableSoundEcho  != !(get_check ("echo_check")))
+        )         
     {
         sound_needs_restart = 1;
     }
@@ -611,10 +603,8 @@ Snes9xPreferences::get_settings_from_dialog (void)
     Settings.InterpolatedSound        = get_check ("gaussian_interpolation_check");
     Settings.SoundEnvelopeHeightReading = get_check ("vehr_check");
     Settings.DisableSoundEcho         = !(get_check ("echo_check"));
-    Settings.DisableMasterVolume      = !(get_check ("master_volume_check"));
     Settings.SoundPlaybackRate        = 7 - (get_combo ("playback_combo"));
     config->sound_buffer_size         = get_spin ("sound_buffer_size");
-    Settings.AltSampleDecode          = get_combo ("sample_combo");
     Settings.APUEnabled = Settings.NextAPUEnabled = TRUE;
     config->mute_sound                = get_check ("mute_sound_check");
 
@@ -631,9 +621,6 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->num_threads               = get_spin ("num_threads");
     config->default_esc_behavior      = get_check ("default_esc_behavior");
     config->prevent_screensaver       = get_check ("prevent_screensaver");
-
-    if (Settings.AltSampleDecode == 2)
-        Settings.AltSampleDecode = 3;
 
 #ifdef USE_JOYSTICK
     config->joystick_threshold        = get_spin ("joystick_threshold");

@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,6 +174,6 @@
 #ifndef _mac_cocoatools_h_
 #define _mac_cocoatools_h_
 
-void CocoaPlayFreezeDefrostSound(void);
+void CocoaPlayFreezeDefrostSound (void);
 
 #endif

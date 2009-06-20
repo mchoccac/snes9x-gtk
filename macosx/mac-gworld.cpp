@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -179,38 +177,15 @@
 #include "mac-os.h"
 #include "mac-gworld.h"
 
-#if defined(MAC_QT6_SUPPORT) || defined(MAC_JAGUAR_SUPPORT) || defined(MAC_PANTHER_JAGUAR_SUPPORT)
-static GDHandle		oldGD;
-static GWorldPtr	oldGW;
+#define kIconSize	16
 
-void InitGWorld(GWorldPtr *world, const Rect *worldSize, short depth)
-{
-	QDErr	err;
-
-	err = NewGWorld(world, depth, worldSize, nil, nil, kNativeEndianPixMap);
-	if (err)
-		QuitWithFatalError(err, "gworld 01");
-
-	LockPixels(GetGWorldPixMap(*world));
-
-	PrepareForGDrawing(*world);
-	EraseRect(worldSize);
-	FinishGDrawing(*world);
-}
-
-void PrepareForGDrawing(GWorldPtr world)
-{
-	GetGWorld(&oldGW, &oldGD);
-	SetGWorld(world, nil);
-}
-
-void FinishGDrawing(GWorldPtr)
-{
-	SetGWorld(oldGW, oldGD);
-}
+static void SetIconImage (CGImageRef, CGRect, int);
+#ifdef MAC_PANTHER_SUPPORT
+static IconRef CreateIconRefFromImage (CGImageRef, CGRect);
 #endif
 
-void DrawSubCGImage(CGContextRef ctx, CGImageRef image, CGRect src, CGRect dst)
+
+void DrawSubCGImage (CGContextRef ctx, CGImageRef image, CGRect src, CGRect dst)
 {
     float	w = (float) CGImageGetWidth(image);
     float	h = (float) CGImageGetHeight(image);
@@ -233,106 +208,207 @@ void DrawSubCGImage(CGContextRef ctx, CGImageRef image, CGRect src, CGRect dst)
 	CGContextRestoreGState(ctx);
 }
 
-#ifdef MAC_JAGUAR_SUPPORT
-CGImageRef CreateCGImageFromGWorld(GWorldPtr world)
+static void SetIconImage (CGImageRef image, CGRect rct, int n)
+{
+	if (systemVersion >= 0x1040)
+		macIconImage[n] = CGImageCreateWithImageInRect(image, rct);
+#ifdef MAC_PANTHER_SUPPORT
+	else
+		macIconRef[n] = CreateIconRefFromImage(image, rct);
+#endif
+}
+
+void CreateIconImages (void)
 {
 	CGDataProviderRef	prov;
-	CGColorSpaceRef		color;
-	CGImageRef			image = nil;
-	PixMapHandle		pixmap;
-	Rect				bounds;
-	long				rowbytes, w, h;
-	char				*addr, *buf;
+	CGImageRef			image;
+	CFURLRef			url;
 
-	if (!world)
-		return (nil);
-
-	pixmap = GetGWorldPixMap(world);
-	if (GetPixDepth(pixmap) != 32)
-		return (nil);
-
-	rowbytes = GetPixRowBytes(pixmap);
-	addr     = GetPixBaseAddr(pixmap);
-	GetPixBounds(pixmap, &bounds);
-
-	w = bounds.right  - bounds.left;
-	h = bounds.bottom - bounds.top;
-
-	buf = (char *) malloc(rowbytes);
-	if (buf)
-	{
-		for (int i = 0; i < (h >> 1); i++)
-		{
-			memcpy(buf, addr + i * rowbytes, rowbytes);
-			memcpy(addr + i * rowbytes, addr + (h - i - 1) * rowbytes, rowbytes);
-			memcpy(addr + (h - i - 1) * rowbytes, buf, rowbytes);
-		}
-
-		free(buf);
-	}
-
-	prov = CGDataProviderCreateWithData(nil, addr, rowbytes * h, nil);
-	if (prov)
-	{
-		color = CGColorSpaceCreateDeviceRGB();
-		if (color)
-		{
-			image = CGImageCreate(w, h, 8, 32, rowbytes, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0), prov, nil, 0, kCGRenderingIntentDefault);
-			CGColorSpaceRelease(color);
-		}
-
-		CGDataProviderRelease(prov);
-	}
-
-	return (image);
-}
+	image = NULL;
+	memset(macIconImage, 0, sizeof(macIconImage));
+#ifdef MAC_PANTHER_SUPPORT
+	if (systemVersion < 0x1040)
+		memset(macIconRef, 0, sizeof(macIconRef));
 #endif
 
-Boolean CreateResizedBitmapAndCGImage(const CGImageRef inImage, CGImageRef *outImage, void **outBitmap, CGSize size, CGImageAlphaInfo alpha, int depth, Boolean smoothing)
-{
-	CGContextRef		ctx;
-	CGColorSpaceRef		color;
-	CGDataProviderRef	prov;
-	int					bytesPerPixel, bitsPerComponent, w, h;
-
-	bytesPerPixel = depth / 8;
-	bitsPerComponent = (depth == 16 ? 5 : 8);
-	w = (int) size.width;
-	h = (int) size.height;
-
-	*outImage = nil;
-
-	*outBitmap = calloc(w * h * bytesPerPixel, 1);
-	if (*outBitmap)
+	url = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("icons"),  CFSTR("png"), NULL);
+	if (url)
 	{
-		color = CGColorSpaceCreateDeviceRGB();
-		if (color)
+		prov = CGDataProviderCreateWithURL(url);
+		if (prov)
 		{
-			ctx = CGBitmapContextCreate(*outBitmap, w, h, bitsPerComponent, w * bytesPerPixel, color, alpha);
-			if (ctx)
-			{
-				CGContextSetShouldAntialias(ctx, smoothing);
-				CGContextDrawImage(ctx, CGRectMake(0, 0, size.width, size.height), inImage);
-				CGContextRelease(ctx);
-			}
-
-			prov = CGDataProviderCreateWithData(nil, *outBitmap, w * h * bytesPerPixel, nil);
-			if (prov)
-			{
-				*outImage = CGImageCreate(w, h, bitsPerComponent, depth, w * bytesPerPixel, color, alpha, prov, nil, 0, kCGRenderingIntentDefault);
-				CGDataProviderRelease(prov);
-			}
-
-			CGColorSpaceRelease(color);
+			image = CGImageCreateWithPNGDataProvider(prov, NULL, true, kCGRenderingIntentDefault);
+			CGDataProviderRelease(prov);
 		}
+
+		CFRelease(url);
 	}
 
-	if (*outImage == nil)
+	if (image)
 	{
-		if (*outBitmap)
-			free(*outBitmap);
-		return (false);
+		int	x, y, v = 0, n = 0;
+
+		macPadIconIndex = n;
+		for (y = 0; y < 8; y++)
+		{
+			for (x = 0; x < 12; x++)
+				SetIconImage(image, CGRectMake(x * kIconSize, v, kIconSize, kIconSize), n++);
+			v += kIconSize;
+		}
+
+		macLegendIconIndex = n;
+		for (x = 0; x < 2; x++)
+			SetIconImage(image, CGRectMake(x * kIconSize, v, kIconSize, kIconSize), n++);
+		v += kIconSize;
+
+		macMusicBoxIconIndex = n;
+		for (x = 0; x < 3; x++)
+			SetIconImage(image, CGRectMake(x * kIconSize, v, kIconSize, kIconSize), n++);
+		v += kIconSize;
+
+		macFunctionIconIndex = n;
+		for (x = 0; x < 17; x++)
+			SetIconImage(image, CGRectMake(x * kIconSize, v, kIconSize, kIconSize), n++);
+
+		CGImageRelease(image);
+		
+	#ifdef MAC_PANTHER_SUPPORT
+		if (systemVersion < 0x1040)
+		{
+			CGColorSpaceRef		color;
+			CGContextRef		ctx;
+			CGRect				rct;
+			static UInt32		data[2][kIconSize * kIconSize];
+
+			rct = CGRectMake(0, 0, kIconSize, kIconSize);
+
+			color = CGColorSpaceCreateDeviceRGB();
+			if (color)
+			{
+				for (int i = 0; i < 2; i++)
+				{
+					ctx = CGBitmapContextCreate(data[i], kIconSize, kIconSize, 8, kIconSize * 4, color, kCGImageAlphaNoneSkipFirst);
+					if (ctx)
+					{
+						PlotIconRefInContext(ctx, &rct, kAlignNone, kTransformNone, NULL, kPlotIconRefNormalFlags, macIconRef[macLegendIconIndex + i]);
+						CGContextRelease(ctx);
+
+						prov = CGDataProviderCreateWithData(NULL, data[i], kIconSize * kIconSize * 4, NULL);
+						if (prov)
+						{
+							macIconImage[macLegendIconIndex + i] = CGImageCreate(kIconSize, kIconSize, 8, 32, kIconSize * 4, color, kCGImageAlphaNoneSkipFirst, prov, NULL, 1, kCGRenderingIntentDefault);
+							CGDataProviderRelease(prov);
+						}
+					}
+				}
+
+				CGColorSpaceRelease(color);
+			}
+		}
+	#endif
 	}
-	else
-		return (true);
 }
+
+void ReleaseIconImages (void)
+{
+	for (int i = 0; i < 118; i++)
+	{
+		if (systemVersion >= 0x1040)
+		{
+			if (macIconImage[i])
+				CGImageRelease(macIconImage[i]);
+		}
+	#ifdef MAC_PANTHER_SUPPORT
+		else
+		{
+			if (macIconRef[i])
+				ReleaseIconRef(macIconRef[i]);
+		}
+	#endif
+	}
+
+#ifdef MAC_PANTHER_SUPPORT
+	if (systemVersion < 0x1040)
+	{
+		if (macIconImage[macLegendIconIndex])
+			CGImageRelease(macIconImage[macLegendIconIndex]);
+		if (macIconImage[macLegendIconIndex + 1])
+			CGImageRelease(macIconImage[macLegendIconIndex + 1]);
+	}
+#endif
+}
+
+#ifdef MAC_PANTHER_SUPPORT
+static IconRef CreateIconRefFromImage (CGImageRef srcImage, CGRect srcRect)
+{
+	OSStatus			err;
+	CGContextRef		cctx, actx;
+	CGColorSpaceRef		color;
+	CGRect				dstRect;
+	IconRef				iconRef;
+	IconFamilyHandle	icns;
+	Handle				hdl;
+	SInt32				size;
+	UInt32				rgb[kIconSize * kIconSize];
+	UInt8				alp[kIconSize * kIconSize];
+
+	srcRect.origin.y = CGImageGetHeight(srcImage) - srcRect.origin.y - kIconSize;
+
+	color = CGColorSpaceCreateDeviceRGB();
+	if (color)
+	{
+		cctx = CGBitmapContextCreate(rgb, kIconSize, kIconSize, 8, kIconSize * 4, color, kCGImageAlphaNoneSkipFirst);
+		if (cctx)
+		{
+			dstRect = CGRectMake(0, 0, kIconSize, kIconSize);
+			DrawSubCGImage(cctx, srcImage, srcRect, dstRect);
+
+			actx = CGBitmapContextCreate(alp, kIconSize, kIconSize, 8, kIconSize, NULL, kCGImageAlphaOnly);
+			if (actx)
+			{
+				DrawSubCGImage(actx, srcImage, srcRect, dstRect);
+				CGContextRelease(actx);
+			}
+
+			CGContextRelease(cctx);
+		}
+
+		CGColorSpaceRelease(color);
+	}
+
+	iconRef = NULL;
+
+	size = sizeof(OSType) + sizeof(SInt32);
+	icns = (IconFamilyHandle) NewHandle(size);
+	if (icns)
+	{
+		// Big-endian: Panther is for PowerPC only
+		(*icns)->resourceType = kIconFamilyType;
+		(*icns)->resourceSize = size;
+
+		err = PtrToHand(rgb, &hdl, sizeof(rgb));
+		if (err == noErr)
+		{
+			err = SetIconFamilyData(icns, kSmall32BitData, hdl);
+			DisposeHandle(hdl);
+
+			if (err == noErr)
+			{
+				err = PtrToHand(alp, &hdl, sizeof(alp));
+				if (err == noErr)
+				{
+					err = SetIconFamilyData(icns, kSmall8BitMask, hdl);
+					DisposeHandle(hdl);
+				}
+			}
+		}
+
+		if (err == noErr)
+			err = GetIconRefFromIconFamilyPtr(*icns, GetHandleSize((Handle) icns), &iconRef);
+
+		DisposeHandle((Handle) icns);
+	}
+
+	return (iconRef);
+}
+#endif

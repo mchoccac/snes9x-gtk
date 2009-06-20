@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,10 +174,10 @@
 #ifndef _mac_render_h_
 #define _mac_render_h_
 
-void InitGraphics(void);
-void DeinitGraphics(void);
-void DrawPauseScreen(CGContextRef, HIRect);
-void ClearGFXScreen(void);
-void DrawFreezeDefrostScreen(uint8 *);
+void InitGraphics (void);
+void DeinitGraphics (void);
+void DrawPauseScreen (CGContextRef, HIRect);
+void ClearGFXScreen (void);
+void DrawFreezeDefrostScreen (uint8 *);
 
 #endif

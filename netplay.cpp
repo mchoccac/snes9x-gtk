@@ -208,9 +208,8 @@
 #endif
 
 #include "snes9x.h"
-#include "cpuexec.h"
-#include "netplay.h"
 #include "memmap.h"
+#include "netplay.h"
 #include "snapshot.h"
 #include "display.h"
 
@@ -722,10 +721,6 @@ bool8 S9xNPLoadROMDialog (const char *rom_name)
 #ifdef NP_DEBUG
     printf ("CLIENT: Got reply from GUI thread (%d)\n", NetPlay.Answer);
 #endif
-
-#else
-    NetPlay.Answer = TRUE;
-
 #endif
 
     return (NetPlay.Answer);
@@ -801,7 +796,7 @@ bool8 S9xNPGetROMImage (uint32 len)
 #endif
     S9xNPSetAction ("Receiving ROM filename...");
     uint32 filename_len = len - Memory.CalculatedSize - 5;
-    if (filename_len > _MAX_PATH ||
+    if (filename_len > PATH_MAX ||
         !S9xNPGetData (NetPlay.Socket, (uint8 *) Memory.ROMFilename, filename_len))
     {
         S9xNPSetError ("Error while receiving ROM filename from server.");

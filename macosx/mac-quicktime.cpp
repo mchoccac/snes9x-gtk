@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,9 +171,8 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "memmap.h"
-#include "ppu.h"
-#include "gfx.h"
 #include "soundux.h"
 
 #include <QuickTime/QuickTime.h>
@@ -189,10 +186,10 @@
 #define	kMovDoubleSize		(1 << 0)
 #define	kMovExtendedHeight	(1 << 1)
 
-static void CheckError(OSStatus, int);
-static void MacQTOpenVideoComponent(ComponentInstance *);
-static void MacQTCloseVideoComponent(ComponentInstance);
-static OSStatus WriteFrameCallBack(void *, ICMCompressionSessionRef, OSStatus, ICMEncodedFrameRef, void *);
+static void CheckError (OSStatus, int);
+static void MacQTOpenVideoComponent (ComponentInstance *);
+static void MacQTCloseVideoComponent (ComponentInstance);
+static OSStatus WriteFrameCallBack (void *, ICMCompressionSessionRef, OSStatus, ICMEncodedFrameRef, void *);
 
 typedef struct
 {
@@ -215,17 +212,12 @@ typedef struct
 	int								width, height;
 	int								soundBufferSize;
 	int								samplesPerSec;
-#ifdef MAC_QT6_SUPPORT
-	ImageDescriptionHandle			imageDesc;
-	Handle							compressedData;
-	GWorldPtr						gw, bw;
-	Boolean							firstFrame;
-#endif
 }	MacQTState;
 
 static MacQTState	sqt;
 
-static void CheckError(OSStatus err, int n)
+
+static void CheckError (OSStatus err, int n)
 {
 	if (err != noErr)
 	{
@@ -236,7 +228,7 @@ static void CheckError(OSStatus err, int n)
 	}
 }
 
-static void MacQTOpenVideoComponent(ComponentInstance *rci)
+static void MacQTOpenVideoComponent (ComponentInstance *rci)
 {
 	OSStatus			err;
 	ComponentInstance	ci;
@@ -283,14 +275,14 @@ static void MacQTOpenVideoComponent(ComponentInstance *rci)
 	*rci = ci;
 }
 
-static void MacQTCloseVideoComponent(ComponentInstance ci)
+static void MacQTCloseVideoComponent (ComponentInstance ci)
 {
 	OSStatus	err;
 
 	err = CloseComponent(ci);
 }
 
-void MacQTVideoConfig(WindowRef parent)
+void MacQTVideoConfig (WindowRef parent)
 {
 	OSStatus			err;
 	ComponentInstance	ci;
@@ -301,29 +293,8 @@ void MacQTVideoConfig(WindowRef parent)
 	MacQTOpenVideoComponent(&ci);
 
 	long	flag;
-	flag = scListEveryCodec | scAllowZeroKeyFrameRate | scDisableFrameRateItem;
-	flag |= ((qtVersion >= 0x7008000) ? scAllowEncodingWithCompressionSession : 0);
+	flag = scListEveryCodec | scAllowZeroKeyFrameRate | scDisableFrameRateItem | scAllowEncodingWithCompressionSession;
 	err = SCSetInfo(ci, scPreferenceFlagsType, &flag);
-
-#ifdef MAC_QT6_SUPPORT
-	PicHandle   pict = nil;
-
-	if (qtVersion < 0x7008000)
-	{
-		Rect	rct;
-		int		width, height;
-
-		width  = IPPU.RenderedScreenWidth;
-		height = IPPU.RenderedScreenHeight;
-		pict = GetScreenAsPicHandle(width, height, width, height);
-		HNoPurge((Handle) pict);
-		rct.left   = (width  - scTestImageWidth)  >> 1;
-		rct.top    = (height - scTestImageHeight) >> 1;
-		rct.right  = rct.left + scTestImageWidth;
-		rct.bottom = rct.top  + scTestImageHeight;
-		err = SCSetTestImagePictHandle(ci, pict, &rct, scPreferCropping);
-	}
-#endif
 
 	SCWindowSettings	ws;
 	ws.size          = sizeof(SCWindowSettings);
@@ -353,14 +324,9 @@ void MacQTVideoConfig(WindowRef parent)
 	}
 
 	MacQTCloseVideoComponent(ci);
-
-#ifdef MAC_QT6_SUPPORT
-	if (pict)
-		KillPicture(pict);
-#endif
 }
 
-void MacQTStartRecording(char *path)
+void MacQTStartRecording (char *path)
 {
 	OSStatus	err;
 	CFStringRef str;
@@ -387,7 +353,7 @@ void MacQTStartRecording(char *path)
 	long				flag;
 	SCTemporalSettings	ts;
 
-	flag = (qtVersion >= 0x7008000) ? scAllowEncodingWithCompressionSession : 0;
+	flag = scAllowEncodingWithCompressionSession;
 	err = SCSetInfo(sqt.vci, scPreferenceFlagsType, &flag);
 
 	err = SCGetInfo(sqt.vci, scTemporalSettingsType, &ts);
@@ -401,81 +367,59 @@ void MacQTStartRecording(char *path)
 	sqt.width  = ((macQTMovFlag & kMovDoubleSize) ? 2 : 1) * SNES_WIDTH;
 	sqt.height = ((macQTMovFlag & kMovDoubleSize) ? 2 : 1) * ((macQTMovFlag & kMovExtendedHeight) ? SNES_HEIGHT_EXTENDED : SNES_HEIGHT);
 
-	sqt.srcImage = nil;
+	sqt.srcImage = NULL;
 	sqt.timeStamp = 0;
-#ifdef MAC_QT6_SUPPORT
-	sqt.gw = nil;
-	sqt.firstFrame = true;
-#endif
 
-	if (qtVersion >= 0x7008000)
-	{
-		SCSpatialSettings			ss;
-		ICMEncodedFrameOutputRecord	record;
-		ICMMultiPassStorageRef		nullStorage = nil;
+	SCSpatialSettings			ss;
+	ICMEncodedFrameOutputRecord	record;
+	ICMMultiPassStorageRef		nullStorage = NULL;
 
-		err = SCCopyCompressionSessionOptions(sqt.vci, &(sqt.option));
-		CheckError(err, 61);
-		err = ICMCompressionSessionOptionsSetProperty(sqt.option, kQTPropertyClass_ICMCompressionSessionOptions, kICMCompressionSessionOptionsPropertyID_MultiPassStorage, sizeof(ICMMultiPassStorageRef), &nullStorage);
+	err = SCCopyCompressionSessionOptions(sqt.vci, &(sqt.option));
+	CheckError(err, 61);
+	err = ICMCompressionSessionOptionsSetProperty(sqt.option, kQTPropertyClass_ICMCompressionSessionOptions, kICMCompressionSessionOptionsPropertyID_MultiPassStorage, sizeof(ICMMultiPassStorageRef), &nullStorage);
 
-		record.encodedFrameOutputCallback = WriteFrameCallBack;
-		record.encodedFrameOutputRefCon   = nil;
-		record.frameDataAllocator         = nil;
-		err = SCGetInfo(sqt.vci, scSpatialSettingsType, &ss);
-		err = ICMCompressionSessionCreate(kCFAllocatorDefault, sqt.width, sqt.height, ss.codecType, Memory.ROMFramesPerSecond, sqt.option, nil, &record, &(sqt.session));
-		CheckError(err, 62);
+	record.encodedFrameOutputCallback = WriteFrameCallBack;
+	record.encodedFrameOutputRefCon   = NULL;
+	record.frameDataAllocator         = NULL;
+	err = SCGetInfo(sqt.vci, scSpatialSettingsType, &ss);
+	err = ICMCompressionSessionCreate(kCFAllocatorDefault, sqt.width, sqt.height, ss.codecType, Memory.ROMFramesPerSecond, sqt.option, NULL, &record, &(sqt.session));
+	CheckError(err, 62);
 
-		CFMutableDictionaryRef	dic;
-		CFNumberRef				val;
-		OSType					pix;
-		int						row = sqt.width * 2;
+	CFMutableDictionaryRef	dic;
+	CFNumberRef				val;
+	OSType					pix = k16BE555PixelFormat;
+	int						row = sqt.width * 2;
 
-		dic = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	dic = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
-#ifdef __BIG_ENDIAN__
-		pix = k16BE555PixelFormat;
-#else
-		pix = k16LE555PixelFormat;
-#endif
+	val = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &pix);
+	CFDictionaryAddValue(dic, kCVPixelBufferPixelFormatTypeKey, val);
+	CFRelease(val);
 
-		val = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &pix);
-		CFDictionaryAddValue(dic, kCVPixelBufferPixelFormatTypeKey, val);
-		CFRelease(val);
+	val = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &(sqt.width));
+	CFDictionaryAddValue(dic, kCVPixelBufferWidthKey, val);
+	CFRelease(val);
 
-		val = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &(sqt.width));
-		CFDictionaryAddValue(dic, kCVPixelBufferWidthKey, val);
-		CFRelease(val);
+	val = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &(sqt.height));
+	CFDictionaryAddValue(dic, kCVPixelBufferHeightKey, val);
+	CFRelease(val);
 
-		val = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &(sqt.height));
-		CFDictionaryAddValue(dic, kCVPixelBufferHeightKey, val);
-		CFRelease(val);
+	val = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &row);
+	CFDictionaryAddValue(dic, kCVPixelBufferBytesPerRowAlignmentKey, val);
+	CFRelease(val);
 
-		val = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &row);
-		CFDictionaryAddValue(dic, kCVPixelBufferBytesPerRowAlignmentKey, val);
-		CFRelease(val);
+	CFDictionaryAddValue(dic, kCVPixelBufferCGImageCompatibilityKey, kCFBooleanTrue);
+	CFDictionaryAddValue(dic, kCVPixelBufferCGBitmapContextCompatibilityKey, kCFBooleanTrue);
 
-		CFDictionaryAddValue(dic, kCVPixelBufferCGImageCompatibilityKey, kCFBooleanTrue);
-		CFDictionaryAddValue(dic, kCVPixelBufferCGBitmapContextCompatibilityKey, kCFBooleanTrue);
+	err = CVPixelBufferPoolCreate(kCFAllocatorDefault, NULL, dic, &(sqt.pool));
+	CheckError(err, 63);
 
-		err = CVPixelBufferPoolCreate(kCFAllocatorDefault, nil, dic, &(sqt.pool));
-		CheckError(err, 63);
-
-		CFRelease(dic);
-	}
-#ifdef MAC_QT6_SUPPORT
-	else
-	{
-		Rect	rct;
-
-		SetRect(&rct, 0, 0, sqt.width, sqt.height);
-		InitGWorld(&(sqt.bw), &rct, 16);
-	}
-#endif
+	CFRelease(dic);
 
 	sqt.vTrack = NewMovieTrack(sqt.movie, FixRatio(sqt.width, 1), FixRatio(sqt.height, 1), kNoVolume);
 	CheckError(GetMoviesError(), 23);
 
-	sqt.vMedia = NewTrackMedia(sqt.vTrack, VideoMediaType, Memory.ROMFramesPerSecond, nil, 0);
+	sqt.vMedia = NewTrackMedia(sqt.vTrack, VideoMediaType, Memory.ROMFramesPerSecond, NULL, 0);
 	CheckError(GetMoviesError(), 24);
 
 	err = BeginMediaEdits(sqt.vMedia);
@@ -511,14 +455,14 @@ void MacQTStartRecording(char *path)
 	sqt.sTrack = NewMovieTrack(sqt.movie, 0, 0, kFullVolume);
 	CheckError(GetMoviesError(), 28);
 
-	sqt.sMedia = NewTrackMedia(sqt.sTrack, SoundMediaType, Settings.SoundPlaybackRate, nil, 0);
+	sqt.sMedia = NewTrackMedia(sqt.sTrack, SoundMediaType, Settings.SoundPlaybackRate, NULL, 0);
 	CheckError(GetMoviesError(), 29);
 
 	err = BeginMediaEdits(sqt.sMedia);
 	CheckError(err, 30);
 }
 
-void MacQTRecordFrame(int width, int height)
+void MacQTRecordFrame (int width, int height)
 {
 	OSStatus	err;
 
@@ -526,136 +470,66 @@ void MacQTRecordFrame(int width, int height)
 
 	if (sqt.frameSkipCount == sqt.frameSkip)
 	{
-		if (qtVersion >= 0x7008000)
+		CVPixelBufferRef	buf;
+
+		err = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, sqt.pool, &buf);
+		if (err == noErr)
 		{
-			CVPixelBufferRef	buf;
+			CGColorSpaceRef		color;
+			CGContextRef		ctx;
+			uint16				*p;
 
-			err = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, sqt.pool, &buf);
-			if (err == noErr)
-			{
-				CGColorSpaceRef		color;
-				CGContextRef		ctx;
+			err = CVPixelBufferLockBaseAddress(buf, 0);
+			p = (uint16 *) CVPixelBufferGetBaseAddress(buf);
 
-				err = CVPixelBufferLockBaseAddress(buf, 0);
+			color = CGColorSpaceCreateDeviceRGB();
+			ctx = CGBitmapContextCreate((void *) p, sqt.width, sqt.height, 5, sqt.width * 2, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Host : 0));
+			CGContextSetShouldAntialias(ctx, false);
 
-				color = CGColorSpaceCreateDeviceRGB();
-				ctx = CGBitmapContextCreate(CVPixelBufferGetBaseAddress(buf), sqt.width, sqt.height, 5, sqt.width * 2, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Host : 0));
-				CGContextSetShouldAntialias(ctx, false);
+			if (sqt.srcImage)
+				CGImageRelease(sqt.srcImage);
+			sqt.srcImage = CreateGameScreenCGImage();
 
-				if (sqt.srcImage)
-					CGImageRelease(sqt.srcImage);
-				sqt.srcImage = CreateGameScreenCGImage();
-
-				CGRect	dst = CGRectMake(0.0, 0.0, (float) sqt.width, (float) sqt.height);
-
-				if ((!(height % SNES_HEIGHT_EXTENDED)) && (!(macQTMovFlag & kMovExtendedHeight)))
-				{
-					CGRect	src;
-
-					src.size.width  = (float) width;
-					src.size.height = (float) ((height > 256) ? (SNES_HEIGHT << 1) : SNES_HEIGHT);
-					src.origin.x    = (float) 0;
-					src.origin.y    = (float) height - src.size.height;
-					DrawSubCGImage(ctx, sqt.srcImage, src, dst);
-				}
-				else
-				if ((sqt.height << 1) % height)
-				{
-					CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
-					CGContextFillRect(ctx, dst);
-
-					float	dh  = (float) ((sqt.height > 256) ? (SNES_HEIGHT << 1) : SNES_HEIGHT);
-					float	ofs = (float) ((int) ((drawoverscan ? 1.0 : 0.5) * ((float) sqt.height - dh) + 0.5));
-					dst = CGRectMake(0.0, ofs, (float) sqt.width, dh);
-					CGContextDrawImage(ctx, dst, sqt.srcImage);
-				}
-				else
-					CGContextDrawImage(ctx, dst, sqt.srcImage);
-
-				CGContextRelease(ctx);
-				CGColorSpaceRelease(color);
-
-				err = CVPixelBufferUnlockBaseAddress(buf, 0);
-
-				err = ICMCompressionSessionEncodeFrame(sqt.session, buf, sqt.timeStamp, 0, kICMValidTime_DisplayTimeStampIsValid, nil, nil, nil);
-
-				CVPixelBufferRelease(buf);
-			}
-		}
-#ifdef MAC_QT6_SUPPORT
-		else
-		{
-			Rect	src, dst;
-
-			SetRect(&src, 0, 0, width, height);
-
-			if (sqt.gw)
-				DisposeGWorld(sqt.gw);
-#ifdef __BIG_ENDIAN__
-			err = QTNewGWorldFromPtr(&(sqt.gw), k16BE555PixelFormat, &src, nil, nil, 0, GFX.Screen, Settings.OpenGLEnable ? (width << 1) : (SNES_WIDTH << 2));
-#else
-			err = QTNewGWorldFromPtr(&(sqt.gw), k16LE555PixelFormat, &src, nil, nil, 0, GFX.Screen, Settings.OpenGLEnable ? (width << 1) : (SNES_WIDTH << 2));
-#endif
+			CGRect	dst = CGRectMake(0.0, 0.0, (float) sqt.width, (float) sqt.height);
 
 			if ((!(height % SNES_HEIGHT_EXTENDED)) && (!(macQTMovFlag & kMovExtendedHeight)))
-				src.bottom = SNES_HEIGHT << ((height > 256) ? 1 : 0);
-
-			if ((sqt.height << 1) % src.bottom)
 			{
-				Rect	b1, b2;
+				CGRect	src;
 
-				b1.left  = b2.left  = dst.left  = 0;
-				b1.right = b2.right = dst.right = sqt.width;
-
-				int	x = (macQTMovFlag & kMovDoubleSize) ? 1 : 0;
-
-				if (drawoverscan)
-				{
-					b1.top    = 0;
-					b1.bottom = 0;
-
-					b2.top    = SNES_HEIGHT << x;
-					b2.bottom = SNES_HEIGHT_EXTENDED << x;
-				}
-				else
-				{
-					b1.top    = 0;
-					b1.bottom = (SNES_HEIGHT_EXTENDED - SNES_HEIGHT) >> (1 - x);
-
-					b2.top    = b1.bottom + (SNES_HEIGHT << x);
-					b2.bottom = SNES_HEIGHT_EXTENDED << x;
-				}
-
-				dst.top    = b1.bottom;
-				dst.bottom = b2.top;
-				PrepareForGDrawing(sqt.bw);
-				PaintRect(&b1);
-				PaintRect(&b2);
-				FinishGDrawing(sqt.bw);
+				src.size.width  = (float) width;
+				src.size.height = (float) ((height > 256) ? (SNES_HEIGHT << 1) : SNES_HEIGHT);
+				src.origin.x    = (float) 0;
+				src.origin.y    = (float) height - src.size.height;
+				DrawSubCGImage(ctx, sqt.srcImage, src, dst);
 			}
 			else
-				SetRect(&dst, 0, 0, sqt.width, sqt.height);
-
-			CopyBits(GetPortBitMapForCopyBits(sqt.gw), GetPortBitMapForCopyBits(sqt.bw), &src, &dst, srcCopy, nil);
-
-			Rect	frame = { 0, 0, sqt.height, sqt.width };
-
-			if (sqt.firstFrame)
+			if ((sqt.height << 1) % height)
 			{
-				sqt.firstFrame = false;
+				CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+				CGContextFillRect(ctx, dst);
 
-				err = SCCompressSequenceBegin(sqt.vci, GetPortPixMap(sqt.bw), &frame, &(sqt.imageDesc));
-				CheckError(err, 42);
+				float	dh  = (float) ((sqt.height > 256) ? (SNES_HEIGHT << 1) : SNES_HEIGHT);
+				float	ofs = (float) ((int) ((drawoverscan ? 1.0 : 0.5) * ((float) sqt.height - dh) + 0.5));
+				dst = CGRectMake(0.0, ofs, (float) sqt.width, dh);
+				CGContextDrawImage(ctx, dst, sqt.srcImage);
 			}
+			else
+				CGContextDrawImage(ctx, dst, sqt.srcImage);
 
-			long	dataSize;
-			short	flag = (sqt.keyFrameCount == sqt.keyFrame) ? 0 : mediaSampleNotSync;
+			CGContextRelease(ctx);
+			CGColorSpaceRelease(color);
 
-			err = SCCompressSequenceFrame(sqt.vci, GetPortPixMap(sqt.bw), &frame, &(sqt.compressedData), &dataSize, &flag);
+		#ifndef __BIG_ENDIAN__
+			for (int i = 0; i < sqt.width * sqt.height; i++)
+				SWAP_WORD(p[i]);
+		#endif
 
-			err = AddMediaSample(sqt.vMedia, sqt.compressedData, 0, dataSize, 1 + sqt.frameSkip, (SampleDescriptionHandle) (sqt.imageDesc),	1, flag, nil);
+			err = CVPixelBufferUnlockBaseAddress(buf, 0);
+
+			err = ICMCompressionSessionEncodeFrame(sqt.session, buf, sqt.timeStamp, 0, kICMValidTime_DisplayTimeStampIsValid, NULL, NULL, NULL);
+
+			CVPixelBufferRelease(buf);
 		}
-#endif
 
 		sqt.keyFrameCount--;
 		if (sqt.keyFrameCount <= 0)
@@ -676,59 +550,36 @@ void MacQTRecordFrame(int width, int height)
 
 	S9xMixSamples((uint8 *) *(sqt.soundBuffer), sample_count);
 
-	err = AddMediaSample(sqt.sMedia, sqt.soundBuffer, 0, sqt.soundBufferSize, 1, (SampleDescriptionHandle) sqt.soundDesc, sqt.samplesPerSec, mediaSampleNotSync, nil);
+	err = AddMediaSample(sqt.sMedia, sqt.soundBuffer, 0, sqt.soundBufferSize, 1, (SampleDescriptionHandle) sqt.soundDesc, sqt.samplesPerSec, mediaSampleNotSync, NULL);
 }
 
-static OSStatus WriteFrameCallBack(void *refCon, ICMCompressionSessionRef session, OSStatus r, ICMEncodedFrameRef frame, void *reserved)
+static OSStatus WriteFrameCallBack (void *refCon, ICMCompressionSessionRef session, OSStatus r, ICMEncodedFrameRef frame, void *reserved)
 {
 	OSStatus	err;
 
-	err = AddMediaSampleFromEncodedFrame(sqt.vMedia, frame, nil);
+	err = AddMediaSampleFromEncodedFrame(sqt.vMedia, frame, NULL);
 	return (err);
 }
 
-void MacQTStopRecording(void)
+void MacQTStopRecording (void)
 {
 	OSStatus   err;
 
 	// video
 
-	if (qtVersion >= 0x7008000)
-	{
-		err = ICMCompressionSessionCompleteFrames(sqt.session, true, 0, sqt.timeStamp);
-		err = ExtendMediaDecodeDurationToDisplayEndTime(sqt.vMedia, nil);
-	}
-#ifdef MAC_QT6_SUPPORT
-	else
-	{
-		err = SCCompressSequenceEnd(sqt.vci);
-		CheckError(err, 51);
-	}
-#endif
+	err = ICMCompressionSessionCompleteFrames(sqt.session, true, 0, sqt.timeStamp);
+	err = ExtendMediaDecodeDurationToDisplayEndTime(sqt.vMedia, NULL);
 
 	err = EndMediaEdits(sqt.vMedia);
 	CheckError(err, 52);
 
-	if (qtVersion >= 0x7008000)
-	{
-		err = InsertMediaIntoTrack(sqt.vTrack, 0, 0, GetMediaDisplayDuration(sqt.vMedia), fixed1);
-		CheckError(err, 58);
+	err = InsertMediaIntoTrack(sqt.vTrack, 0, 0, GetMediaDisplayDuration(sqt.vMedia), fixed1);
+	CheckError(err, 58);
 
-		CGImageRelease(sqt.srcImage);
-		CVPixelBufferPoolRelease(sqt.pool);
-		ICMCompressionSessionRelease(sqt.session);
-		ICMCompressionSessionOptionsRelease(sqt.option);
-	}
-#ifdef MAC_QT6_SUPPORT
-	else
-	{
-		err = InsertMediaIntoTrack(sqt.vTrack, 0, 0, GetMediaDuration(sqt.vMedia), fixed1);
-		CheckError(err, 53);
-
-		DisposeGWorld(sqt.bw);
-		DisposeGWorld(sqt.gw);
-	}
-#endif
+	CGImageRelease(sqt.srcImage);
+	CVPixelBufferPoolRelease(sqt.pool);
+	ICMCompressionSessionRelease(sqt.session);
+	ICMCompressionSessionOptionsRelease(sqt.option);
 
 	// sound
 

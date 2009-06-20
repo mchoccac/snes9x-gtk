@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -185,17 +183,10 @@
 #define	JMA_SUPPORT
 #define CPU_SHUTDOWN
 #define SPC700_SHUTDOWN
-#define SPC700_C
-#define NEW_COLOUR_BLENDING
 #define USE_OPENGL
 #define RIGHTSHIFT_IS_SAR
-#define SDD1_DECOMP
 #define CORRECT_VRAM_READS
 #define HAVE_STDINT_H
-//#define NO_INLINE_SET_GET
 //#define DEBUGGER
 
 #define __MACOSX__
-#define MAC_NETPLAY_SUPPORT
-#define MAC_COREIMAGE_SUPPORT
-//#define MAC_PPCASM_SUPPORT

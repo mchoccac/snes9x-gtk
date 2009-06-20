@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,62 +174,29 @@
 #include "mac-prefix.h"
 #include "mac-stringtools.h"
 
-void ConvertPString(const unsigned char *pS, char *cS)
+
+CFStringRef CopyFixNameStrings (const char *itext, uint8 region)
 {
-	short	size = *pS++;
+	CFStringRef	str = NULL;
 
-	while (size--)
-		*cS++ = *pS++;
-	*cS = 0;
-}
-
-void ConvertCString(const char *cS, unsigned char *pS)
-{
-	unsigned char	*pP = ++pS;
-
-	while (*cS)
-		*pP++ = *cS++;
-	*(pS - 1) = pP - pS;
-}
-
-void JointPStrings(const unsigned char *s1, const unsigned char *s2, const unsigned char *s3, unsigned char *result)
-{
-	short 	i;
-
-	if (((short) s1[0] + (short) s2[0] + (short) s3[0]) > 255)
-		return;
-
-	result[0] = s1[0] + s2[0] + s3[0];
-
-	for (i = 1; i <= s1[0]; i++)
-		result[i] = s1[i];
-	for (i = s1[0] + 1; i <= s1[0] + s2[0]; i++)
-		result[i] = s2[i - s1[0]];
-	for (i = s1[0] + s2[0] + 1; i <= s1[0] + s2[0] + s3[0]; i++)
-		result[i] = s3[i - s1[0] - s2[0]];
-}
-
-CFStringRef CopyFixNameStrings(const char * itext, short romreg)
-{
-	if (romreg != 0)	// non-Japanese
+	if (region != 0)	// non-Japanese
 	{
 		char	btext[256];
+		size_t	len = strlen(itext);
 
-		for (uint i = 0; i < strlen(itext) ; i++)
-		{
-			if (!isgraph(btext[i] = itext[i]))
-				btext[i] = ' ';
-		}
+		btext[len] = 0;
+		for (int i = 0; i < len ; i++)
+			btext[i] = isgraph(itext[i]) ? itext[i] : ' ';
 
-		return CFStringCreateWithCString(kCFAllocatorDefault, btext, kCFStringEncodingNonLossyASCII);
+		str = CFStringCreateWithCString(kCFAllocatorDefault, btext, kCFStringEncodingNonLossyASCII);
 	}
 	else
-		return CFStringCreateWithCString(kCFAllocatorDefault, itext, kCFStringEncodingMacJapanese);		// assuming Shift-JIS
+		str = CFStringCreateWithCString(kCFAllocatorDefault, itext, kCFStringEncodingMacJapanese);	// assuming Shift-JIS
 
-	return NULL;
+	return (str);
 }
 
-OSStatus CreateATSUIStyleFromFontFullNameAndSize(Str255 fontName, short fontSize, ATSUStyle *theStyle)
+OSStatus CreateATSUIStyleFromFontFullNameAndSize (const char *fontName, int fontSize, ATSUStyle *theStyle)
 {
 	OSStatus	err;
 	ATSUStyle	localStyle;
@@ -240,7 +205,7 @@ OSStatus CreateATSUIStyleFromFontFullNameAndSize(Str255 fontName, short fontSize
 
 	ATSUAttributeTag		theTags[]   = { kATSUFontTag,       kATSUSizeTag  };
 	ByteCount				theSizes[]  = { sizeof(ATSUFontID), sizeof(Fixed) };
-	ATSUAttributeValuePtr	theValues[] = { nil,                nil           };
+	ATSUAttributeValuePtr	theValues[] = { NULL,                NULL         };
 
 	atsuFont = 0;
 	atsuSize = FixRatio(fontSize, 1);
@@ -249,7 +214,7 @@ OSStatus CreateATSUIStyleFromFontFullNameAndSize(Str255 fontName, short fontSize
 	theValues[0] = &atsuFont;
 	theValues[1] = &atsuSize;
 
-	err = ATSUFindFontFromName((Ptr) fontName + 1, (long) fontName[0], kFontFullName, (unsigned long) kFontNoPlatform, (unsigned long) kFontNoScript, (unsigned long) kFontNoLanguage, &atsuFont);
+	err = ATSUFindFontFromName(fontName, strlen(fontName), kFontFullName, kFontNoPlatform, kFontNoScript, kFontNoLanguage, &atsuFont);
 	if (err == noErr)
 	{
 		err = ATSUCreateStyle(&localStyle);
@@ -264,16 +229,17 @@ OSStatus CreateATSUIStyleFromFontFullNameAndSize(Str255 fontName, short fontSize
 		}
 	}
 
-	if (localStyle != nil)
+	if (localStyle != NULL)
 		err = ATSUDisposeStyle(localStyle);
 
-    return (err);
+	return (err);
 }
 
-const char * GetMultiByteCharacters(CFStringRef inText, int cutAt)
+const char * GetMultiByteCharacters (CFStringRef inText, int cutAt)
 {
-	CFStringRef	str;
 	static char	buf[256];
+
+	CFStringRef	str;
 
 	buf[0] = 0;
 

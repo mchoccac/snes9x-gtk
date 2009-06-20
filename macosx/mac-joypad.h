@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -175,15 +173,6 @@
 
 #ifndef _mac_joypad_h_
 #define _mac_joypad_h_
-
-void SetUpHID(void);
-void ReleaseHID(void);
-void ConfigureHID(void);
-void ClearPadSetting(void);
-OSStatus Load_Config(void);
-OSStatus Save_Config(void);
-long ISpKeyIsPressed(short);
-void JoypadScanDirection(int, uint32 *);
 
 enum
 {
@@ -319,5 +308,14 @@ enum
 
 	kNeedCount
 };
+
+void SetUpHID (void);
+void ReleaseHID (void);
+void ConfigureHID (void);
+void ClearPadSetting (void);
+void SaveControllerSettings (void);
+void LoadControllerSettings (void);
+long ISpKeyIsPressed (int);
+void JoypadScanDirection (int, uint32 *);
 
 #endif

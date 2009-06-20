@@ -29,7 +29,7 @@
 ; Used with the kind permission of the copyright holders.
 ;
 
-%include "i386/macros.mac"
+%include "macros.mac"
 
 EXTSYM InitC4, C4RegFunction, C4ReadReg, C4WriteReg
 EXTSYM romdata

@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,24 +171,15 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
-#ifdef MAC_NETPLAY_SUPPORT
+#include "snes9x.h"
+#include "memmap.h"
+#include "snapshot.h"
+#include "cheats.h"
+#include "display.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <semaphore.h>
-
-#include "memmap.h"
-#include "gfx.h"
-#include "display.h"
-#include "cheats.h"
-#include "snapshot.h"
 
 #include "mac-prefix.h"
 #include "mac-cart.h"
@@ -209,6 +198,23 @@
 #ifdef SELF_TEST
 #include <sys/un.h>
 #endif
+
+#define KeyIsPressed(km, k)	(1 & (((unsigned char *) km) [(k) >> 3] >> ((k) & 7)))
+
+enum
+{
+	kNPCDialogNone,
+	kNPCDialogInit,
+	kNPCDialogConnect,
+	kNPCDialogConnectFailed,
+	kNPCDialogOpenBegin,
+	kNPCDialogOpenEnd,
+	kNPCDialogPrepare,
+	kNPCDialogPrepareFailed,
+	kNPCDialogShowList,
+	kNPCDialogDone,
+	kNPCDialogCancel
+};
 
 typedef struct
 {
@@ -247,11 +253,11 @@ typedef struct
 	char			fname[PATH_MAX + 1];
 }	cROMInfo;
 
-static char n_csememu[] = "/tmp/s9x_c_emu_semaphore",
-			n_csempad[] = "/tmp/s9x_c_pad_semaphore";
+static char			n_csememu[] = "/tmp/s9x_c_emu_semaphore",
+					n_csempad[] = "/tmp/s9x_c_pad_semaphore";
 
-static clientState  npclient;
-static clientsInfo  npcinfo[NP_MAX_PLAYERS];
+static clientState	npclient;
+static clientsInfo	npcinfo[NP_MAX_PLAYERS];
 
 static cROMInfo		nprominfo;
 
@@ -264,44 +270,30 @@ static WindowRef	mRef, sRef;
 static sem_t		*csememu, *csempad;
 static pthread_t	connectthread, preparethread, gamepadthread;
 
-enum
-{
-	kNPCDialogNone,
-	kNPCDialogInit,
-	kNPCDialogConnect,
-	kNPCDialogConnectFailed,
-	kNPCDialogOpenBegin,
-	kNPCDialogOpenEnd,
-	kNPCDialogPrepare,
-	kNPCDialogPrepareFailed,
-	kNPCDialogShowList,
-	kNPCDialogDone,
-	kNPCDialogCancel
-};
+static int NPClientGetMesFromServer (void);
+static void NPClientDetachConnectThread (void);
+static void NPClientDetachPrepareThread (void);
+static void NPClientBeginPlayerListSheet (void);
+static void NPClientEndPlayerListSheet (void);
+static bool8 NPClientConnectToServer (int);
+static bool8 NPClientSendMesToServer (int);
+static bool8 NPClientSendNameToServer (void);
+static bool8 NPClientGetROMInfoFromServer (void);
+static bool8 NPClientBeginOpenROMImage (WindowRef);
+static bool8 NPClientEndOpenROMImage (void);
+static bool8 NPClientROMReadyToServer (void);
+static bool8 NPClientGetSRAMFromServer (void);
+static bool8 NPClientGetPlayerListFromServer (void);
+static bool8 NPClientReplyPhaseSpanTest (void);
+static void * NPClientConnectThread (void *);
+static void * NPClientPrepareThread (void *);
+static void * NPClientNetPlayThread (void *);
+static pascal void NPClientDialogTimerHandler (EventLoopTimerRef, void *);
+static pascal OSStatus NPClientDialogEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus NPClientSheetEventHandler (EventHandlerCallRef, EventRef, void *);
 
-static int NPClientGetMesFromServer(void);
-static void NPClientDetachConnectThread(void);
-static void NPClientDetachPrepareThread(void);
-static void NPClientBeginPlayerListSheet(void);
-static void NPClientEndPlayerListSheet(void);
-static bool8 NPClientConnectToServer(int);
-static bool8 NPClientSendMesToServer(int);
-static bool8 NPClientSendNameToServer(void);
-static bool8 NPClientGetROMInfoFromServer(void);
-static bool8 NPClientBeginOpenROMImage(WindowRef);
-static bool8 NPClientEndOpenROMImage(void);
-static bool8 NPClientROMReadyToServer(void);
-static bool8 NPClientGetSRAMFromServer(void);
-static bool8 NPClientGetPlayerListFromServer(void);
-static bool8 NPClientReplyPhaseSpanTest(void);
-static void * NPClientConnectThread(void *);
-static void * NPClientPrepareThread(void *);
-static void * NPClientNetPlayThread(void *);
-static pascal void NPClientDialogTimerHandler(EventLoopTimerRef, void *);
-static pascal OSStatus NPClientDialogEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus NPClientSheetEventHandler(EventHandlerCallRef, EventRef, void *);
 
-bool8 NPClientDialog(void)
+bool8 NPClientDialog (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -328,7 +320,6 @@ bool8 NPClientDialog(void)
 				CFStringRef			ref;
 				HIViewRef			ctl, root;
 				HIViewID			cid;
-				unsigned char		pstr[256];
 
 				npclient.dialogprocess = kNPCDialogInit;
 
@@ -350,8 +341,7 @@ bool8 NPClientDialog(void)
 
 				cid.signature = 'SVIP';
 				HIViewFindByID(root, cid, &ctl);
-				ConvertCString(npServerIP, pstr);
-				SetEditTextText(ctl, pstr, false);
+				SetEditTextCStr(ctl, npServerIP, false);
 
 				cid.signature = 'CLNM';
 				HIViewFindByID(root, cid, &ctl);
@@ -380,10 +370,10 @@ bool8 NPClientDialog(void)
 				err = RemoveEventHandler(eref);
 				DisposeEventHandlerUPP(eventUPP);
 
-				ReleaseWindow(sRef);
+				CFRelease(sRef);
 			}
 
-			ReleaseWindow(mRef);
+			CFRelease(mRef);
 		}
 
 		DisposeNibReference(nibRef);
@@ -392,10 +382,8 @@ bool8 NPClientDialog(void)
 	return (!npclient.dialogcancel);
 }
 
-static pascal OSStatus NPClientDialogEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus NPClientDialogEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef, inUserData)
-
 	OSStatus	err, result = eventNotHandledErr;
 
 	switch (GetEventClass(inEvent))
@@ -406,7 +394,7 @@ static pascal OSStatus NPClientDialogEventHandler(EventHandlerCallRef inHandlerR
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(false);
@@ -416,26 +404,24 @@ static pascal OSStatus NPClientDialogEventHandler(EventHandlerCallRef inHandlerR
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
 						{
 							case 'OK__':
-								CFStringRef		ref;
-								HIViewRef		ctl, root;
-								HIViewID		cid;
-								unsigned char   pstr[256];
+								CFStringRef	ref;
+								HIViewRef	ctl, root;
+								HIViewID	cid;
 
 								root = HIViewGetRoot(mRef);
 								cid.id = 0;
 
 								cid.signature = 'SVIP';
 								HIViewFindByID(root, cid, &ctl);
-								GetEditTextText(ctl, pstr);
+								GetEditTextCStr(ctl, npclient.serverIP);
 								DeactivateControl(ctl);
-								ConvertPString(pstr, npclient.serverIP);
-								if (strlen(npclient.serverIP) == 0)
+								if (npclient.serverIP[0] == 0)
 									strcpy(npclient.serverIP, "127.0.0.1");
 								strcpy(npServerIP, npclient.serverIP);
 								printf("%s\n", npServerIP);
@@ -452,7 +438,7 @@ static pascal OSStatus NPClientDialogEventHandler(EventHandlerCallRef inHandlerR
 									if (!r)
 										strcpy(npclient.name, "unknown");
 									else
-									if (strlen(npclient.name) == 0)
+									if (npclient.name[0] == 0)
 										strcpy(npclient.name, "Guest");
 
 									CFRelease(ref);
@@ -488,24 +474,26 @@ static pascal OSStatus NPClientDialogEventHandler(EventHandlerCallRef inHandlerR
 								npclient.dialogprocess = kNPCDialogOpenEnd;
 
 								result = noErr;
+								break;
 						}
 					}
+
+					break;
 			}
+
+			break;
 	}
 
 	return (result);
 }
 
-static pascal void NPClientDialogTimerHandler(EventLoopTimerRef inTimer, void *userData)
+static pascal void NPClientDialogTimerHandler (EventLoopTimerRef inTimer, void *userData)
 {
-	#pragma unused (inTimer)
-
-	HIViewRef	ctl, root;
-	HIViewID	cid = { 'CHAS', 0 };
 	WindowRef	window = (WindowRef) userData;
+	HIViewRef	ctl;
+	HIViewID	cid = { 'CHAS', 0 };
 
-	root = HIViewGetRoot(mRef);
-	HIViewFindByID(root, cid, &ctl);
+	HIViewFindByID(HIViewGetRoot(mRef), cid, &ctl);
 
 	switch (npclient.dialogprocess)
 	{
@@ -549,6 +537,7 @@ static pascal void NPClientDialogTimerHandler(EventLoopTimerRef inTimer, void *u
 				NPClientRestoreConfig();
 				npclient.dialogprocess = kNPCDialogCancel;
 			}
+
 			break;
 
 		case kNPCDialogOpenEnd:
@@ -562,6 +551,7 @@ static pascal void NPClientDialogTimerHandler(EventLoopTimerRef inTimer, void *u
 			}
 			else
 				npclient.dialogprocess = kNPCDialogPrepare;
+
 			break;
 
 		case kNPCDialogPrepare:
@@ -594,16 +584,17 @@ static pascal void NPClientDialogTimerHandler(EventLoopTimerRef inTimer, void *u
 			npclient.dialogsheet  = false;
 			npclient.dialogcancel = false;
 			QuitAppModalLoopForWindow(mRef);
+			break;
 	}
 }
 
-static void NPClientDetachConnectThread(void)
+static void NPClientDetachConnectThread (void)
 {
 	pthread_create(&connectthread, NULL, NPClientConnectThread, NULL);
 	pthread_detach(connectthread);
 }
 
-static void * NPClientConnectThread(void *)
+static void * NPClientConnectThread (void *)
 {
 	NPNotification("Client: Entered connection thread.", -1);
 
@@ -621,7 +612,7 @@ static void * NPClientConnectThread(void *)
 	return (NULL);
 }
 
-void NPClientInit(void)
+void NPClientInit (void)
 {
 	npclient.padloop     = false;
 	npclient.exitsgn     = false;
@@ -662,7 +653,7 @@ void NPClientInit(void)
 	}
 }
 
-static bool8 NPClientConnectToServer(int port)
+static bool8 NPClientConnectToServer (int port)
 {
 #ifndef SELF_TEST
 	struct sockaddr_in	address;
@@ -712,7 +703,7 @@ static bool8 NPClientConnectToServer(int port)
 	return (true);
 }
 
-void NPClientDisconnect(void)
+void NPClientDisconnect (void)
 {
 	if (npclient.socket != -1)
 	{
@@ -729,7 +720,7 @@ void NPClientDisconnect(void)
 	npclient.serverIP[0] = 0;
 }
 
-static bool8 NPClientSendMesToServer(int num)
+static bool8 NPClientSendMesToServer (int num)
 {
 	uint8	mes[2];
 
@@ -742,7 +733,7 @@ static bool8 NPClientSendMesToServer(int num)
 	return (true);
 }
 
-static int NPClientGetMesFromServer(void)
+static int NPClientGetMesFromServer (void)
 {
 	uint8	mes[2];
 
@@ -752,10 +743,10 @@ static int NPClientGetMesFromServer(void)
 	if (mes[0] != NP_SERVER_MAGIC)
 		return (-1);
 
-	return (int) mes[1];
+	return ((int) mes[1]);
 }
 
-static bool8 NPClientSendNameToServer(void)
+static bool8 NPClientSendNameToServer (void)
 {
 	if (!npclient.online)
 		return (false);
@@ -802,7 +793,7 @@ static bool8 NPClientSendNameToServer(void)
 	return (true);
 }
 
-static bool8 NPClientGetROMInfoFromServer(void)
+static bool8 NPClientGetROMInfoFromServer (void)
 {
 	if (!npclient.online)
 		return (false);
@@ -832,10 +823,6 @@ static bool8 NPClientGetROMInfoFromServer(void)
 
 	nprominfo.crc32      = READ_LONG(mes + 0);
 	nprominfo.input      = READ_LONG(mes + 4);
-	//reserved1 = READ_BYTE(mes + 8);
-	//reserved2 = READ_BYTE(mes + 9);
-	//reserved3 = READ_BYTE(mes + 10);
-	//reserved4 = READ_BYTE(mes + 11);
 
 	l = READ_LONG(mes + 12);
 
@@ -852,7 +839,7 @@ static bool8 NPClientGetROMInfoFromServer(void)
 	return (true);
 }
 
-void NPClientStoreConfig(void)
+void NPClientStoreConfig (void)
 {
 	npclient.savedDeviceSetting = deviceSetting;
 	npclient.savedAutoSaveDelay = Settings.AutoSaveDelay;
@@ -865,7 +852,7 @@ void NPClientStoreConfig(void)
 	ChangeInputDevice();
 }
 
-void NPClientRestoreConfig(void)
+void NPClientRestoreConfig (void)
 {
 	if (npclient.configsaved)
 	{
@@ -878,10 +865,10 @@ void NPClientRestoreConfig(void)
 	}
 }
 
-static bool8 NPClientBeginOpenROMImage(WindowRef window)
+static bool8 NPClientBeginOpenROMImage (WindowRef window)
 {
 	CFStringRef			numRef, romRef, baseRef;
-	CFMutableStringRef  mesRef;
+	CFMutableStringRef	mesRef;
 	SInt32				replaceAt;
 	bool8				r;
 
@@ -891,15 +878,10 @@ static bool8 NPClientBeginOpenROMImage(WindowRef window)
 	{
 		SNES9X_SaveSRAM();
 		S9xResetSaveTimer(false);
-		S9xSaveCheatFile(S9xGetFilename(".cht", PATCH_DIR));
+		S9xSaveCheatFile(S9xGetFilename(".cht", CHEAT_DIR));
 	}
 
 	cartOpen = false;
-
-	Settings.MouseMaster = true;
-	Settings.SuperScopeMaster = true;
-	Settings.MultiPlayer5Master = true;
-	Settings.JustifierMaster = true;
 
 	ResetCheatFinder();
 
@@ -920,10 +902,10 @@ static bool8 NPClientBeginOpenROMImage(WindowRef window)
 	return (r);
 }
 
-static bool8 NPClientEndOpenROMImage(void)
+static bool8 NPClientEndOpenROMImage (void)
 {
 	OSStatus		err;
-	FSCatalogInfo   info;
+	FSCatalogInfo	info;
 	FSRef			cartRef;
 	char			filename[PATH_MAX + 1];
 	bool8			r;
@@ -935,27 +917,21 @@ static bool8 NPClientEndOpenROMImage(void)
 		return (false);
 	}
 
-	err = FSGetCatalogInfo(&cartRef, kFSCatInfoVolume, &info, nil, nil, nil);
+	err = FSGetCatalogInfo(&cartRef, kFSCatInfoVolume, &info, NULL, NULL, NULL);
 	lockedROMMedia = IsLockedMedia(info.volume);
 
 	Settings.ForceLoROM          = (romDetect        == kLoROMForce       );
 	Settings.ForceHiROM          = (romDetect        == kHiROMForce       );
-	Settings.ForceNotInterleaved = (interleaveDetect == kNoInterleaveForce);
+	Settings.ForceHeader         = (headerDetect     == kHeaderForce      );
+	Settings.ForceNoHeader       = (headerDetect     == kNoHeaderForce    );
 	Settings.ForceInterleaved    = (interleaveDetect == kInterleaveForce  );
 	Settings.ForceInterleaved2   = (interleaveDetect == kInterleave2Force );
 	Settings.ForceInterleaveGD24 = (interleaveDetect == kInterleaveGD24   );
+	Settings.ForceNotInterleaved = (interleaveDetect == kNoInterleaveForce);
 	Settings.ForcePAL            = (videoDetect      == kPALForce         );
 	Settings.ForceNTSC           = (videoDetect      == kNTSCForce        );
-	Settings.ForceHeader         = (headerDetect     == kHeaderForce      );
-	Settings.ForceNoHeader       = (headerDetect     == kNoHeaderForce    );
 
-	Settings.ForceSuperFX = Settings.ForceNoSuperFX = false;
-	Settings.ForceDSP1    = Settings.ForceNoDSP1    = false;
-	Settings.ForceSA1     = Settings.ForceNoSA1     = false;
-	Settings.ForceC4      = Settings.ForceNoC4      = false;
-	Settings.ForceSDD1    = Settings.ForceNoSDD1    = false;
-
-	GFX.InfoString = nil;
+	GFX.InfoString = NULL;
 	GFX.InfoStringTimeout = 0;
 
 	S9xResetSaveTimer(true);
@@ -976,13 +952,13 @@ static bool8 NPClientEndOpenROMImage(void)
 	}
 }
 
-static void NPClientDetachPrepareThread(void)
+static void NPClientDetachPrepareThread (void)
 {
 	pthread_create(&preparethread, NULL, NPClientPrepareThread, NULL);
 	pthread_detach(preparethread);
 }
 
-static void * NPClientPrepareThread(void *)
+static void * NPClientPrepareThread (void *)
 {
 	NPNotification("Client: Entered preparing thread.", -1);
 
@@ -1001,7 +977,7 @@ static void * NPClientPrepareThread(void *)
 	return (NULL);
 }
 
-static bool8 NPClientROMReadyToServer(void)
+static bool8 NPClientROMReadyToServer (void)
 {
 	if (!npclient.online)
 		return (false);
@@ -1018,7 +994,7 @@ static bool8 NPClientROMReadyToServer(void)
 	return (true);
 }
 
-static bool8 NPClientGetSRAMFromServer(void)
+static bool8 NPClientGetSRAMFromServer (void)
 {
 	if (!npclient.online)
 		return (false);
@@ -1070,7 +1046,7 @@ static bool8 NPClientGetSRAMFromServer(void)
 	return (true);
 }
 
-static bool8 NPClientGetPlayerListFromServer(void)
+static bool8 NPClientGetPlayerListFromServer (void)
 {
 	if (!npclient.online)
 		return (false);
@@ -1125,12 +1101,10 @@ static bool8 NPClientGetPlayerListFromServer(void)
 	return (true);
 }
 
-static bool8 NPClientReplyPhaseSpanTest(void)
+static bool8 NPClientReplyPhaseSpanTest (void)
 {
 	uint8   mes[21];
 	int		l = npclient.numplayers * 4 + 1;
-
-	// TODO: more proper estimation
 
 	NPNotification("Client: Replying sending / receiving pad states test...", -1);
 
@@ -1159,7 +1133,7 @@ static bool8 NPClientReplyPhaseSpanTest(void)
 	return (true);
 }
 
-static void NPClientBeginPlayerListSheet(void)
+static void NPClientBeginPlayerListSheet (void)
 {
 	OSStatus	err;
 	CFStringRef	ref;
@@ -1189,17 +1163,15 @@ static void NPClientBeginPlayerListSheet(void)
 	err = ShowSheetWindow(sRef, mRef);
 }
 
-static void NPClientEndPlayerListSheet(void)
+static void NPClientEndPlayerListSheet (void)
 {
 	OSStatus	err;
 
 	err = HideSheetWindow(sRef);
 }
 
-static pascal OSStatus NPClientSheetEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus NPClientSheetEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef, inUserData)
-
 	if (!npclient.dialogsheet)
 		return (eventNotHandledErr);
 
@@ -1213,7 +1185,7 @@ static pascal OSStatus NPClientSheetEventHandler(EventHandlerCallRef inHandlerRe
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(false);
@@ -1223,7 +1195,7 @@ static pascal OSStatus NPClientSheetEventHandler(EventHandlerCallRef inHandlerRe
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
@@ -1231,15 +1203,20 @@ static pascal OSStatus NPClientSheetEventHandler(EventHandlerCallRef inHandlerRe
 							case 'ok  ':
 								npclient.dialogprocess = kNPCDialogDone;
 								result = noErr;
+								break;
 						}
 					}
+
+					break;
 			}
+
+			break;
 	}
 
 	return (result);
 }
 
-void NPClientDetachNetPlayThread(void)
+void NPClientDetachNetPlayThread (void)
 {
 	NPNotification("Client: Detaching pad thread...", -1);
 
@@ -1255,7 +1232,7 @@ void NPClientDetachNetPlayThread(void)
 	NPNotification("Client: Detached pad thread.", -1);
 }
 
-void NPClientStopNetPlayThread(void)
+void NPClientStopNetPlayThread (void)
 {
 	NPNotification("Client: Stopping pad thread...", -1);
 
@@ -1274,7 +1251,7 @@ void NPClientStopNetPlayThread(void)
 	NPNotification("Client: Stopped pad thread.", -1);
 }
 
-bool8 NPClientNetPlayWaitStart(void)
+bool8 NPClientNetPlayWaitStart (void)
 {
 	NPNotification("Client: Waiting start flag...", -1);
 
@@ -1299,7 +1276,7 @@ bool8 NPClientNetPlayWaitStart(void)
 	return (true);
 }
 
-static void * NPClientNetPlayThread(void *)
+static void * NPClientNetPlayThread (void *)
 {
 	uint8	mes[NP_MAX_PLAYERS * 64 * 4 + 1];
 	uint8	count = 0;
@@ -1352,12 +1329,10 @@ static void * NPClientNetPlayThread(void *)
 	return (NULL);
 }
 
-void NPClientProcessInput(void)
+void NPClientProcessInput (void)
 {
-	KeyMap			myKeys;
 	static uint32	pos = 0;
-
-	#define KeyIsPressed(km, k)	(1 & (((unsigned char *) km) [(k) >> 3] >> ((k) & 7)))
+	KeyMap			myKeys;
 
 	if (npclient.exitsgn)
 	{
@@ -1460,5 +1435,3 @@ void NPClientProcessInput(void)
 	npclient.phasecount--;
 	pos++;
 }
-
-#endif

@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,8 +174,8 @@
 #ifndef _mac_multicart_h_
 #define _mac_multicart_h_
 
-void InitMultiCart(void);
-void DeinitMultiCart(void);
-Boolean MultiCartDialog(void);
+void InitMultiCart (void);
+void DeinitMultiCart (void);
+Boolean MultiCartDialog (void);
 
 #endif

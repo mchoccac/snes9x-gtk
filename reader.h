@@ -159,57 +159,54 @@
 **********************************************************************************/
 
 
-
-// Abstract the details of reading from zip files versus FILE *'s.
-
 #ifndef _READER_H_
 #define _READER_H_
 
-#include <stdio.h>
-#include <string>
-
-#include "snes9x.h"
-
-class Reader {
-  public:
-    Reader(void);
-    virtual ~Reader();
-    virtual int get_char() = 0;
-    virtual char *gets(char *buf, size_t len) = 0;
-    virtual char *getline(void);  // free() when done
-    virtual std::string getline(bool &eof);
-    virtual size_t read(char *buf, size_t len) = 0;
+class Reader
+{
+	public:
+		Reader (void);
+		virtual ~Reader (void);
+		virtual int get_char (void) = 0;
+		virtual char * gets (char *, size_t) = 0;
+		virtual char * getline (void);	// free() when done
+		virtual std::string getline (bool &);
+		virtual size_t read (char *, size_t) = 0;
 };
 
-class fReader : public Reader {
-  public:
-    fReader(STREAM fp);
-    virtual ~fReader(void);
-    virtual int get_char();
-    virtual char *gets(char *buf, size_t len);
-    virtual size_t read(char *buf, size_t len);
-  private:
-    STREAM fp;
+class fReader : public Reader
+{
+	public:
+		fReader (STREAM);
+		virtual ~fReader (void);
+		virtual int get_char (void);
+		virtual char * gets (char *, size_t);
+		virtual size_t read (char *, size_t);
+
+	private:
+		STREAM	fp;
 };
 
 #ifdef UNZIP_SUPPORT
-#include "unzip/unzip.h"
 
-#define unz_BUFFSIZ 1024
+#define unz_BUFFSIZ	1024
 
-class unzReader : public Reader {
-  public:
-    unzReader(unzFile &v);
-    virtual ~unzReader(void);
-    virtual int get_char();
-    virtual char *gets(char *buf, size_t len);
-    virtual size_t read(char *buf, size_t len);
-  private:
-    unzFile file;
-    char buffer[unz_BUFFSIZ];
-    char *head;
-    size_t numbytes;
+class unzReader : public Reader
+{
+	public:
+		unzReader (unzFile &);
+		virtual ~unzReader (void);
+		virtual int get_char (void);
+		virtual char * gets (char *, size_t);
+		virtual size_t read (char *, size_t);
+
+	private:
+		unzFile	file;
+		char	buffer[unz_BUFFSIZ];
+		char	*head;
+		size_t	numbytes;
 };
+
 #endif
 
-#endif /* ndef _READER_H_ */
+#endif

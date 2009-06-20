@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,25 +171,21 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "memmap.h"
-#include "movie.h"
-#include "gfx.h"
 #include "apu.h"
-#include "cpuexec.h"
-#include "cheats.h"
+#include "soundux.h"
 #include "controls.h"
 #include "crosshairs.h"
+#include "cheats.h"
+#include "movie.h"
 #include "display.h"
-#include "ppu.h"
-#include "soundux.h"
-#include "spc7110.h"
 
 #ifdef DEBUGGER
 #include "debug.h"
 #endif
 
 #include <QuickTime/QuickTime.h>
-#include <unistd.h>
 #include <pthread.h>
 
 #include "mac-prefix.h"
@@ -199,7 +193,10 @@
 #include "mac-audio.h"
 #include "mac-cheat.h"
 #include "mac-cheatfinder.h"
+#include "mac-client.h"
+#include "mac-cocoatools.h"
 #include "mac-controls.h"
+#include "mac-coreimage.h"
 #include "mac-dialog.h"
 #include "mac-file.h"
 #include "mac-gworld.h"
@@ -207,38 +204,28 @@
 #include "mac-keyboard.h"
 #include "mac-multicart.h"
 #include "mac-musicbox.h"
+#include "mac-netplay.h"
 #include "mac-prefs.h"
 #include "mac-quicktime.h"
 #include "mac-render.h"
-#include "mac-snes9x.h"
 #include "mac-screenshot.h"
+#include "mac-server.h"
+#include "mac-snes9x.h"
 #include "mac-stringtools.h"
 #include "mac-os.h"
-#include "mac-cocoatools.h"
-
-#ifdef MAC_NETPLAY_SUPPORT
-#include "mac-netplay.h"
-#include "mac-client.h"
-#include "mac-server.h"
-#endif
-
-#ifdef MAC_COREIMAGE_SUPPORT
-#include "mac-coreimage.h"
-#endif
 
 #define	kRecentMenu_MAX		20
 #define KeyIsPressed(km, k)	(1 & (((unsigned char *) km) [(k) >> 3] >> ((k) & 7)))
-
-extern int			spc_is_dumping;
 
 volatile bool8		running             = false;
 volatile bool8		s9xthreadrunning    = false;
 
 volatile bool8		eventQueued         = false;
-volatile bool8		rejectinput         = false;
 
 volatile int		windowResizeCount   = 1;
 volatile bool8		windowExtend        = true;
+
+SInt32				systemVersion;
 
 uint32				controlPad[MAC_MAX_PLAYERS];
 
@@ -247,29 +234,29 @@ uint8				romDetect           = kAutoROMType,
 					videoDetect         = kAutoVideo,
 					headerDetect        = kAutoHeader;
 
-WindowRef			gWindow             = nil;
-CGrafPtr			gWindowPort         = nil;
-RgnHandle			gWindowRgn          = nil;
-Rect				gWindowRect;
-int					gWindowBarHeight;
+WindowRef			gWindow             = NULL;
+HIRect				gWindowRect;
 int					glScreenW,
 					glScreenH;
 CGRect				glScreenBounds;
 Point				windowPos[kWindowCount];
 CGSize				windowSize[kWindowCount];
 
+CGImageRef			macIconImage[118];
+int					macPadIconIndex,
+					macLegendIconIndex,
+					macMusicBoxIconIndex, 
+					macFunctionIconIndex;
+
 int					macFrameSkip        = -1;
 int32				skipFrames          = 3;
 int64				lastFrame           = 0;
 
-long				lastDrawingMethod   = 0;
+int					macFastForwardRate  = 5,
+					macFrameAdvanceRate = 1000000;
 
 unsigned long		spcFileCount        = 0,
 					pngFileCount        = 0;
-
-long				systemVersion,
-					qtVersion,
-					hiToolboxVersion;
 
 bool8				finished            = false,
 					cartOpen            = false,
@@ -281,16 +268,6 @@ bool8				finished            = false,
 
 bool8				fullscreen          = false,
 					autoRes             = false,
-					doubleSize          = true,
-					tvMode              = false,
-					smoothMode          = true,
-					eagleMode           = false,
-					saiMode             = false,
-					supsaiMode          = false,
-					epxMode             = false,
-					hq2xMode            = false,
-					hq3xMode            = false,
-					hq4xMode            = false,
 					glstretch           = true,
 					gl32bit             = true,
 					vsync               = true,
@@ -299,16 +276,13 @@ bool8				fullscreen          = false,
 					multiprocessor      = false,
 					ciFilterEnable      = false;
 long				drawingMethod       = kDrawingOpenGL;
+int					videoMode           = VIDEOMODE_SMOOTH;
 
 float				macSoundPitch       = 1.0;
 SInt32				macSoundVolume      = 80;
-int					macSoundInterval  	= 10;
 uint16				aueffect            = 0;
 
-uint8				saveInROMFolder     = 0;	// 0 : Snes9x  1 : ROM  2 : Application Support
-int					mac7110Load         = 1,
-					mac7110Megs         = 5,
-					macSDD1Pack         = 1;
+uint8				saveInROMFolder     = 2;	// 0 : Snes9x  1 : ROM  2 : Application Support
 
 int					macCurvatureWarp    = 15,
 					macAspectRatio      = 0;
@@ -317,32 +291,26 @@ bool8				startopendlog       = false,
 					showtimeinfrz       = true,
 					enabletoggle        = true,
 					savewindowpos       = false,
-					minimizecpu         = true,
 					onscreeninfo        = true;
+int					inactiveMode        = 2;
 int					musicboxmode        = kMBXSoundEmulation;
 
 bool8				applycheat          = false;
 int					padSetting          = 1,
 					deviceSetting       = 1,
 					deviceSettingMaster = 1;
-AutoFireState		autofireRec[MAC_MAX_PLAYERS];
-
 int					macControllerOption = SNES_JOYPAD;
-
-char				npServerIP[256];
-char				npName[256];
+AutoFireState		autofireRec[MAC_MAX_PLAYERS];
 
 bool8				macQTRecord         = false;
 uint16				macQTMovFlag        = 0;
 
-int					macFastForwardRate  = 5,
-					macFrameAdvanceRate = 1000000;
-
-int					inactiveMode        = 2;
-
 uint16				macRecordFlag       = 0x3,
 					macPlayFlag         = 0x1;
 wchar_t				macRecordWChar[MOVIE_MAX_METADATA];
+
+char				npServerIP[256],
+					npName[256];
 
 bool8				lastoverscan        = false;
 
@@ -352,117 +320,9 @@ ExtraOption			extraOptions;
 
 CFStringRef			multiCartPath[2];
 
-static void Initialize(void);
-static void Deinitialize(void);
-static void InitAutofire(void);
-static void InitRecentItems(void);
-static void DeinitRecentItems(void);
-static void ClearRecentItems(void);
-static void InitRecentMenu(void);
-static void DeinitRecentMenu(void);
-static void ProcessInput(void);
-static void ResizeGameWindow(void);
-static void ChangeAutofireSettings(int, int);
-static void ChangeTurboRate(int);
-static void ForceChangingKeyScript(void);
-static void CFTimerCallback(CFRunLoopTimerRef, void *);
-static void UpdateFreezeDefrostScreen(int, CGImageRef, uint8 *, CGContextRef);
-static void * MacSNES9XThread(void *);
-static OSStatus HandleMenuChoice(long, Boolean *);
-static inline void EmulationLoop(void);
-static pascal OSStatus MainEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus SubEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus GameWindowEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus GameWindowUserPaneEventHandler(EventHandlerCallRef, EventRef, void *);
-
-typedef struct
-{
-	int	globalLeft;
-	int	globalTop;
-	int	width;
-	int	height;
-}	GameViewInfo;
-
-static pthread_t		s9xthread;
-
-static MenuRef			recentMenu;
-static CFStringRef		recentItem[kRecentMenu_MAX + 1];
-
-static EventHandlerUPP	gameWindowUPP,
-						gameWUPaneUPP;
-static EventHandlerRef	gameWindowEventRef,
-						gameWUPaneEventRef;
-static int				windowZoomCount  = 0;
-
-static int				toggleff         = 0;
-
-static int				frameCount       = 0;
-
-static Boolean			frzselecting     = false;
-
-static GameViewInfo		scopeViewInfo;
-
-static uint16			changeAuto[2] = { 0x0000, 0x0000 };
-
-enum
-{
-	kmF1Key    = 0x7A,
-	kmF2Key    = 0x78,
-	kmF3Key	   = 0x63,
-	kmF4Key	   = 0x76,
-	kmF5Key	   = 0x60,
-	kmF6Key    = 0x61,
-	km0Key     = 0x1D,
-	km1Key     = 0x12,
-	km2Key     = 0x13,
-	km3Key     = 0x14,
-	km4Key     = 0x15,
-	km5Key     = 0x17,
-	km6Key     = 0x16,
-	km7Key     = 0x1A,
-	km8Key     = 0x1C,
-	km9Key     = 0x19,
-	kmAKey     = 0x00,
-	kmBKey     = 0x0B,
-	kmCKey     = 0x08,
-	kmEscKey   = 0x35,
-	kmCtrKey   = 0x3B,
-	kmMinusKey = 0x1B,
-	kmQKey     = 0x0C,
-	kmWKey     = 0x0D
-};
-
-struct ButtonCommand
-{
-	char	command[16];
-	uint8	keycode;
-	bool8	held;
-};
-
-static ButtonCommand btncmd[] =
-{
-	{ "ToggleBG0",       kmF1Key,    false },
-	{ "ToggleBG1",       kmF2Key,    false },
-	{ "ToggleBG2",       kmF3Key,    false },
-	{ "ToggleBG3",       kmF4Key,    false },
-	{ "ToggleSprites",   kmF5Key,    false },
-	{ "SwapJoypads",     kmF6Key,    false },
-	{ "SoundChannel0",   km1Key,     false },
-	{ "SoundChannel1",   km2Key,     false },
-	{ "SoundChannel2",   km3Key,     false },
-	{ "SoundChannel3",   km4Key,     false },
-	{ "SoundChannel4",   km5Key,     false },
-	{ "SoundChannel5",   km6Key,     false },
-	{ "SoundChannel6",   km7Key,     false },
-	{ "SoundChannel7",   km8Key,     false },
-	{ "SoundChannelsOn", km9Key,     false },
-	{ "_mac1",           km0Key,     false },
-	{ "_mac2",           kmMinusKey, false },
-	{ "_mac3",           kmQKey,     false },
-	{ "_mac4",           kmWKey,     false }
-};
-
-#define	kCommandListSize	(sizeof(btncmd) / sizeof(btncmd[0]))
+#ifdef MAC_PANTHER_SUPPORT
+IconRef				macIconRef[118];
+#endif
 
 enum
 {
@@ -527,13 +387,125 @@ enum
 	mRecentItem     = 203
 };
 
-int main(int argc, char **argv)
+enum
 {
- 	#pragma unused (argc, argv)
+	kmF1Key    = 0x7A,
+	kmF2Key    = 0x78,
+	kmF3Key	   = 0x63,
+	kmF4Key	   = 0x76,
+	kmF5Key	   = 0x60,
+	kmF6Key    = 0x61,
+	km0Key     = 0x1D,
+	km1Key     = 0x12,
+	km2Key     = 0x13,
+	km3Key     = 0x14,
+	km4Key     = 0x15,
+	km5Key     = 0x17,
+	km6Key     = 0x16,
+	km7Key     = 0x1A,
+	km8Key     = 0x1C,
+	km9Key     = 0x19,
+	kmAKey     = 0x00,
+	kmBKey     = 0x0B,
+	kmCKey     = 0x08,
+	kmEscKey   = 0x35,
+	kmCtrKey   = 0x3B,
+	kmMinusKey = 0x1B,
+	kmQKey     = 0x0C,
+	kmWKey     = 0x0D
+};
 
+struct ButtonCommand
+{
+	char	command[16];
+	uint8	keycode;
+	bool8	held;
+};
+
+struct GameViewInfo
+{
+	int		globalLeft;
+	int		globalTop;
+	int		width;
+	int		height;
+};
+
+static volatile bool8	rejectinput     = false;
+
+static pthread_t		s9xthread;
+
+static MenuRef			recentMenu;
+static CFStringRef		recentItem[kRecentMenu_MAX + 1];
+
+static EventHandlerUPP	gameWindowUPP,
+						gameWUPaneUPP;
+static EventHandlerRef	gameWindowEventRef,
+						gameWUPaneEventRef;
+
+static int				windowZoomCount = 0;
+
+static int				frameCount      = 0;
+
+static bool8			frzselecting    = false;
+
+static uint16			changeAuto[2] = { 0x0000, 0x0000 };
+
+static GameViewInfo		scopeViewInfo;
+
+static ButtonCommand	btncmd[] =
+{
+	{ "ToggleBG0",       kmF1Key,    false },
+	{ "ToggleBG1",       kmF2Key,    false },
+	{ "ToggleBG2",       kmF3Key,    false },
+	{ "ToggleBG3",       kmF4Key,    false },
+	{ "ToggleSprites",   kmF5Key,    false },
+	{ "SwapJoypads",     kmF6Key,    false },
+	{ "SoundChannel0",   km1Key,     false },
+	{ "SoundChannel1",   km2Key,     false },
+	{ "SoundChannel2",   km3Key,     false },
+	{ "SoundChannel3",   km4Key,     false },
+	{ "SoundChannel4",   km5Key,     false },
+	{ "SoundChannel5",   km6Key,     false },
+	{ "SoundChannel6",   km7Key,     false },
+	{ "SoundChannel7",   km8Key,     false },
+	{ "SoundChannelsOn", km9Key,     false },
+	{ "_mac1",           km0Key,     false },
+	{ "_mac2",           kmMinusKey, false },
+	{ "_mac3",           kmQKey,     false },
+	{ "_mac4",           kmWKey,     false }
+};
+
+#define	kCommandListSize	(sizeof(btncmd) / sizeof(btncmd[0]))
+
+static void Initialize (void);
+static void Deinitialize (void);
+static void InitAutofire (void);
+static void InitRecentItems (void);
+static void DeinitRecentItems (void);
+static void ClearRecentItems (void);
+static void InitRecentMenu (void);
+static void DeinitRecentMenu (void);
+static void ProcessInput (void);
+static void ResizeGameWindow (void);
+static void ChangeAutofireSettings (int, int);
+static void ChangeTurboRate (int);
+static void ForceChangingKeyScript (void);
+static void CFTimerCallback (CFRunLoopTimerRef, void *);
+static void UpdateFreezeDefrostScreen (int, CGImageRef, uint8 *, CGContextRef);
+static void * MacSnes9xThread (void *);
+static OSStatus HandleMenuChoice (UInt32, Boolean *);
+static inline void EmulationLoop (void);
+static pascal OSStatus MainEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus SubEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus GameWindowEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus GameWindowUserPaneEventHandler (EventHandlerCallRef, EventRef, void *);
+
+
+int main (int argc, char **argv)
+{
 	OSStatus		err;
 	EventHandlerRef	eref;
-	EventHandlerUPP	appEventHandler;
+	EventHandlerUPP	eUPP;
 	EventTypeSpec	mEvents[] = { { kEventClassCommand, kEventCommandProcess      },
 								  { kEventClassCommand, kEventCommandUpdateStatus } },
 					sEvents[] = { { kEventClassCommand, kEventCommandProcess      },
@@ -542,8 +514,8 @@ int main(int argc, char **argv)
 								  { kEventClassMouse,   kEventMouseMoved          },
 								  { kEventClassMouse,   kEventMouseDragged        } };
 
-	appEventHandler = NewEventHandlerUPP(MainEventHandler);
- 	err = InstallApplicationEventHandler(appEventHandler, GetEventTypeCount(mEvents), mEvents, nil, &eref);
+	eUPP = NewEventHandlerUPP(MainEventHandler);
+ 	err = InstallApplicationEventHandler(eUPP, GetEventTypeCount(mEvents), mEvents, NULL, &eref);
 
 	Initialize();
 
@@ -551,42 +523,36 @@ int main(int argc, char **argv)
 	{
 		if (cartOpen && running)
 		{
-			#ifdef DEBUGGER
-				CPU.Flags |= DEBUG_MODE_FLAG;
-				S9xDoDebug();
-			#endif
+		#ifdef DEBUGGER
+			CPU.Flags |= DEBUG_MODE_FLAG;
+			S9xDoDebug();
+		#endif
 
 			eventQueued = false;
 
 			Microseconds((UnsignedWide *) &lastFrame);
 			frameCount = 0;
 			if (macFrameSkip < 0)
-			{
-				printf("Frame skip: auto\n");
 				skipFrames = 3;
-			}
 			else
-			{
-				printf("Frame skip: %d\n", macFrameSkip - 1);
 				skipFrames = macFrameSkip;
-			}
 
 			err = RemoveEventHandler(eref);
-			DisposeEventHandlerUPP(appEventHandler);
+			DisposeEventHandlerUPP(eUPP);
 
-			appEventHandler = NewEventHandlerUPP(SubEventHandler);
-			err = InstallApplicationEventHandler(appEventHandler, GetEventTypeCount(sEvents), sEvents, nil, &eref);
+			eUPP = NewEventHandlerUPP(SubEventHandler);
+			err = InstallApplicationEventHandler(eUPP, GetEventTypeCount(sEvents), sEvents, NULL, &eref);
 
-			S9xInitDisplay(nil, nil);
+			S9xInitDisplay(NULL, NULL);
 			ClearGFXScreen();
 
 			if (!fullscreen)
 				ForceChangingKeyScript();
 
-			pthread_create(&s9xthread, nil, MacSNES9XThread, nil);
+			pthread_create(&s9xthread, NULL, MacSnes9xThread, NULL);
 
-			CFRunLoopTimerRef		cftimer    = nil;
-			CFRunLoopTimerContext	cftimerctx = { 0, nil, nil, nil, nil };
+			CFRunLoopTimerRef		cftimer    = NULL;
+			CFRunLoopTimerContext	cftimerctx = { 0, NULL, NULL, NULL, NULL };
 
 			if (!fullscreen)
 			{
@@ -596,6 +562,7 @@ int main(int argc, char **argv)
 			}
 
 			AdjustMenus();
+
 			RunApplicationEventLoop();
 
 			if (!fullscreen)
@@ -604,15 +571,14 @@ int main(int argc, char **argv)
 				{
 					CFRunLoopTimerInvalidate(cftimer);
 					CFRelease(cftimer);
-					cftimer = nil;
+					cftimer = NULL;
 				}
 			}
 
-			pthread_join(s9xthread, nil);
+			pthread_join(s9xthread, NULL);
 
 			S9xDeinitDisplay();
 
-		#ifdef MAC_NETPLAY_SUPPORT
 			if (Settings.NetPlay)
 			{
 				if (!Settings.NetPlayServer)
@@ -624,13 +590,12 @@ int main(int argc, char **argv)
 				Settings.NetPlay = false;
 				Settings.NetPlayServer = false;
 			}
-		#endif
 
 			err = RemoveEventHandler(eref);
-			DisposeEventHandlerUPP(appEventHandler);
+			DisposeEventHandlerUPP(eUPP);
 
-			appEventHandler = NewEventHandlerUPP(MainEventHandler);
-			err = InstallApplicationEventHandler(appEventHandler, GetEventTypeCount(mEvents), mEvents, nil, &eref);
+			eUPP = NewEventHandlerUPP(MainEventHandler);
+			err = InstallApplicationEventHandler(eUPP, GetEventTypeCount(mEvents), mEvents, NULL, &eref);
 		}
 
 		if (!finished)
@@ -643,19 +608,19 @@ int main(int argc, char **argv)
 	Deinitialize();
 
 	err = RemoveEventHandler(eref);
- 	DisposeEventHandlerUPP(appEventHandler);
+ 	DisposeEventHandlerUPP(eUPP);
 
-	return 0;
+	return (0);
 }
 
-static void CFTimerCallback(CFRunLoopTimerRef timer, void *info)
+static void CFTimerCallback (CFRunLoopTimerRef timer, void *info)
 {
 	OSStatus	err;
 
 	err = UpdateSystemActivity(OverallAct);
 }
 
-static void * MacSNES9XThread(void *)
+static void * MacSnes9xThread (void *)
 {
 	Settings.StopEmulation = false;
 	s9xthreadrunning = true;
@@ -665,14 +630,12 @@ static void * MacSNES9XThread(void *)
 	s9xthreadrunning = false;
 	Settings.StopEmulation = true;
 
-	return nil;
+	return (NULL);
 }
 
-static inline void EmulationLoop(void)
+static inline void EmulationLoop (void)
 {
-	bool8   olddisplayframerate = false;
-
-	printf("Minimize CPU usage: %s\n", minimizecpu ? "on" : "off");
+	bool8	olddisplayframerate = false;
 
 	if (macQTRecord)
 	{
@@ -682,7 +645,6 @@ static inline void EmulationLoop(void)
 
 	MacStartSound();
 
-#ifdef MAC_NETPLAY_SUPPORT
 	if (Settings.NetPlay)
 	{
 		if (Settings.NetPlayServer)
@@ -718,16 +680,12 @@ static inline void EmulationLoop(void)
 	}
 	else
 	{
-#endif
 		while (running)
 		{
 			ProcessInput();
 			S9xMainLoop();
 		}
-
-#ifdef MAC_NETPLAY_SUPPORT
 	}
-#endif
 
 	MacStopSound();
 
@@ -742,15 +700,13 @@ static inline void EmulationLoop(void)
 	S9xMovieShutdown();
 }
 
-static pascal OSStatus MainEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus MainEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-    #pragma unused (inHandlerCallRef, inUserData)
-
     OSStatus	err, result = eventNotHandledErr;
 	Boolean		done = false;
 
 	if (frzselecting)
-		return result;
+		return (result);
 
 	switch (GetEventClass(inEvent))
 	{
@@ -760,7 +716,7 @@ static pascal OSStatus MainEventHandler(EventHandlerCallRef inHandlerCallRef, Ev
 				HICommand	cmd;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &cmd);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &cmd);
 					if (err == noErr && cmd.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(false);
@@ -770,12 +726,12 @@ static pascal OSStatus MainEventHandler(EventHandlerCallRef inHandlerCallRef, Ev
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &cmd);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &cmd);
 					if (err == noErr)
 					{
 						UInt32	modifierkey;
 
-						err = GetEventParameter(inEvent, kEventParamKeyModifiers, typeUInt32, nil, sizeof(UInt32), nil, &modifierkey);
+						err = GetEventParameter(inEvent, kEventParamKeyModifiers, typeUInt32, NULL, sizeof(UInt32), NULL, &modifierkey);
 						if (err == noErr)
 						{
 							if ((cmd.commandID == 'pref') && (modifierkey & optionKey))
@@ -787,20 +743,22 @@ static pascal OSStatus MainEventHandler(EventHandlerCallRef inHandlerCallRef, Ev
 								QuitApplicationEventLoop();
 						}
 					}
+
+					break;
 			}
+
+			break;
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal OSStatus SubEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus SubEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-    #pragma unused (inHandlerCallRef, inUserData)
-
-    OSStatus	err, result = eventNotHandledErr;
+	OSStatus	err, result = eventNotHandledErr;
 
 	if (frzselecting)
-		return result;
+		return (result);
 
 	switch (GetEventClass(inEvent))
 	{
@@ -810,7 +768,7 @@ static pascal OSStatus SubEventHandler(EventHandlerCallRef inHandlerCallRef, Eve
 				HICommand	cmd;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &cmd);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &cmd);
 					if (err == noErr && cmd.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(false);
@@ -820,7 +778,7 @@ static pascal OSStatus SubEventHandler(EventHandlerCallRef inHandlerCallRef, Eve
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &cmd);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &cmd);
 					if (err == noErr)
 					{
 						switch (cmd.commandID)
@@ -832,17 +790,17 @@ static pascal OSStatus SubEventHandler(EventHandlerCallRef inHandlerCallRef, Eve
 									sleep(0);
 								QuitApplicationEventLoop();
 								result = noErr;
-
 								break;
 
 							case 'Ocif':	// Core Image Filter
 								HiliteMenu(0);
 								ConfigureCoreImageFilter();
 								result = noErr;
-
 								break;
 						}
 					}
+
+					break;
 			}
 
 			break;
@@ -852,22 +810,18 @@ static pascal OSStatus SubEventHandler(EventHandlerCallRef inHandlerCallRef, Eve
 			{
 				if ((macControllerOption == SNES_JOYPAD) || (macControllerOption == SNES_MULTIPLAYER5) || (macControllerOption == SNES_MULTIPLAYER5_2))
 				{
-				#ifdef MAC_NETPLAY_SUPPORT
 					if (!(Settings.NetPlay && !Settings.NetPlayServer))
 					{
-				#endif
 						switch (GetEventKind(inEvent))
 						{
 							case kEventMouseUp:
 								HIPoint	hipt;
 
-								err = GetEventParameter(inEvent, kEventParamMouseLocation, typeHIPoint, nil, sizeof(HIPoint), nil, &hipt);
+								err = GetEventParameter(inEvent, kEventParamMouseLocation, typeHIPoint, NULL, sizeof(HIPoint), NULL, &hipt);
 								if (err == noErr)
 								{
 									if (CGRectContainsPoint(glScreenBounds, hipt))
 									{
-										printf("Exiting from fullscreen...\n");
-
 										running = false;
 										while (s9xthreadrunning)
 											sleep(0);
@@ -875,10 +829,10 @@ static pascal OSStatus SubEventHandler(EventHandlerCallRef inHandlerCallRef, Eve
 										result = noErr;
 									}
 								}
+
+								break;
 						}
-				#ifdef MAC_NETPLAY_SUPPORT
 					}
-				#endif
 				}
 				else
 				if ((macControllerOption == SNES_MOUSE) || (macControllerOption == SNES_MOUSE_SWAPPED))
@@ -889,21 +843,25 @@ static pascal OSStatus SubEventHandler(EventHandlerCallRef inHandlerCallRef, Eve
 						case kEventMouseDragged:
 							HIPoint	hipt;
 
-							err = GetEventParameter(inEvent, kEventParamMouseDelta, typeHIPoint, nil, sizeof(HIPoint), nil, &hipt);
+							err = GetEventParameter(inEvent, kEventParamMouseDelta, typeHIPoint, NULL, sizeof(HIPoint), NULL, &hipt);
 							if (err == noErr)
 							{
 								unlimitedCursor.x += hipt.x;
 								unlimitedCursor.y += hipt.y;
 							}
+
+							break;
 					}
 				}
 			}
+
+			break;
 	}
 
-	return result;
+	return (result);
 }
 
-void PostQueueToSubEventLoop(void)
+void PostQueueToSubEventLoop (void)
 {
 	OSStatus	err;
 	EventRef	event;
@@ -915,7 +873,7 @@ void PostQueueToSubEventLoop(void)
 
 		cmd.commandID          = 'SubQ';
 		cmd.attributes         = kEventAttributeUserEvent;
-		cmd.menu.menuRef       = nil;
+		cmd.menu.menuRef       = NULL;
 		cmd.menu.menuItemIndex = 0;
 
 		err = SetEventParameter(event, kEventParamDirectObject, typeHICommand, sizeof(HICommand), &cmd);
@@ -926,15 +884,16 @@ void PostQueueToSubEventLoop(void)
 	}
 }
 
-void InitGameWindow(void)
+void InitGameWindow (void)
 {
 	OSStatus			err;
 	IBNibRef			nibRef;
+	WindowAttributes	attr;
+	CFStringRef			ref;
 	HIViewRef			ctl;
 	HIViewID			cid = { 'Pict', 0 };
-	CFStringRef			ref;
-	WindowAttributes	attr;
-	char				drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	Rect				rct;
+	char				drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 	EventTypeSpec		wupaneEvents[] = { { kEventClassControl, kEventControlClick            },
 										   { kEventClassControl, kEventControlDraw             } },
 						windowEvents[] = { { kEventClassWindow,  kEventWindowDeactivated       },
@@ -974,13 +933,10 @@ void InitGameWindow(void)
 	}
 
 	attr = kWindowFullZoomAttribute | kWindowResizableAttribute | kWindowLiveResizeAttribute;
-	if ((drawingMethod == kDrawingOpenGL) || (drawingMethod == kDrawingBlitGL))
-		err = ChangeWindowAttributes(gWindow, attr, kWindowNoAttributes);
-	else
-		err = ChangeWindowAttributes(gWindow, kWindowNoAttributes, attr);
+	err = ChangeWindowAttributes(gWindow, attr, kWindowNoAttributes);
 
 	attr = kWindowToolbarButtonAttribute;
-	if (((drawingMethod == kDrawingOpenGL) || (drawingMethod == kDrawingBlitGL)) && !drawoverscan)
+	if (!drawoverscan)
 		err = ChangeWindowAttributes(gWindow, attr, kWindowNoAttributes);
 	else
 		err = ChangeWindowAttributes(gWindow, kWindowNoAttributes, attr);
@@ -996,13 +952,6 @@ void InitGameWindow(void)
 			windowSize[kWindowScreen].height = kMacWindowHeight;
 		}
 
-		if (drawingMethod == kDrawingDirect)
-		{
-			windowExtend = true;
-			windowSize[kWindowScreen].width  = 512;
-			windowSize[kWindowScreen].height = kMacWindowHeight;
-		}
-		else
 		if (!lastoverscan && !windowExtend && drawoverscan)
 		{
 			windowExtend = true;
@@ -1013,21 +962,22 @@ void InitGameWindow(void)
 	}
 	else
 	{
-		if ((drawingMethod == kDrawingDirect) || drawoverscan)
+		if (drawoverscan)
 			windowExtend = true;
 
 		SizeWindow(gWindow, 512, (windowExtend ? kMacWindowHeight : (SNES_HEIGHT << 1)), false);
-		RepositionWindow(gWindow, nil, kWindowCenterOnMainScreen);
+		RepositionWindow(gWindow, NULL, kWindowCenterOnMainScreen);
 	}
 
 	windowZoomCount = 0;
 
-	GetWindowBounds(gWindow, kWindowContentRgn, &gWindowRect);
+	GetWindowBounds(gWindow, kWindowContentRgn, &rct);
+	gWindowRect = CGRectMake((float) rct.left, (float) rct.top, (float) (rct.right - rct.left), (float) (rct.bottom - rct.top));
 
 	ActivateWindow(gWindow, true);
 }
 
-void UpdateGameWindow(void)
+void UpdateGameWindow (void)
 {
 	OSStatus	err;
 	HIViewRef	ctl;
@@ -1040,7 +990,7 @@ void UpdateGameWindow(void)
 	err = HIViewSetNeedsDisplay(ctl, true);
 }
 
-static void ResizeGameWindow(void)
+static void ResizeGameWindow (void)
 {
 	Rect	rct;
 	int		ww = SNES_WIDTH,
@@ -1064,7 +1014,7 @@ static void ResizeGameWindow(void)
 		windowZoomCount = 0;
 }
 
-void DeinitGameWindow(void)
+void DeinitGameWindow (void)
 {
 	OSStatus	err;
 
@@ -1080,17 +1030,16 @@ void DeinitGameWindow(void)
 	err = RemoveEventHandler(gameWindowEventRef);
 	DisposeEventHandlerUPP(gameWindowUPP);
 
-	ReleaseWindow(gWindow);
-	gWindow = nil;
+	CFRelease(gWindow);
+	gWindow = NULL;
 }
 
-static pascal OSStatus GameWindowEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus GameWindowEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-    #pragma unused (inHandlerCallRef)
-
 	OSStatus	err, result = eventNotHandledErr;
+	HIRect		rct;
+	Rect		r;
 	UInt32		attr;
-	Rect		rct;
 
 	switch (GetEventClass(inEvent))
 	{
@@ -1100,10 +1049,8 @@ static pascal OSStatus GameWindowEventHandler(EventHandlerCallRef inHandlerCallR
 				case kEventWindowDeactivated:
 					if (running)
 					{
-					#ifdef MAC_NETPLAY_SUPPORT
 						if (!(Settings.NetPlay && !Settings.NetPlayServer))
 						{
-					#endif
 							if (inactiveMode == 3)
 							{
 								running = false;
@@ -1118,9 +1065,7 @@ static pascal OSStatus GameWindowEventHandler(EventHandlerCallRef inHandlerCallR
 								rejectinput = true;
 								result = noErr;
 							}
-					#ifdef MAC_NETPLAY_SUPPORT
 						}
-					#endif
 					}
 
 					break;
@@ -1128,10 +1073,8 @@ static pascal OSStatus GameWindowEventHandler(EventHandlerCallRef inHandlerCallR
 				case kEventWindowActivated:
 					if (running)
 					{
-					#ifdef MAC_NETPLAY_SUPPORT
 						if (!(Settings.NetPlay && !Settings.NetPlayServer))
 						{
-					#endif
 							ForceChangingKeyScript();
 
 							if (inactiveMode == 2)
@@ -1139,93 +1082,73 @@ static pascal OSStatus GameWindowEventHandler(EventHandlerCallRef inHandlerCallR
 								rejectinput = false;
 								result = noErr;
 							}
-					#ifdef MAC_NETPLAY_SUPPORT
 						}
-					#endif
 					}
 
 					break;
 
 				case kEventWindowBoundsChanging:
 					windowResizeCount = 0x7FFFFFFF;
-					err = GetEventParameter(inEvent, kEventParamAttributes, typeUInt32, nil, sizeof(UInt32), nil, &attr);
+
+					err = GetEventParameter(inEvent, kEventParamAttributes, typeUInt32, NULL, sizeof(UInt32), NULL, &attr);
 					if ((err == noErr) && (attr & kWindowBoundsChangeSizeChanged))
 					{
-						err = GetEventParameter(inEvent, kEventParamCurrentBounds, typeQDRectangle, nil, sizeof(Rect), nil, &rct);
+						err = GetEventParameter(inEvent, kEventParamCurrentBounds, typeHIRect, NULL, sizeof(HIRect), NULL, &rct);
 						if (err == noErr)
 						{
 							if (GetCurrentEventKeyModifiers() & shiftKey)
 							{
-								Rect	origRct;
+								HIRect	origRct;
 
-								err = GetEventParameter(inEvent, kEventParamOriginalBounds, typeQDRectangle, nil, sizeof(Rect), nil, &origRct);
+								err = GetEventParameter(inEvent, kEventParamOriginalBounds, typeHIRect, NULL, sizeof(HIRect), NULL, &origRct);
 								if (err == noErr)
 								{
-									rct.right = rct.left + (int) ((float) (origRct.right - origRct.left) / (float) (origRct.bottom - origRct.top) * (float) (rct.bottom - rct.top));
-									err = SetEventParameter(inEvent, kEventParamCurrentBounds, typeQDRectangle, sizeof(Rect), &rct);
+									rct.size.width = (float) (int) (origRct.size.width * rct.size.height / origRct.size.height);
+									err = SetEventParameter(inEvent, kEventParamCurrentBounds, typeHIRect, sizeof(HIRect), &rct);
 								}
 							}
 
 							gWindowRect = rct;
-						#ifdef MAC_JAGUAR_SUPPORT
-							if (systemVersion < 0x1030)
-							{
-								WindowRef	window = (WindowRef) inUserData;
-								HIViewRef	ctl;
-								HIViewID	cid = { 'Pict', 0 };
-								HIRect		bounds;
-
-								bounds.origin.x = 0.0;
-								bounds.origin.y = 0.0;
-								bounds.size.width  = (float) (rct.right  - rct.left);
-								bounds.size.height = (float) (rct.bottom - rct.top );
-
-								HIViewFindByID(HIViewGetRoot(window), cid, &ctl);
-								HIViewSetFrame(ctl, &bounds);
-							}
-						#endif
 						}
 					}
 
 					result = noErr;
-
 					break;
 
 				case kEventWindowBoundsChanged:
 					windowResizeCount = 3;
 					result = noErr;
-
 					break;
 
 				case kEventWindowZoom:
 					ResizeGameWindow();
 					result = noErr;
-
 					break;
 
 				case kEventWindowToolbarSwitchMode:
 					windowExtend = !windowExtend;
 
-					GetWindowBounds(gWindow, kWindowContentRgn, &rct);
+					GetWindowBounds(gWindow, kWindowContentRgn, &r);
 
 					if (windowExtend)
-						rct.bottom = rct.top + (int) ((float) (rct.bottom - rct.top + 0.5) * SNES_HEIGHT_EXTENDED / SNES_HEIGHT);
+						r.bottom = r.top + (int) (((float) (r.bottom - r.top) + 0.5) * SNES_HEIGHT_EXTENDED / SNES_HEIGHT);
 					else
-						rct.bottom = rct.top + (int) ((float) (rct.bottom - rct.top + 0.5) * SNES_HEIGHT / SNES_HEIGHT_EXTENDED);
+						r.bottom = r.top + (int) (((float) (r.bottom - r.top) + 0.5) * SNES_HEIGHT / SNES_HEIGHT_EXTENDED);
 
-					SetWindowBounds(gWindow, kWindowContentRgn, &rct);
+					SetWindowBounds(gWindow, kWindowContentRgn, &r);
 
 					result = noErr;
+					break;
 			}
+
+			break;
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal OSStatus GameWindowUserPaneEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus GameWindowUserPaneEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-    #pragma unused (inHandlerCallRef, inUserData)
-
     OSStatus	err, result = eventNotHandledErr;
 
 	switch (GetEventClass(inEvent))
@@ -1238,10 +1161,8 @@ static pascal OSStatus GameWindowUserPaneEventHandler(EventHandlerCallRef inHand
 					{
 						if ((macControllerOption == SNES_JOYPAD) || (macControllerOption == SNES_MULTIPLAYER5) || (macControllerOption == SNES_MULTIPLAYER5_2))
 						{
-						#ifdef MAC_NETPLAY_SUPPORT
 							if (!(Settings.NetPlay && !Settings.NetPlayServer))
 							{
-						#endif
 								if (!frzselecting)
 								{
 									running = false;
@@ -1250,16 +1171,14 @@ static pascal OSStatus GameWindowUserPaneEventHandler(EventHandlerCallRef inHand
 									QuitApplicationEventLoop();
 									result = noErr;
 								}
-						#ifdef MAC_NETPLAY_SUPPORT
 							}
-						#endif
 						}
 					}
 					else
 					{
 						UInt32	count;
 
-						err = GetEventParameter(inEvent, kEventParamClickCount, typeUInt32, nil, sizeof(UInt32), nil, &count);
+						err = GetEventParameter(inEvent, kEventParamClickCount, typeUInt32, NULL, sizeof(UInt32), NULL, &count);
 						if ((err == noErr) && (count == 2))
 						{
 							SNES9X_Go();
@@ -1275,10 +1194,10 @@ static pascal OSStatus GameWindowUserPaneEventHandler(EventHandlerCallRef inHand
 					HIViewRef		view;
 					HIRect			bounds;
 
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, nil, sizeof(ControlRef), nil, &view);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &view);
 					if (err == noErr)
 					{
-						err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, nil, sizeof(CGContextRef), nil, &ctx);
+						err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, NULL, sizeof(CGContextRef), NULL, &ctx);
 						if (err == noErr)
 						{
 							if (!running)
@@ -1292,24 +1211,27 @@ static pascal OSStatus GameWindowUserPaneEventHandler(EventHandlerCallRef inHand
 					}
 
 					result = noErr;
+					break;
 			}
+
+			break;
 	}
 
-	return result;
+	return (result);
 }
 
-static void InitRecentItems(void)
+static void InitRecentItems (void)
 {
 	CFStringRef	keyRef, pathRef;
-	int			count, i;
+	int			count;
 	char		key[32];
 
 	count = 0;
 
-	for (i = 0; i <= kRecentMenu_MAX; i++)
-		recentItem[i] = nil;
+	for (int i = 0; i <= kRecentMenu_MAX; i++)
+		recentItem[i] = NULL;
 
-	for (i = 0; i <  kRecentMenu_MAX; i++)
+	for (int i = 0; i <  kRecentMenu_MAX; i++)
 	{
 		sprintf(key, "RecentItem_%02d", i);
 		keyRef = CFStringCreateWithCString(kCFAllocatorDefault, key, CFStringGetSystemEncoding());
@@ -1327,13 +1249,12 @@ static void InitRecentItems(void)
 	}
 }
 
-static void DeinitRecentItems(void)
+static void DeinitRecentItems (void)
 {
 	CFStringRef	keyRef;
-	int			i;
 	char		key[32];
 
-	for (i = 0; i < kRecentMenu_MAX; i++)
+	for (int i = 0; i < kRecentMenu_MAX; i++)
 	{
 		sprintf(key, "RecentItem_%02d", i);
 		keyRef = CFStringCreateWithCString(kCFAllocatorDefault, key, CFStringGetSystemEncoding());
@@ -1343,10 +1264,10 @@ static void DeinitRecentItems(void)
 			{
 				CFPreferencesSetAppValue(keyRef, recentItem[i], kCFPreferencesCurrentApplication);
 				CFRelease(recentItem[i]);
-				recentItem[i] = nil;
+				recentItem[i] = NULL;
 			}
 			else
-				CFPreferencesSetAppValue(keyRef, nil, kCFPreferencesCurrentApplication);
+				CFPreferencesSetAppValue(keyRef, NULL, kCFPreferencesCurrentApplication);
 
 			CFRelease(keyRef);
 		}
@@ -1355,19 +1276,19 @@ static void DeinitRecentItems(void)
 	CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
 }
 
-static void ClearRecentItems(void)
+static void ClearRecentItems (void)
 {
 	for (int i = 0; i < kRecentMenu_MAX; i++)
 	{
 		if (recentItem[i])
 		{
 			CFRelease(recentItem[i]);
-			recentItem[i] = nil;
+			recentItem[i] = NULL;
 		}
 	}
 }
 
-void AddRecentItem(FSRef *ref)
+void AddRecentItem (FSRef *ref)
 {
 	OSStatus	err;
 	char		path[PATH_MAX + 1];
@@ -1394,7 +1315,7 @@ void AddRecentItem(FSRef *ref)
 				if (recentItem[kRecentMenu_MAX])
 				{
 					CFRelease(recentItem[kRecentMenu_MAX]);
-					recentItem[kRecentMenu_MAX] = nil;
+					recentItem[kRecentMenu_MAX] = NULL;
 				}
 
 				recentItem[0] = pathRef;
@@ -1409,7 +1330,7 @@ void AddRecentItem(FSRef *ref)
 
 					temp = recentItem[i];
 
-					for (j = i - 1; j >=0; j--)
+					for (j = i - 1; j >= 0; j--)
 						recentItem[j + 1] = recentItem[j];
 
 					recentItem[0] = temp;
@@ -1419,7 +1340,7 @@ void AddRecentItem(FSRef *ref)
 	}
 }
 
-static void InitRecentMenu(void)
+static void InitRecentMenu (void)
 {
 	OSStatus	err;
 
@@ -1427,20 +1348,19 @@ static void InitRecentMenu(void)
 	err = SetMenuItemHierarchicalMenu(GetMenuRef(mFile), iOpenRecent, recentMenu);
 }
 
-static void DeinitRecentMenu(void)
+static void DeinitRecentMenu (void)
 {
-	ReleaseMenu(recentMenu);
+	CFRelease(recentMenu);
 }
 
-void BuildRecentMenu(void)
+void BuildRecentMenu (void)
 {
 	OSStatus	err;
 	CFStringRef	str;
-	int			i;
 
 	err = DeleteMenuItems(recentMenu, 1, CountMenuItems(recentMenu));
 
-	for (i = 0; i < kRecentMenu_MAX; i++)
+	for (int i = 0; i < kRecentMenu_MAX; i++)
 	{
 		if (!recentItem[i])
 			break;
@@ -1452,30 +1372,30 @@ void BuildRecentMenu(void)
 		if (r)
 		{
 			CFStringRef	nameRef;
-			char		drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+			char		drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 			_splitpath(path, drive, dir, fname, ext);
-			strcat(fname, ext);
-			nameRef = CFStringCreateWithCString(kCFAllocatorDefault, fname, MAC_PATH_ENCODING);
+			snprintf(path, PATH_MAX + 1, "%s%s", fname, ext);
+			nameRef = CFStringCreateWithCString(kCFAllocatorDefault, path, MAC_PATH_ENCODING);
 			if (nameRef)
 			{
-				err = AppendMenuItemTextWithCFString(recentMenu, nameRef, 0, 'FRe0' + i, nil);
+				err = AppendMenuItemTextWithCFString(recentMenu, nameRef, 0, 'FRe0' + i, NULL);
 				CFRelease(nameRef);
 			}
 		}
 	}
 
-	err = AppendMenuItemTextWithCFString(recentMenu, nil, kMenuItemAttrSeparator, 'FR__', nil);
+	err = AppendMenuItemTextWithCFString(recentMenu, NULL, kMenuItemAttrSeparator, 'FR__', NULL);
 
 	str = CFCopyLocalizedString(CFSTR("ClearMenu"), "ClearMenu");
 	if (str)
 	{
-		err = AppendMenuItemTextWithCFString(recentMenu, str, 0, 'FRcr', nil);
+		err = AppendMenuItemTextWithCFString(recentMenu, str, 0, 'FRcr', NULL);
 		CFRelease(str);
 	}
 }
 
-void AdjustMenus(void)
+void AdjustMenus (void)
 {
 	OSStatus	err;
 	MenuRef		menu;
@@ -1485,8 +1405,8 @@ void AdjustMenus(void)
 	{
 		menu = GetMenuRef(mApple);
 		DisableMenuItem(menu, iAbout);
-		DisableMenuCommand(nil, kHICommandPreferences);
-		DisableMenuCommand(nil, kHICommandQuit);
+		DisableMenuCommand(NULL, kHICommandPreferences);
+		DisableMenuCommand(NULL, kHICommandQuit);
 
 		menu = GetMenuRef(mFile);
 		DisableMenuItem(menu, iOpen);
@@ -1507,7 +1427,7 @@ void AdjustMenus(void)
 		DisableMenuItem(menu, iSoftReset);
 		DisableMenuItem(menu, iReset);
 		DisableMenuItem(menu, iDevice);
-	#ifdef MAC_NETPLAY_SUPPORT
+
 		if (Settings.NetPlay)
 		{
 			if (Settings.NetPlayServer)
@@ -1516,12 +1436,7 @@ void AdjustMenus(void)
 				DisableMenuItem(menu, iResume);
 		}
 		else
-		{
-	#endif
 			EnableMenuItem(menu, iResume);
-	#ifdef MAC_NETPLAY_SUPPORT
-		}
-	#endif
 
 		menu = GetMenuRef(mCheat);
 		DisableMenuItem(menu, iApplyCheats);
@@ -1552,8 +1467,8 @@ void AdjustMenus(void)
 	{
 		menu = GetMenuRef(mApple);
 		EnableMenuItem(menu, iAbout);
-		EnableMenuCommand(nil, kHICommandPreferences);
-		EnableMenuCommand(nil, kHICommandQuit);
+		EnableMenuCommand(NULL, kHICommandPreferences);
+		EnableMenuCommand(NULL, kHICommandQuit);
 
 		menu = GetMenuRef(mFile);
 		EnableMenuItem(menu, iOpen);
@@ -1650,7 +1565,7 @@ void AdjustMenus(void)
 	DrawMenuBar();
 }
 
-void UpdateMenuCommandStatus(Boolean closeMenu)
+void UpdateMenuCommandStatus (Boolean closeMenu)
 {
 	if (closeMenu)
 		EnableMenuItem(GetMenuRef(mFile), iClose);
@@ -1658,7 +1573,7 @@ void UpdateMenuCommandStatus(Boolean closeMenu)
 		DisableMenuItem(GetMenuRef(mFile), iClose);
 }
 
-static OSStatus HandleMenuChoice(long command, Boolean *done)
+static OSStatus HandleMenuChoice (UInt32 command, Boolean *done)
 {
 	OSStatus	err, result = noErr;
 	MenuRef		mh;
@@ -1677,7 +1592,7 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 		{
 			FSRef	ref;
 
-			err = FSPathMakeRef((unsigned char *) path, &ref, nil);
+			err = FSPathMakeRef((unsigned char *) path, &ref, NULL);
 			if (err == noErr)
 			{
 				if (SNES9X_OpenCart(&ref))
@@ -1722,7 +1637,7 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 				break;
 
 			case 'open':	// Open ROM Image...
-				if (SNES9X_OpenCart(nil))
+				if (SNES9X_OpenCart(NULL))
 				{
 					SNES9X_Go();
 					*done = true;
@@ -1812,7 +1727,6 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 
 			case 'Esrs':	// Software Reset
 				SNES9X_SoftReset();
-				//printf("\nSoft Reset.\n\n");
 				SNES9X_Go();
 				*done = true;
 
@@ -1820,7 +1734,6 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 
 			case 'Erst':	// Hardware Reset
 				SNES9X_Reset();
-				//printf("\nHard Reset.\n\n");
 				SNES9X_Go();
 				*done = true;
 
@@ -1893,7 +1806,7 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 				break;
 
 			case 'Ospc':	// Save SPC File at Next Note-on
-				spc_is_dumping = 1;
+				Settings.TakeSPCShapshot = true;
 
 				break;
 
@@ -1909,7 +1822,6 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 
 				break;
 
-		#ifdef MAC_NETPLAY_SUPPORT
 			case 'Nser':	// Server...
 				bool8	sr;
 
@@ -1966,7 +1878,6 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 					AdjustMenus();
 
 				break;
-		#endif
 
 			case 'CPr1':	// Controller Preset
 			case 'CPr2':
@@ -1979,7 +1890,7 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 				padSetting = item;
 				CheckMenuItem(mh, padSetting, true);
 				ClearPadSetting();
-				Load_Config();
+				LoadControllerSettings();
 
 				break;
 
@@ -2003,13 +1914,14 @@ static OSStatus HandleMenuChoice(long command, Boolean *done)
 
 			default:
 				result = eventNotHandledErr;
+				break;
 		}
 	}
 
-	return result;
+	return (result);
 }
 
-void ChangeInputDevice(void)
+void ChangeInputDevice (void)
 {
 	switch (deviceSetting)
 	{
@@ -2059,10 +1971,11 @@ void ChangeInputDevice(void)
 			S9xSetController(0, CTL_JOYPAD,     0, 0, 0, 0);
 			S9xSetController(1, CTL_JUSTIFIER,  1, 0, 0, 0);
 			macControllerOption = SNES_JUSTIFIER_2;
+			break;
 	}
 }
 
-void ApplyNSRTHeaderControllers(void)
+void ApplyNSRTHeaderControllers (void)
 {
 	OSStatus	err;
 	MenuRef		menu;
@@ -2172,7 +2085,7 @@ void ApplyNSRTHeaderControllers(void)
 	ChangeInputDevice();
 }
 
-int PromptFreezeDefrost(Boolean freezing)
+int PromptFreezeDefrost (Boolean freezing)
 {
 	OSStatus			err;
 	CGContextRef		ctx;
@@ -2186,30 +2099,24 @@ int PromptFreezeDefrost(Boolean freezing)
 	FSRef				ref;
 	KeyMap				keys;
 	UInt64				newestDate, currentDate;
+	UInt32				startTime;
 	float				x, y, textw;
-	unsigned long		startTime;
-	unsigned int		repeatDelay;
-	long				newestIndex;
-	short				current_selection;
-	int					count, result;
-	int					oldInactiveMode;
-	uint8				*back, *draw;
+	int					result, newestIndex, current_selection, oldInactiveMode;
 	char				dateC[256];
+	uint8				*back, *draw;
 
-	const char			*filename;
-	const char			letters[]  = "123456789ABC";
+	const UInt32		repeatDelay = 10;
 	const int			w = SNES_WIDTH << 1, h = kMacWindowHeight;
-	const uint8			keyCheck[] = { kmEscKey, km1Key, km2Key, km3Key, km4Key, km5Key, km6Key,
-												 km7Key, km8Key, km9Key, kmAKey, kmBKey, kmCKey };
+	const char			letters[] = "123456789ABC", *filename;
+	const uint8			keyCheck[] = { kmEscKey, km1Key, km2Key, km3Key, km4Key, km5Key, km6Key, km7Key, km8Key, km9Key, kmAKey, kmBKey, kmCKey };
 
 	if (!directDisplay)
 	{
-		S9xInitDisplay(nil, nil);
+		S9xInitDisplay(NULL, NULL);
 		SNES9X_Go();
 	}
 
 	frzselecting = true;
-
 	oldInactiveMode = inactiveMode;
 	if (inactiveMode == 3)
 		inactiveMode = 2;
@@ -2232,18 +2139,18 @@ int PromptFreezeDefrost(Boolean freezing)
 	rct = CGRectMake(0.0, 0.0, (float) w, (float) h);
 	CGContextClearRect(ctx, rct);
 
-	image = nil;
+	image = NULL;
 
 	if (freezing)
-		url = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("logo_freeze"),  CFSTR("png"), nil);
+		url = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("logo_freeze"),  CFSTR("png"), NULL);
 	else
-		url = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("logo_defrost"), CFSTR("png"), nil);
+		url = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("logo_defrost"), CFSTR("png"), NULL);
 	if (url)
 	{
 		prov = CGDataProviderCreateWithURL(url);
 		if (prov)
 		{
-			image = CGImageCreateWithPNGDataProvider(prov, nil, true, kCGRenderingIntentDefault);
+			image = CGImageCreateWithPNGDataProvider(prov, NULL, true, kCGRenderingIntentDefault);
 			CGDataProviderRelease(prov);
 		}
 
@@ -2264,16 +2171,14 @@ int PromptFreezeDefrost(Boolean freezing)
 
 	rct = CGRectMake(0.0, (float) h - 238.0, 128.0, 120.0);
 
-	for (count = 0; count < 12; count++)
+	for (int count = 0; count < 12; count++)
 	{
 		filename = S9xGetFreezeFilename(count);
-		err = FSPathMakeRef((unsigned char *) filename, &ref, nil);
+		err = FSPathMakeRef((unsigned char *) filename, &ref, NULL);
 		if (err == noErr)
 		{
-			err = FSGetCatalogInfo(&ref, kFSCatInfoContentMod, &info, nil, nil, nil);
-			currentDate = (((UInt64) info.contentModDate.highSeconds << 48) |
-						   ((UInt64) info.contentModDate.lowSeconds  << 16) |
-						    (UInt64) info.contentModDate.fraction);
+			err = FSGetCatalogInfo(&ref, kFSCatInfoContentMod, &info, NULL, NULL, NULL);
+			currentDate = (((UInt64) info.contentModDate.highSeconds << 48) | ((UInt64) info.contentModDate.lowSeconds << 16) | (UInt64) info.contentModDate.fraction);
 
 			if (currentDate > newestDate)
 			{
@@ -2287,7 +2192,7 @@ int PromptFreezeDefrost(Boolean freezing)
 			CGContextSetLineWidth(ctx, 1.0);
 
 			CGContextSetRGBStrokeColor(ctx, 0.0, 0.0, 0.0, 1.0);
-			x = rct.origin.x + rct.size.width - 1.0;
+			x = rct.origin.x + 127.0;
 			y = rct.origin.y + 119.0;
 			CGContextBeginPath(ctx);
 			CGContextMoveToPoint(ctx, x, y);
@@ -2310,38 +2215,21 @@ int PromptFreezeDefrost(Boolean freezing)
 
 			if (showtimeinfrz)
 			{
-				if (systemVersion >= 0x1030)
-				{
-					CFAbsoluteTime		at;
-					CFDateFormatterRef	format;
-					CFLocaleRef			locale;
-					CFStringRef			datstr;
-					Boolean				r;
+				CFAbsoluteTime		at;
+				CFDateFormatterRef	format;
+				CFLocaleRef			locale;
+				CFStringRef			datstr;
+				Boolean				r;
 
-					err = UCConvertUTCDateTimeToCFAbsoluteTime(&(info.contentModDate), &at);
-					locale = CFLocaleCopyCurrent();
-					format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterShortStyle, kCFDateFormatterMediumStyle);
-					datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
-					r = CFStringGetCString(datstr, dateC, sizeof(dateC), CFStringGetSystemEncoding());
-					CFRelease(datstr);
-					CFRelease(format);
-					CFRelease(locale);
-				}
-			#ifdef MAC_JAGUAR_SUPPORT
-				else
-				{
-					LocalDateTime	localtime;
-					LongDateTime	ldtime;
-					unsigned char	dateP[256], p1[256], p2[256];
+				err = UCConvertUTCDateTimeToCFAbsoluteTime(&(info.contentModDate), &at);
+				locale = CFLocaleCopyCurrent();
+				format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterShortStyle, kCFDateFormatterMediumStyle);
+				datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
+				r = CFStringGetCString(datstr, dateC, sizeof(dateC), CFStringGetSystemEncoding());
+				CFRelease(datstr);
+				CFRelease(format);
+				CFRelease(locale);
 
-					ConvertUTCToLocalDateTime(&(info.contentModDate), &localtime);
-					ldtime = (LongDateTime) ((((UInt64) localtime.highSeconds) << 32) | ((UInt64) localtime.lowSeconds));
-					LongDateString(&ldtime, shortDate, p1, nil);
-					LongTimeString(&ldtime, true, p2, nil);
-					JointPStrings(p1, "\p ", p2, dateP);
-					ConvertPString(dateP, dateC);
-				}
-			#endif
 				CGContextSelectFont(ctx, "Helvetica", 10.0, kCGEncodingMacRoman);
 				x = rct.origin.x +  20.0;
 				y = rct.origin.y + 107.0;
@@ -2379,12 +2267,12 @@ int PromptFreezeDefrost(Boolean freezing)
 
 	CGContextRelease(ctx);
 
-	image = nil;
+	image = NULL;
 
-	prov = CGDataProviderCreateWithData(nil, back, w * h * 2, nil);
+	prov = CGDataProviderCreateWithData(NULL, back, w * h * 2, NULL);
 	if (prov)
 	{
-		image = CGImageCreate(w, h, 5, 16, w * 2, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Host : 0), prov, nil, 0, kCGRenderingIntentDefault);
+		image = CGImageCreate(w, h, 5, 16, w * 2, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Host : 0), prov, NULL, 0, kCGRenderingIntentDefault);
 		CGDataProviderRelease(prov);
 	}
 
@@ -2402,15 +2290,15 @@ int PromptFreezeDefrost(Boolean freezing)
 	CocoaPlayFreezeDefrostSound();
 
 	result = -2;
-	repeatDelay = 10;
-	current_selection = (newestIndex == -1 ? 0 : newestIndex);
+	current_selection = newestIndex;
 
 	do
 	{
 		if (!rejectinput)
 		{
 			GetKeys(keys);
-			for (count = 0; count <= 12; count++)
+
+			for (int count = 0; count <= 12; count++)
 			{
 				while (KeyIsPressed(keys, keyCheck[count]))
 				{
@@ -2437,7 +2325,7 @@ int PromptFreezeDefrost(Boolean freezing)
 				if (current_selection < 0)
 					current_selection += 12;
 				UpdateFreezeDefrostScreen(current_selection, image, draw, ctx);
-				while (KeyIsPressed(keys, keyCode[k1PLeft]) && (TickCount() < (startTime + repeatDelay)))
+				while (KeyIsPressed(keys, keyCode[k1PLeft])  && (TickCount() < (startTime + repeatDelay)))
 					GetKeys(keys);
 			}
 
@@ -2448,7 +2336,7 @@ int PromptFreezeDefrost(Boolean freezing)
 				if (current_selection > 11)
 					current_selection -= 12;
 				UpdateFreezeDefrostScreen(current_selection, image, draw, ctx);
-				while (KeyIsPressed(keys, keyCode[k1PDown]) && (TickCount() < (startTime + repeatDelay)))
+				while (KeyIsPressed(keys, keyCode[k1PDown])  && (TickCount() < (startTime + repeatDelay)))
 					GetKeys(keys);
 			}
 
@@ -2459,7 +2347,7 @@ int PromptFreezeDefrost(Boolean freezing)
 				if (current_selection < 0)
 					current_selection += 12;
 				UpdateFreezeDefrostScreen(current_selection, image, draw, ctx);
-				while (KeyIsPressed(keys, keyCode[k1PUp]) && (TickCount() < (startTime + repeatDelay)))
+				while (KeyIsPressed(keys, keyCode[k1PUp])    && (TickCount() < (startTime + repeatDelay)))
 					GetKeys(keys);
 			}
 
@@ -2472,15 +2360,15 @@ int PromptFreezeDefrost(Boolean freezing)
 				   KeyIsPressed(keys, keyCode[k1PY]     ) ||
 				   KeyIsPressed(keys, keyCode[k2PY]     ) ||
 				   KeyIsPressed(keys, keyCode[k1PStart] ) ||
-				   KeyIsPressed(keys, keyCode[k1PSelect]) ||
 				   KeyIsPressed(keys, keyCode[k2PStart] ) ||
+				   KeyIsPressed(keys, keyCode[k1PSelect]) ||
 				   KeyIsPressed(keys, keyCode[k2PSelect]))
 			{
 				GetKeys(keys);
 				result = current_selection;
 			}
 
-			uint32	pad1 = 0, pad2 = 0;
+			uint32	pad1, pad2;
 
 			while (ISpKeyIsPressed(kISpEsc    ) ||
 				   ISpKeyIsPressed(kISp1PStart) ||
@@ -2502,8 +2390,7 @@ int PromptFreezeDefrost(Boolean freezing)
 					pad1 = pad2 = 0;
 					JoypadScanDirection(0, &pad1);
 					JoypadScanDirection(1, &pad2);
-				}
-				while (((pad1 & 0x0100) || (pad2 & 0x0100)) && (TickCount() < (startTime + repeatDelay)));
+				} while (((pad1 & 0x0100) || (pad2 & 0x0100)) && (TickCount() < (startTime + repeatDelay)));
 			}
 
 			pad1 = pad2 = 0;
@@ -2521,8 +2408,7 @@ int PromptFreezeDefrost(Boolean freezing)
 					pad1 = pad2 = 0;
 					JoypadScanDirection(0, &pad1);
 					JoypadScanDirection(1, &pad2);
-				}
-				while (((pad1 & 0x0200) || (pad2 & 0x0200)) && (TickCount() < (startTime + repeatDelay)));
+				} while (((pad1 & 0x0200) || (pad2 & 0x0200)) && (TickCount() < (startTime + repeatDelay)));
 			}
 
 			pad1 = pad2 = 0;
@@ -2540,8 +2426,7 @@ int PromptFreezeDefrost(Boolean freezing)
 					pad1 = pad2 = 0;
 					JoypadScanDirection(0, &pad1);
 					JoypadScanDirection(1, &pad2);
-				}
-				while (((pad1 & 0x0800) || (pad2 & 0x0800)) && (TickCount() < (startTime + repeatDelay)));
+				} while (((pad1 & 0x0800) || (pad2 & 0x0800)) && (TickCount() < (startTime + repeatDelay)));
 			}
 
 			pad1 = pad2 = 0;
@@ -2559,8 +2444,7 @@ int PromptFreezeDefrost(Boolean freezing)
 					pad1 = pad2 = 0;
 					JoypadScanDirection(0, &pad1);
 					JoypadScanDirection(1, &pad2);
-				}
-				while (((pad1 & 0x0400) || (pad2 & 0x0400)) && (TickCount() < (startTime + repeatDelay)));
+				} while (((pad1 & 0x0400) || (pad2 & 0x0400)) && (TickCount() < (startTime + repeatDelay)));
 			}
 
 			while (ISpKeyIsPressed(kISp1PA) ||
@@ -2578,8 +2462,7 @@ int PromptFreezeDefrost(Boolean freezing)
 
 		windowResizeCount = 2;
 		UpdateFreezeDefrostScreen(current_selection, image, draw, ctx);
-	}
-	while (result == -2);
+	} while (result == -2);
 
 	CocoaPlayFreezeDefrostSound();
 
@@ -2591,19 +2474,17 @@ int PromptFreezeDefrost(Boolean freezing)
 
 	S9xSetSoundMute(!Settings.APUEnabled);
 
+	inactiveMode = oldInactiveMode;
 	frzselecting = false;
 
-	inactiveMode = oldInactiveMode;
-
-	return result;
+	return (result);
 }
 
-static void UpdateFreezeDefrostScreen(int newIndex, CGImageRef image, uint8 *draw, CGContextRef ctx)
+static void UpdateFreezeDefrostScreen (int newIndex, CGImageRef image, uint8 *draw, CGContextRef ctx)
 {
 	if (newIndex >= 0 && newIndex < 12)
 	{
-		CGRect	rct;
-
+		CGRect		rct;
 		const int	w = SNES_WIDTH << 1, h = kMacWindowHeight;
 
 		CGContextSetLineWidth(ctx, 1.0);
@@ -2626,18 +2507,11 @@ static void UpdateFreezeDefrostScreen(int newIndex, CGImageRef image, uint8 *dra
 	DrawFreezeDefrostScreen(draw);
 }
 
-static void ProcessInput(void)
+static void ProcessInput (void)
 {
-	KeyMap	myKeys;
-	bool8   isok;
-	bool8	fnbtn, altbtn, tcbtn;
-
-	static bool8	lastTimeTT = false,
-					lastTimeFn = false,
-					ffUp       = false,
-					ffDown     = false,
-					ffUpSp     = false,
-					ffDownSp   = false;
+	KeyMap			myKeys;
+	bool8			isok, fnbtn, altbtn, tcbtn;
+	static bool8	toggleff = false, lastTimeTT = false, lastTimeFn = false, ffUp = false, ffDown = false, ffUpSp = false, ffDownSp = false;
 
 	if (rejectinput)
 		return;
@@ -2686,7 +2560,7 @@ static void ProcessInput(void)
 
 	if (ISpKeyIsPressed(kISpSPC))
 	{
-		spc_is_dumping = 1;
+		Settings.TakeSPCShapshot = true;
 		while (ISpKeyIsPressed(kISpSPC));
 	}
 
@@ -2821,7 +2695,7 @@ static void ProcessInput(void)
 	{
 		if (!lastTimeFn)
 		{
-			for (uint32 i = 0; i < kCommandListSize; i++)
+			for (int i = 0; i < kCommandListSize; i++)
 				btncmd[i].held = false;
 		}
 
@@ -2829,7 +2703,7 @@ static void ProcessInput(void)
 		lastTimeTT = false;
 		ffUp = ffDown = false;
 
-		for (uint32 i = 0; i < kCommandListSize; i++)
+		for (int i = 0; i < kCommandListSize; i++)
 		{
 			if (KeyIsPressed(myKeys, btncmd[i].keycode))
 			{
@@ -2844,12 +2718,12 @@ static void ProcessInput(void)
 						switch (btncmd[i].command[4] - '0')
 						{
 							case 1:
-								Settings.DisplayPressedKeys = (Settings.DisplayPressedKeys == 2) ? 0 : 2;
+								Settings.DisplayPressedKeys = !Settings.DisplayPressedKeys;
 								break;
 
 							case 2:
 								if (S9xMovieActive())
-									GFX.FrameDisplay = !GFX.FrameDisplay;
+									Settings.DisplayMovieFrame = !Settings.DisplayMovieFrame;
 								break;
 
 							case 3:
@@ -2931,7 +2805,7 @@ static void ProcessInput(void)
 
 		if (KeyIsPressed(myKeys, keyCode[kKeySPC]))
 		{
-			spc_is_dumping = 1;
+			Settings.TakeSPCShapshot = true;
 			while (KeyIsPressed(myKeys, keyCode[kKeySPC]))
 				GetKeys(myKeys);
 		}
@@ -3022,13 +2896,13 @@ static void ProcessInput(void)
 		{
 			if (!toggleff)
 			{
-				toggleff = 1;
+				toggleff = true;
 				Settings.TurboMode = !Settings.TurboMode;
 				S9xSetInfoString(Settings.TurboMode ? "Turbo mode on" : "Turbo mode off");
 			}
 		}
 		else
-			toggleff = 0;
+			toggleff = false;
 	}
 	else
 		Settings.TurboMode = ((ISpKeyIsPressed(kISpFastForward) || KeyIsPressed(myKeys, keyCode[kKeyFastForward])) && !fnbtn) ? true : false;
@@ -3042,7 +2916,7 @@ static void ProcessInput(void)
 		uint16		changeMask;
 
 		Microseconds((UnsignedWide *) &currentTime);
-		tcbtn  = (KeyIsPressed(myKeys, keyCode[kKeyTC]) || ISpKeyIsPressed(kISpTC));
+		tcbtn = (KeyIsPressed(myKeys, keyCode[kKeyTC]) || ISpKeyIsPressed(kISpTC));
 
 		for (int i = 0; i < 2; i++)
 		{
@@ -3084,10 +2958,10 @@ static void ProcessInput(void)
 		ControlPadFlagsToS9xPseudoPointer(controlPad[1]);
 }
 
-static void ChangeAutofireSettings(int player, int btn)
+static void ChangeAutofireSettings (int player, int btn)
 {
-	uint16		mask, m;
 	static char	msg[64];
+	uint16		mask, m;
 
 	mask = 0x0010 << btn;
 	autofireRec[player].buttonMask ^= mask;
@@ -3115,7 +2989,7 @@ static void ChangeAutofireSettings(int player, int btn)
 	S9xSetInfoString(msg);
 }
 
-static void ChangeTurboRate(int d)
+static void ChangeTurboRate (int d)
 {
 	static char	msg[64];
 
@@ -3130,92 +3004,52 @@ static void ChangeTurboRate(int d)
 	S9xSetInfoString(msg);
 }
 
-void GetGameScreenPointer(int16 *x, int16 *y, bool fullmouse)
+void GetGameScreenPointer (int16 *x, int16 *y, bool fullmouse)
 {
 	int	ph;
 
 	ph = !drawoverscan ? ((IPPU.RenderedScreenHeight > 256) ? IPPU.RenderedScreenHeight : (IPPU.RenderedScreenHeight << 1)) : (SNES_HEIGHT_EXTENDED << 1);
 
-	if ((drawingMethod == kDrawingOpenGL) || (drawingMethod == kDrawingBlitGL))
+	if (fullscreen)
 	{
-		if (fullscreen)
+		if (glstretch)
 		{
-			if (glstretch)
-			{
-				float   fpw = (float) glScreenH / (float) ph * 512.0;
+			float   fpw = (float) glScreenH / (float) ph * 512.0;
 
-				scopeViewInfo.width      = (int) (fpw + ((float) glScreenW - fpw) * (float) macAspectRatio / 100.0);
-				scopeViewInfo.height     = glScreenH;
-				scopeViewInfo.globalLeft = (int) glScreenBounds.origin.x + ((glScreenW - scopeViewInfo.width) >> 1);
-				scopeViewInfo.globalTop  = (int) glScreenBounds.origin.y;
-			}
-			else
-			{
-				scopeViewInfo.width      = 512;
-				scopeViewInfo.height     = ph;
-				scopeViewInfo.globalLeft = (int) glScreenBounds.origin.x + ((glScreenW - 512) >> 1);
-				scopeViewInfo.globalTop  = (int) glScreenBounds.origin.y + ((glScreenH - ph ) >> 1);
-			}
+			scopeViewInfo.width      = (int) (fpw + ((float) glScreenW - fpw) * (float) macAspectRatio / 100.0);
+			scopeViewInfo.height     = glScreenH;
+			scopeViewInfo.globalLeft = (int) glScreenBounds.origin.x + ((glScreenW - scopeViewInfo.width) >> 1);
+			scopeViewInfo.globalTop  = (int) glScreenBounds.origin.y;
 		}
 		else
 		{
-			GetWindowBounds(gWindow, kWindowContentRgn, &gWindowRect);
-
-			int	ww = gWindowRect.right  - gWindowRect.left,
-				wh = gWindowRect.bottom - gWindowRect.top;
-
-			scopeViewInfo.width      = ww;
-			scopeViewInfo.globalLeft = gWindowRect.left;
-
-			if (windowExtend)
-			{
-				scopeViewInfo.height    = ph * wh / kMacWindowHeight;
-				scopeViewInfo.globalTop = gWindowRect.top + ((kMacWindowHeight - ph) >> 1) * wh / kMacWindowHeight;
-			}
-			else
-			{
-				scopeViewInfo.height    = wh;
-				scopeViewInfo.globalTop = gWindowRect.top;
-			}
+			scopeViewInfo.width      = 512;
+			scopeViewInfo.height     = ph;
+			scopeViewInfo.globalLeft = (int) glScreenBounds.origin.x + ((glScreenW - 512) >> 1);
+			scopeViewInfo.globalTop  = (int) glScreenBounds.origin.y + ((glScreenH - ph ) >> 1);
 		}
 	}
 	else
 	{
-		if (fullscreen)
+		Rect	rct;
+
+		GetWindowBounds(gWindow, kWindowContentRgn, &rct);
+
+		int	ww = rct.right  - rct.left,
+			wh = rct.bottom - rct.top;
+
+		scopeViewInfo.width      = ww;
+		scopeViewInfo.globalLeft = rct.left;
+
+		if (windowExtend)
 		{
-			if ((IPPU.RenderedScreenWidth <= 256) && !doubleSize)
-			{
-				scopeViewInfo.width      = 256;
-				scopeViewInfo.height     = !drawoverscan ? IPPU.RenderedScreenHeight : SNES_HEIGHT_EXTENDED;
-				scopeViewInfo.globalLeft = (int) glScreenBounds.origin.x + ((glScreenW - 256) >> 1);
-				scopeViewInfo.globalTop  = (int) glScreenBounds.origin.y + ((glScreenH - scopeViewInfo.height) >> 1);
-			}
-			else
-			{
-				scopeViewInfo.width      = 512;
-				scopeViewInfo.height     = ph;
-				scopeViewInfo.globalLeft = (int) glScreenBounds.origin.x + ((glScreenW - 512) >> 1);
-				scopeViewInfo.globalTop  = (int) glScreenBounds.origin.y + ((glScreenH - ph ) >> 1);
-			}
+			scopeViewInfo.height    = ph * wh / kMacWindowHeight;
+			scopeViewInfo.globalTop = rct.top + ((kMacWindowHeight - ph) >> 1) * wh / kMacWindowHeight;
 		}
 		else
 		{
-			GetWindowBounds(gWindow, kWindowContentRgn, &gWindowRect);
-
-			if ((IPPU.RenderedScreenWidth <= 256) && !doubleSize)
-			{
-				scopeViewInfo.width      = 256;
-				scopeViewInfo.height     = !drawoverscan ? IPPU.RenderedScreenHeight : SNES_HEIGHT_EXTENDED;
-				scopeViewInfo.globalLeft = gWindowRect.left + 128;
-				scopeViewInfo.globalTop  = gWindowRect.top  + 120 + ((SNES_HEIGHT_EXTENDED - scopeViewInfo.height) >> 1);
-			}
-			else
-			{
-				scopeViewInfo.width      = 512;
-				scopeViewInfo.height     = ph;
-				scopeViewInfo.globalLeft = gWindowRect.left;
-				scopeViewInfo.globalTop  = gWindowRect.top + ((kMacWindowHeight - ph) >> 1);
-			}
+			scopeViewInfo.height    = wh;
+			scopeViewInfo.globalTop = rct.top;
 		}
 	}
 
@@ -3235,12 +3069,12 @@ void GetGameScreenPointer(int16 *x, int16 *y, bool fullmouse)
 	}
 }
 
-static void Initialize(void)
+static void Initialize (void)
 {
 	OSStatus	err;
 	IBNibRef	menuNibRef;
 	MenuRef		menu;
-	int			a;
+	SInt32		qtVersion;
 
 	printf("\nSnes9x for Mac OS X %s (%s), ", VERSION, MAC_VERSION);
 #ifdef __BIG_ENDIAN__
@@ -3251,89 +3085,43 @@ static void Initialize(void)
 
 	err = Gestalt(gestaltSystemVersion, &systemVersion);
 	err = Gestalt(gestaltQuickTimeVersion, &qtVersion);
-	hiToolboxVersion = GetHIToolboxVersion();
 
-	if (qtVersion < 0x06408000)
+	if ((systemVersion < 0x1039) || (qtVersion < 0x07008000))
 	{
 		AppearanceAlert(kAlertStopAlert, kRequiredSystemWarning, kRequiredSystemHint);
 		QuitWithFatalError(0, "os 09");
 	}
 
-	printf("OS: %x  QuickTime: %x  HIToolbox: %x\n\n", (unsigned) systemVersion, (unsigned) qtVersion, (unsigned) hiToolboxVersion);
+	printf("OS: %x  QuickTime: %x\n\n", (unsigned) systemVersion, (unsigned) qtVersion);
 
-    ZeroMemory(&Settings, sizeof(Settings));
-
-    Settings.ShutdownMaster = false;
-	Settings.BlockInvalidVRAMAccess = true;
-    Settings.HDMATimingHack = 100;
-	Settings.SoundSkipMethod = 0;
-    Timings.H_Max = SNES_CYCLES_PER_SCANLINE;
-    Timings.HBlankStart = SNES_HBLANK_START_HC;
-    Settings.DisableIRQ = false;
-	Settings.Paused = false;
-	Settings.ForcedPause = false;
-	Settings.FrameAdvance = false;
-	Settings.StopEmulation = true;
-
-    Settings.FrameTimePAL = 20000;
-    Settings.FrameTimeNTSC = 16667;
-    Settings.FrameTime = Settings.FrameTimeNTSC;
-
+	ZeroMemory(&Settings, sizeof(Settings));
 	Settings.MouseMaster = true;
 	Settings.SuperScopeMaster = true;
-	Settings.MultiPlayer5Master = true;
 	Settings.JustifierMaster = true;
-
-    Settings.APUEnabled = true;
-    Settings.SoundPlaybackRate = 32000;
-    Settings.Stereo = true;
-    Settings.ReverseStereo = false;
-    Settings.SixteenBitSound = true;
-	Settings.SoundEnvelopeHeightReading = true;
-    Settings.DisableSampleCaching = true;
-	Settings.AltSampleDecode = 0;
-    Settings.InterpolatedSound = true;
-    Settings.NextAPUEnabled = true;
-	Settings.DisableSoundEcho = false;
-	Settings.DisableMasterVolume = false;
-	Settings.SoundSync = false;
-	Settings.SampleCatchup = false;
-
-    Settings.Transparency = true;
-    Settings.SupportHiRes = true;
-    Settings.Mode7Interpolate = false;
-
-	Settings.NetPlay = false;
-	Settings.NetPlayServer = false;
-    Settings.ServerName[0] = 0;
-	Settings.ApplyCheats = true;
-	Settings.AutoSaveDelay = 0;
-	Settings.TakeScreenshot = false;
-	Settings.SDD1Pack = true;
-	Settings.NoPatch = false;
-	Settings.TurboMode = false;
-
-	Settings.BSXBootup = false;
-
-	Settings.SnapshotScreenshots = true;
+	Settings.MultiPlayer5Master = true;
+	Settings.FrameTimePAL = 20000;
+	Settings.FrameTimeNTSC = 16667;
+	Settings.SixteenBitSound = true;
+	Settings.InterpolatedSound = true;
+	Settings.SoundPlaybackRate = 32000;
+	Settings.Stereo = true;
+	Settings.SupportHiRes = true;
+	Settings.Transparency = true;
 	Settings.AutoDisplayMessages = true;
-	Settings.DisplayPressedKeys = 0;
-	Settings.DisplayWatchedAddresses = false;
-	Settings.WrongMovieStateProtection = true;
-	Settings.FakeMuteFix = false;
-	Settings.UpAndDown = false;
-	Settings.MovieTruncate = false;
-	Settings.MovieNotifyIgnored = false;
 	Settings.InitialInfoStringTimeout = 120;
+	Settings.APUEnabled = true;
+	Settings.NextAPUEnabled = true;
+	Settings.HDMATimingHack = 100;
+	Settings.BlockInvalidVRAMAccess = true;
+	Settings.SoundEnvelopeHeightReading = true;
+	Settings.StopEmulation = true;
+	Settings.WrongMovieStateProtection = true;
+	Settings.DumpStreamsMaxFrames = -1;
+	Settings.StretchScreenshots = 1;
+	Settings.SnapshotScreenshots = true;
+	Settings.OpenGLEnable = true;
 
-	ICPU.SavedAtOp = false;
-	GFX.FrameDisplay = false;
-
-	S9xMovieInit();
-
-	err = RegisterAppearanceClient();
-
-	for (a = 0; a < kWindowCount; a++)
+	for (int a = 0; a < kWindowCount; a++)
 	{
 		windowPos[a].h = 40;
 		windowPos[a].v = 80;
@@ -3349,6 +3137,8 @@ static void Initialize(void)
 
 	npServerIP[0] = 0;
 	npName[0] = 0;
+
+	CreateIconImages();
 
 	InitAppleEvents();
 	InitKeyboard();
@@ -3370,7 +3160,8 @@ static void Initialize(void)
 	err = SetMenuBarFromNib(menuNibRef, CFSTR("MenuBar"));
 	DisposeNibReference(menuNibRef);
 
-	EnableMenuCommand(nil, kHICommandPreferences);
+	EnableMenuCommand(NULL, kHICommandPreferences);
+
 	DisableMenuItem(GetMenuRef(mEdit), 0);
 
 	CheckMenuItem(GetMenuRef(mCheat), iApplyCheats, applycheat);
@@ -3394,66 +3185,47 @@ static void Initialize(void)
 	DrawMenuBar();
 
 	autofire = (autofireRec[0].buttonMask || autofireRec[1].buttonMask) ? true : false;
-	for (a = 0; a < MAC_MAX_PLAYERS; a++)
+	for (int a = 0; a < MAC_MAX_PLAYERS; a++)
 		for (int b = 0; b < 12; b++)
 			autofireRec[a].nextTime[b] = 0;
+
+	S9xMovieInit();
 
 	S9xUnmapAllControls();
 	S9xSetupDefaultKeymap();
 	ChangeInputDevice();
 
-	EnterMovies();
+	err = EnterMovies();
 
 	if (!Memory.Init() || !S9xInitAPU() || !S9xGraphicsInit())
 		QuitWithFatalError(err, "os 01");
-
-	switch (mac7110Load)
-	{
-		case 1:
-			LoadUp7110 = &SPC7110Load;
-			break;
-
-		case 2:
-			LoadUp7110 = &SPC7110Grab;
-			break;
-
-		case 3:
-			LoadUp7110 = &SPC7110Open;
-	}
-
-	cacheMegs = mac7110Megs;
-
-	Settings.DisableSampleCaching = true; // force true from 1.42
 
 	SetSoundPitch();
 
 	frzselecting = false;
 
-	S9xSetControllerCrosshair(X_MOUSE1, 0, nil, nil);
-	S9xSetControllerCrosshair(X_MOUSE2, 0, nil, nil);
+	S9xSetControllerCrosshair(X_MOUSE1, 0, NULL, NULL);
+	S9xSetControllerCrosshair(X_MOUSE2, 0, NULL, NULL);
 
-#ifdef MAC_COREIMAGE_SUPPORT
 	if (systemVersion >= 0x1040)
 	{
 		InitCoreImage();
 		InitCoreImageFilter();
 	}
-#endif
 }
 
-static void Deinitialize(void)
+static void Deinitialize (void)
 {
-#ifdef MAC_COREIMAGE_SUPPORT
 	if (systemVersion >= 0x1040)
 	{
 		DeinitCoreImageFilter();
 		DeinitCoreImage();
 	}
-#endif
 
 	deviceSetting = deviceSettingMaster;
 
 	ExitMovies();
+
 	DeinitMultiCart();
 	DeinitRecentMenu();
 	DeinitRecentItems();
@@ -3464,13 +3236,14 @@ static void Deinitialize(void)
 	DeinitKeyboard();
 	DeinitMacSound();
 	DeinitAppleEvents();
+	ReleaseIconImages();
 
 	S9xGraphicsDeinit();
 	S9xDeinitAPU();
 	Memory.Deinit();
 }
 
-static void InitAutofire(void)
+static void InitAutofire (void)
 {
 	autofire = false;
 
@@ -3478,6 +3251,7 @@ static void InitAutofire(void)
 	{
 		for (int j = 0; j < 12; j++)
 			autofireRec[i].nextTime[j] = 0;
+
 		autofireRec[i].buttonMask = 0x0000;
 		autofireRec[i].toggleMask = 0xFFF0;
 		autofireRec[i].tcMask     = 0x0000;
@@ -3486,33 +3260,30 @@ static void InitAutofire(void)
 	}
 }
 
-static void ForceChangingKeyScript(void)
+static void ForceChangingKeyScript (void)
 {
-#if 0
-	ScriptLanguageRecord	im;
-
-	err = GetTextServiceLanguage(&im);
-	//printf("S:%d, L:%d\n", im.fScript, im.fLanguage);
-	if (err == noErr)
+	if (systemVersion >= 0x1050)
 	{
-		if ((im.fScript == smJapanese) && (im.fLanguage == langJapanese))
-		{
-			im.fScript   = smRoman;
-			im.fLanguage = langEnglish;
-			err = SetTextServiceLanguage(&im);
-		}
-	}
-#else
-	long	script;
+		OSStatus			err;
+		TISInputSourceRef	tis;
 
-	script = GetScriptManagerVariable(smKeyScript);
-	//printf("S:%ld\n", script);
-	if (script == smJapanese)
-		KeyScript(smRoman | smKeyForceKeyScriptMask);
+		tis = TISCopyCurrentASCIICapableKeyboardInputSource();
+		err = TISSelectInputSource(tis);
+		CFRelease(tis);
+	}
+#ifdef MAC_TIGER_PANTHER_SUPPORT
+	else
+	{
+		long	script;
+
+		script = GetScriptManagerVariable(smKeyScript);
+		if (script == smJapanese)
+			KeyScript(smRoman | smKeyForceKeyScriptMask);
+	}
 #endif
 }
 
-void S9xSyncSpeed(void)
+void S9xSyncSpeed (void)
 {
 	long long	currentFrame, adjustment;
 
@@ -3546,19 +3317,8 @@ void S9xSyncSpeed(void)
 
 					frameCount = skipFrames;
 
-					if (!minimizecpu)
-					{
-						while (lastFrame > currentFrame)
-						{
-							MPYield();
-							Microseconds((UnsignedWide *) &currentFrame);
-						}
-					}
-					else
-					{
-						if (lastFrame > currentFrame)
-							usleep(lastFrame - currentFrame);
-					}
+					if (lastFrame > currentFrame)
+						usleep(lastFrame - currentFrame);
 
 					IPPU.RenderThisFrame = true;
 				}
@@ -3574,21 +3334,10 @@ void S9xSyncSpeed(void)
 					adjustment = macFrameAdvanceRate * macFrameSkip / Memory.ROMFramesPerSecond;
 					Microseconds((UnsignedWide *) &currentFrame);
 
-					if (!minimizecpu)
+					if (currentFrame - lastFrame < adjustment)
 					{
-						while (currentFrame - lastFrame < adjustment)
-						{
-							MPYield();
-							Microseconds((UnsignedWide *) &currentFrame);
-						}
-					}
-					else
-					{
-						if (currentFrame - lastFrame < adjustment)
-						{
-							usleep(adjustment + lastFrame - currentFrame);
-							Microseconds((UnsignedWide *) &currentFrame);
-						}
+						usleep(adjustment + lastFrame - currentFrame);
+						Microseconds((UnsignedWide *) &currentFrame);
 					}
 
 					lastFrame = currentFrame;
@@ -3609,19 +3358,8 @@ void S9xSyncSpeed(void)
 			adjustment = macFrameAdvanceRate / Memory.ROMFramesPerSecond;
 			Microseconds((UnsignedWide *) &currentFrame);
 
-			if (!minimizecpu)
-			{
-				while (currentFrame - lastFrame < adjustment)
-				{
-					MPYield();
-					Microseconds((UnsignedWide *) &currentFrame);
-				}
-			}
-			else
-			{
-				if (currentFrame - lastFrame < adjustment)
-					usleep(adjustment + lastFrame - currentFrame);
-			}
+			if (currentFrame - lastFrame < adjustment)
+				usleep(adjustment + lastFrame - currentFrame);
 
 			lastFrame = currentFrame;
 
@@ -3632,21 +3370,21 @@ void S9xSyncSpeed(void)
 		IPPU.RenderThisFrame = false;
 }
 
-void S9xAutoSaveSRAM(void)
+void S9xAutoSaveSRAM (void)
 {
     SNES9X_SaveSRAM();
 }
 
-void S9xMessage(int type, int number, const char *message)
+void S9xMessage (int type, int number, const char *message)
 {
-	static char mes[256];
+	static char	mes[256];
 
 	if (!onscreeninfo)
 	{
 		printf("%s\n", message);
 
 		if ((type == S9X_INFO) && (number == S9X_ROM_INFO))
-			if (strstr(message, "checksum ok") == nil)
+			if (strstr(message, "checksum ok") == NULL)
 				AppearanceAlert(kAlertCautionAlert, kBadRomWarning, kBadRomHint);
 	}
 	else
@@ -3656,12 +3394,12 @@ void S9xMessage(int type, int number, const char *message)
 	}
 }
 
-const char * S9xStringInput(const char *mes)
+const char * S9xStringInput (const char *s)
 {
-	return nil;
+	return (NULL);
 }
 
-void S9xToggleSoundChannel(int c)
+void S9xToggleSoundChannel (int c)
 {
     static int	channel_enable = 255;
 
@@ -3673,9 +3411,9 @@ void S9xToggleSoundChannel(int c)
 	S9xSetSoundControl(channel_enable);
 }
 
-void S9xExit(void)
+void S9xExit (void)
 {
-	SysBeep(1);
+	PlayAlertSound();
 
 	running = false;
 	cartOpen = false;
@@ -3683,7 +3421,7 @@ void S9xExit(void)
 	QuitApplicationEventLoop();
 }
 
-void QuitWithFatalError(OSStatus err, const char * msg)
+void QuitWithFatalError (OSStatus err, const char *msg)
 {
 	printf("Quit. %s  err: %ld\n", msg, err);
 	ExitToShell();

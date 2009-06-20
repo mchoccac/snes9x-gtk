@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,10 +171,10 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "memmap.h"
-#include "gfx.h"
-#include "display.h"
 #include "movie.h"
+#include "display.h"
 
 #include <libgen.h>
 
@@ -186,19 +184,12 @@
 #include "mac-stringtools.h"
 #include "mac-file.h"
 
-extern char	pfold[9];
+static void AddFolderIcon (FSRef *, const char *);
+static OSStatus FindSNESFolder (FSRef *, char *, const char *);
+static OSStatus FindApplicationSupportFolder (FSRef *, char *, const char *);
 
-extern "C" char * osd_GetPackDir(void);
 
-static void AddFolderIcon(FSRef *, const char *);
-static OSErr FindSNESFolder(FSRef *, char *, const char *);
-static OSErr FindApplicationSupportFolder(FSRef *, char *, const char *);
-static int S9xCompareSDD1IndexEntries(const void *, const void *);
-static char * S9xGetPackDirectory(void);
-
-static char	gPackFolderPath[PATH_MAX + 1];
-
-static OSErr FindSNESFolder(FSRef *folderRef, char *folderPath, const char *folderName)
+static OSStatus FindSNESFolder (FSRef *folderRef, char *folderPath, const char *folderName)
 {
 	OSStatus	err;
 	CFURLRef	burl, purl;
@@ -217,7 +208,7 @@ static OSErr FindSNESFolder(FSRef *folderRef, char *folderPath, const char *fold
 	err = FSMakeFSRefUnicode(&pref, CFStringGetLength(fstr), buffer, kTextEncodingUnicodeDefault, folderRef);
  	if (err == dirNFErr || err == fnfErr)
 	{
-		err = FSCreateDirectoryUnicode(&pref, CFStringGetLength(fstr), buffer, kFSCatInfoNone, nil, folderRef, nil, nil);
+		err = FSCreateDirectoryUnicode(&pref, CFStringGetLength(fstr), buffer, kFSCatInfoNone, NULL, folderRef, NULL, NULL);
 		if (err == noErr)
 			AddFolderIcon(folderRef, folderName);
 	}
@@ -234,12 +225,12 @@ static OSErr FindSNESFolder(FSRef *folderRef, char *folderPath, const char *fold
 	CFRelease(burl);
 	CFRelease(fstr);
 
-	return err;
+	return (err);
 }
 
-static OSErr FindApplicationSupportFolder(FSRef *folderRef, char *folderPath, const char *folderName)
+static OSStatus FindApplicationSupportFolder (FSRef *folderRef, char *folderPath, const char *folderName)
 {
-	OSErr		err;
+	OSStatus	err;
 	FSRef		p2ref, p1ref;
 	CFStringRef	fstr;
 	UniChar		buffer[PATH_MAX + 1];
@@ -255,7 +246,7 @@ static OSErr FindApplicationSupportFolder(FSRef *folderRef, char *folderPath, co
 	{
 		err = FSMakeFSRefUnicode(&p2ref, 6, oldfolder, kTextEncodingUnicodeDefault, &p1ref);
 		if (err == dirNFErr || err == fnfErr)
-			err = FSCreateDirectoryUnicode(&p2ref, 6, s9xfolder, kFSCatInfoNone, nil, &p1ref, nil, nil);
+			err = FSCreateDirectoryUnicode(&p2ref, 6, s9xfolder, kFSCatInfoNone, NULL, &p1ref, NULL, NULL);
 	}
 	if (err)
 		return (err);
@@ -266,7 +257,7 @@ static OSErr FindApplicationSupportFolder(FSRef *folderRef, char *folderPath, co
 	err = FSMakeFSRefUnicode(&p1ref, CFStringGetLength(fstr), buffer, kTextEncodingUnicodeDefault, folderRef);
  	if (err == dirNFErr || err == fnfErr)
 	{
-		err = FSCreateDirectoryUnicode(&p1ref, CFStringGetLength(fstr), buffer, kFSCatInfoNone, nil, folderRef, nil, nil);
+		err = FSCreateDirectoryUnicode(&p1ref, CFStringGetLength(fstr), buffer, kFSCatInfoNone, NULL, folderRef, NULL, NULL);
 		if (err == noErr)
 			AddFolderIcon(folderRef, folderName);
 	}
@@ -281,20 +272,20 @@ static OSErr FindApplicationSupportFolder(FSRef *folderRef, char *folderPath, co
 
 	CFRelease(fstr);
 
-	return err;
+	return (err);
 }
 
-void ChangeTypeAndCreator(const char *path, OSType type, OSType creator)
+void ChangeTypeAndCreator (const char *path, OSType type, OSType creator)
 {
-	OSErr	err;
-	FSRef	ref;
+	OSStatus	err;
+	FSRef		ref;
 
-	err = FSPathMakeRef((unsigned char *) path, &ref, nil);
+	err = FSPathMakeRef((unsigned char *) path, &ref, NULL);
 	if (err == noErr)
 	{
 		FSCatalogInfo	catinfo;
 
-		err = FSGetCatalogInfo(&ref, kFSCatInfoFinderInfo, &catinfo, nil, nil, nil);
+		err = FSGetCatalogInfo(&ref, kFSCatInfoFinderInfo, &catinfo, NULL, NULL, NULL);
 		if (err == noErr)
 		{
 			((FileInfo *) &catinfo.finderInfo)->fileCreator = creator;
@@ -305,7 +296,7 @@ void ChangeTypeAndCreator(const char *path, OSType type, OSType creator)
 	}
 }
 
-static void AddFolderIcon(FSRef *fref, const char *folderName)
+static void AddFolderIcon (FSRef *fref, const char *folderName)
 {
 	OSStatus			err;
 	FSCatalogInfo		fcat, icat;
@@ -326,7 +317,7 @@ static void AddFolderIcon(FSRef *fref, const char *folderName)
 	str = CFStringCreateWithCString(kCFAllocatorDefault, name, CFStringGetSystemEncoding());
 	if (str)
 	{
-		url = CFBundleCopyResourceURL(CFBundleGetMainBundle(), str, CFSTR("icns"), nil);
+		url = CFBundleCopyResourceURL(CFBundleGetMainBundle(), str, CFSTR("icns"), NULL);
 		if (url)
 		{
 			r = CFURLGetFSRef(url, &bref);
@@ -338,7 +329,7 @@ static void AddFolderIcon(FSRef *fref, const char *folderName)
 					err = FSGetResourceForkName(&fork);
 					if (err == noErr)
 					{
-						err = FSCreateResourceFile(fref, 5, iconName, kFSCatInfoNone, nil, fork.length, fork.unicode, &iref, nil);
+						err = FSCreateResourceFile(fref, 5, iconName, kFSCatInfoNone, NULL, fork.length, fork.unicode, &iref, NULL);
 						if (err == noErr)
 						{
 							err = FSOpenResourceFile(&iref, fork.length, fork.unicode, fsWrPerm, &resf);
@@ -351,13 +342,13 @@ static void AddFolderIcon(FSRef *fref, const char *folderName)
 									WriteResource((Handle) family);
 									ReleaseResource((Handle) family);
 
-									err = FSGetCatalogInfo(&iref, kFSCatInfoFinderInfo, &icat, nil, nil, nil);
+									err = FSGetCatalogInfo(&iref, kFSCatInfoFinderInfo, &icat, NULL, NULL, NULL);
 									((FileInfo *) &icat.finderInfo)->finderFlags |= kIsInvisible;
 									((FileInfo *) &icat.finderInfo)->fileCreator = 'MACS';
 									((FileInfo *) &icat.finderInfo)->fileType    = 'icon';
 									err = FSSetCatalogInfo(&iref, kFSCatInfoFinderInfo, &icat);
 
-									err = FSGetCatalogInfo(fref, kFSCatInfoFinderInfo, &fcat, nil, nil, nil);
+									err = FSGetCatalogInfo(fref, kFSCatInfoFinderInfo, &fcat, NULL, NULL, NULL);
 									((FolderInfo *) &fcat.finderInfo)->finderFlags |=  kHasCustomIcon;
 									((FolderInfo *) &fcat.finderInfo)->finderFlags &= ~kHasBeenInited;
 									err = FSSetCatalogInfo(fref, kFSCatInfoFinderInfo, &fcat);
@@ -379,31 +370,31 @@ static void AddFolderIcon(FSRef *fref, const char *folderName)
 	}
 }
 
-Boolean IsLockedMedia(FSVolumeRefNum volume)
+Boolean IsLockedMedia (FSVolumeRefNum volume)
 {
-    OSErr			err;
+    OSStatus		err;
 	FSVolumeInfo	info;
 
-	err = FSGetVolumeInfo(volume, 0, nil, kFSVolInfoFlags, &info, nil, nil);
+	err = FSGetVolumeInfo(volume, 0, NULL, kFSVolInfoFlags, &info, NULL, NULL);
     if (err == noErr)
 	{
 		if ((info.flags & kFSVolFlagHardwareLockedMask) || (info.flags & kFSVolFlagSoftwareLockedMask))
-			return true;
+			return (true);
 	}
 
-	return false;
+	return (false);
 }
 
-const char * S9xGetFilename(const char *inExt, enum s9x_getdirtype dirtype)
+const char * S9xGetFilename (const char *inExt, enum s9x_getdirtype dirtype)
 {
 	static int	index = 0;
 	static char	filePath[4][PATH_MAX + 1];
 
-	OSErr		err;
+	OSStatus	err;
 	FSRef		ref;
 	uint32		type;
 	char		folderName[16];
-	char		drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	char		drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 	const char	*p;
 
 	index++;
@@ -413,15 +404,10 @@ const char * S9xGetFilename(const char *inExt, enum s9x_getdirtype dirtype)
 	folderName[0] = filePath[index][0] = 0;
 
 	if (strlen(inExt) < 4)
-		return filePath[index];
+		return (filePath[index]);
 
 	p = inExt + strlen(inExt) - 4;
-
-#ifdef __BIG_ENDIAN__
-	type = *(uint32 *) p;
-#else
 	type = ((uint32) p[0] << 24) + ((uint32) p[1] << 16) + ((uint32) p[2] << 8) + (uint32) p[3];
-#endif
 
 	switch (type)
 	{
@@ -458,24 +444,23 @@ const char * S9xGetFilename(const char *inExt, enum s9x_getdirtype dirtype)
 		case '.bio':	// dummy
 			strcpy(folderName, "BIOSs");
 			break;
-
-		case '.pac':	// dummy
-			strcpy(folderName, "Packs");
 	}
 
 	if (folderName[0] && ((saveInROMFolder != 1) || lockedROMMedia))
 	{
+		char	s[PATH_MAX + 1];
+
+		s[0] = 0;
+
 		if (saveInROMFolder == 0)
-			err = FindSNESFolder(&ref, filePath[index], folderName);
+			err = FindSNESFolder(&ref, s, folderName);
 		else
-			err = FindApplicationSupportFolder(&ref, filePath[index], folderName);
+			err = FindApplicationSupportFolder(&ref, s, folderName);
 
 		if (err == noErr)
 		{
 			_splitpath(Memory.ROMFilename, drive, dir, fname, ext);
-			strcat(filePath[index], MAC_PATH_SEPARATOR);
-			strcat(filePath[index], fname);
-			strcat(filePath[index], inExt);
+			snprintf(filePath[index], PATH_MAX + 1, "%s%s%s%s", s, MAC_PATH_SEPARATOR, fname, inExt);
 		}
 		else
 		{
@@ -489,113 +474,106 @@ const char * S9xGetFilename(const char *inExt, enum s9x_getdirtype dirtype)
 		_makepath(filePath[index], drive, dir, fname, inExt);
 	}
 
-	return filePath[index];
+	return (filePath[index]);
 }
 
-const char * S9xGetSPCFilename(void)
+const char * S9xGetSPCFilename (void)
 {
 	char	spcExt[16];
 
 	sprintf(spcExt, ".%03d.spc", (int) spcFileCount);
 
 	spcFileCount++;
-	if (spcFileCount == 999)
+	if (spcFileCount == 1000)
 		spcFileCount = 0;
 
-	return S9xGetFilename(spcExt, SPC_DIR);
+	return (S9xGetFilename(spcExt, SPC_DIR));
 }
 
-const char * S9xGetPNGFilename(void)
+const char * S9xGetPNGFilename (void)
 {
 	char	pngExt[16];
 
 	sprintf(pngExt, ".%03d.png", (int) pngFileCount);
 
 	pngFileCount++;
-	if (pngFileCount == 999)
+	if (pngFileCount == 1000)
 		pngFileCount = 0;
 
-	return S9xGetFilename(pngExt, SCREENSHOT_DIR);
+	return (S9xGetFilename(pngExt, SCREENSHOT_DIR));
 }
 
-const char * S9xGetFreezeFilename(int which)
+const char * S9xGetFreezeFilename (int which)
 {
 	char	frzExt[16];
 
 	sprintf(frzExt, ".%03d.frz", which);
 
-	return S9xGetFilename(frzExt, SNAPSHOT_DIR);
+	return (S9xGetFilename(frzExt, SNAPSHOT_DIR));
 }
 
-const char * S9xGetFilenameInc(const char *inExt, enum s9x_getdirtype dirtype)
+const char * S9xGetFilenameInc (const char *inExt, enum s9x_getdirtype dirtype)
 {
-	const char	*p;
 	uint32		type;
+	const char	*p;
 
 	if (strlen(inExt) < 4)
-		return nil;
+		return (NULL);
 
 	p = inExt + strlen(inExt) - 4;
-
-#ifdef __BIG_ENDIAN__
-	type = *(uint32 *) p;
-#else
 	type = ((uint32) p[0] << 24) + ((uint32) p[1] << 16) + ((uint32) p[2] << 8) + (uint32) p[3];
-#endif
 
 	switch (type)
 	{
 		case '.spc':
-			return S9xGetSPCFilename();
+			return (S9xGetSPCFilename());
 
 		case '.png':
-			return S9xGetPNGFilename();
+			return (S9xGetPNGFilename());
 	}
 
-	return nil;
+	return (NULL);
 }
 
-const char * S9xChooseFilename(bool8 read_only)
+const char * S9xChooseFilename (bool8 read_only)
 {
-	return nil;
+	return (NULL);
 }
 
-const char * S9xChooseMovieFilename(bool8 read_only)
+const char * S9xChooseMovieFilename (bool8 read_only)
 {
-	return nil;
+	return (NULL);
 }
 
-bool8 S9xOpenSnapshotFile(const char *fname, bool8 read_only, STREAM *file)
+bool8 S9xOpenSnapshotFile (const char *fname, bool8 read_only, STREAM *file)
 {
     if (read_only)
     {
 		if (0 != (*file = OPEN_STREAM(fname, "rb")))
-		    return true;
+		    return (true);
     }
     else
     {
 		if (0 != (*file = OPEN_STREAM(fname, "wb")))
-		    return true;
+		    return (true);
     }
 
-    return false;
+    return (false);
 }
 
-void S9xCloseSnapshotFile(STREAM file)
+void S9xCloseSnapshotFile (STREAM file)
 {
     CLOSE_STREAM(file);
 }
 
-const char * S9xBasename(const char *in)
+const char * S9xBasename (const char *in)
 {
 	static char	s[PATH_MAX + 1];
-	size_t		l;
 
-	l = strlen(in);
-	if (l < 3) // for a while
-		return ("      ");
+	strncpy(s, in, PATH_MAX + 1);
+	s[PATH_MAX] = 0;
 
-	strcpy(s, in);
+	size_t	l = strlen(s);
 
 	for (unsigned int i = 0; i < l; i++)
     {
@@ -606,207 +584,13 @@ const char * S9xBasename(const char *in)
 	return (basename(s));
 }
 
-static int S9xCompareSDD1IndexEntries(const void *p1, const void *p2)
-{
-    return (*(uint32 *) p1 - *(uint32 *) p2);
-}
-
-void S9xLoadSDD1Data(void)
-{
-	FILE	*fs;
-	int		len;
-	char	path[PATH_MAX + 1], index[PATH_MAX + 1], data[PATH_MAX + 1];
-
-    Memory.FreeSDD1Data();
-
-	if (macSDD1Pack == 1)
-	{
-		Settings.SDD1Pack = true;
-		printf("Using on-the-fly S-DD1 decompression.\n");
-		return;
-	}
-
-	Settings.SDD1Pack = false;
-
-    strcpy(path, S9xGetPackDirectory());
-
-    strcpy(index, path);
-    strcat(index, "SDD1GFX.idx");
-    strcpy(data,  path);
-    strcat(data,  "SDD1GFX.dat");
-
-	len = 0;
-
-    fs = fopen(index, "rb");
-    if (fs)
-    {
-        fseek(fs, 0, SEEK_END);
-        len = ftell(fs);
-        rewind(fs);
-        Memory.SDD1Index = (uint8 *) malloc(len);
-        fread(Memory.SDD1Index, 1, len, fs);
-        fclose(fs);
-
-        Memory.SDD1Entries = len / 12;
-
-		fs = fopen(data, "rb");
-        if (!fs)
-        {
-            free((char *) Memory.SDD1Index);
-            Memory.SDD1Index = nil;
-            Memory.SDD1Entries = 0;
-			S9xMessage(0, 0, "Graphics Pack not found!");
-
-			if (macSDD1Pack == 2)
-			{
-				printf("Using on-the-fly S-DD1 decompression.\n");
-				Settings.SDD1Pack = true;
-			}
-		}
-        else
-        {
- 			uint8	*ptr;
-
-			fseek(fs, 0, SEEK_END);
-            len = ftell(fs);
-            rewind(fs);
-            Memory.SDD1Data = (uint8 *) malloc(len);
-            fread(Memory.SDD1Data, 1, len, fs);
-            fclose(fs);
-
-			ptr = Memory.SDD1Index;
-
-		#ifdef __BIG_ENDIAN__
-          	for (unsigned int i = 0; i < Memory.SDD1Entries; i++, ptr += 12)
-		    {
-				SWAP_DWORD((*(uint32 *) (ptr + 0)));
-				SWAP_DWORD((*(uint32 *) (ptr + 4)));
-				SWAP_DWORD((*(uint32 *) (ptr + 8)));
-		    }
-		#endif
-
-			qsort(Memory.SDD1Index, Memory.SDD1Entries, 12, S9xCompareSDD1IndexEntries);
-        }
-    }
-	else
-	{
-		S9xMessage(0, 0, "Graphics Pack not found!");
-		if (macSDD1Pack == 2)
-		{
-			printf("Using on-the-fly S-DD1 decompression.\n");
-			Settings.SDD1Pack = true;
-		}
-	}
-}
-
-static char * S9xGetPackDirectory(void)
-{
-	OSStatus	err;
-	FSRef		ref;
-	Boolean		isFolder, wasAliased;
-	int			n;
-	char		drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
-
-	static char	path[PATH_MAX + 1];
-	static char	dummy[] = "~/";
-
-	pfold[0] = 0;	// unused
-
-	gPackFolderPath[0] = 0;
-
-	strcpy(path, S9xGetFilename(".pac", DEFAULT_DIR));
-	n = strlen(path);
-	if (n < 4)
-		return dummy;
-
-	path[n - 4] = 0;
-	err = FSPathMakeRef((unsigned char *) path, &ref, nil);
-	if (err == noErr)
-	{
-		err = FSResolveAliasFile(&ref, false, &isFolder, &wasAliased);
-		if ((err == noErr) && isFolder)
-		{
-			err = FSRefMakePath(&ref, (unsigned char *) path, PATH_MAX);
-			if (err == noErr)
-			{
-				strcat(path, MAC_PATH_SEPARATOR);
-				strcpy(gPackFolderPath, path);
-
-				return path;
-			}
-			else
-				return dummy;
-		}
-	}
-
-	char	fold[16];
-
-	if (strncmp(Memory.ROMName, "Star Ocean",            10) == 0)
-		strcpy(fold, "SOCNSDD1");
-	else
-	if (strncmp(Memory.ROMName, "STREET FIGHTER ALPHA2", 21) == 0)
-	{
-		if (Memory.ROMRegion == 1)
-			strcpy(fold, "SFA2SDD1");
-		else
-			strcpy(fold, "SFA2SDD1.E");
-	}
-	else
-	if (strncmp(Memory.ROMName, "STREET FIGHTER ZERO2" , 20) == 0)
-		strcpy(fold, "SFZ2SDD1");
-	else
-	if (strncmp(Memory.ROMName, "SUPER POWER LEAG 4   ", 21) == 0)
-		strcpy(fold, "SPL4-SP7");
-	else
-	if (strncmp(Memory.ROMName, "MOMOTETSU HAPPY      ", 21) == 0)
-		strcpy(fold, "SMHT-SP7");
-	else
-	if (strncmp(Memory.ROMName, "HU TENGAI MAKYO ZERO ", 21) == 0)
-		strcpy(fold, "FEOEZSP7");
-	else
-	if (strncmp(Memory.ROMName, "JUMP TENGAIMAKYO ZERO", 21) == 0)
-		strcpy(fold, "SJUMPSP7");
-	else
-		strcpy(fold, "MISCPACK");
-
-	_splitpath(path, drive, dir, fname, ext);
-	_makepath(path, drive, dir, fold, "");
-
-	err = FSPathMakeRef((unsigned char *) path, &ref, nil);
-	if (err == noErr)
-	{
-		err = FSResolveAliasFile(&ref, false, &isFolder, &wasAliased);
-		if ((err == noErr) && isFolder)
-		{
-			err = FSRefMakePath(&ref, (unsigned char *) path, PATH_MAX);
-			if (err == noErr)
-			{
-				strcat(path, MAC_PATH_SEPARATOR);
-				strcpy(gPackFolderPath, path);
-
-				return path;
-			}
-			else
-				return dummy;
-		}
-	}
-
-	return dummy;
-}
-
-const char * S9xGetSPC7110Directory(void)
-{
-	//printf("Reading SPC7110 Graphics Pack\n");
-	return gPackFolderPath;
-}
-
-const char * S9xGetDirectory(enum s9x_getdirtype dirtype)
+const char * S9xGetDirectory (enum s9x_getdirtype dirtype)
 {
 	static int	index = 0;
 	static char	path[4][PATH_MAX + 1];
 
 	char	inExt[16];
-	char	drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	char	drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 	index++;
 	if (index > 3)
@@ -818,9 +602,9 @@ const char * S9xGetDirectory(enum s9x_getdirtype dirtype)
 		case SRAM_DIR:			strcpy(inExt, ".srm");	break;
 		case SCREENSHOT_DIR:	strcpy(inExt, ".png");	break;
 		case SPC_DIR:			strcpy(inExt, ".spc");	break;
-		case PATCH_DIR:			strcpy(inExt, ".cht");	break;
+		case CHEAT_DIR:			strcpy(inExt, ".cht");	break;
 		case BIOS_DIR:			strcpy(inExt, ".bio");	break;
-		default:				strcpy(inExt, ".xxx");
+		default:				strcpy(inExt, ".xxx");	break;
 	}
 
 	_splitpath(S9xGetFilename(inExt, dirtype), drive, dir, fname, ext);
@@ -830,34 +614,29 @@ const char * S9xGetDirectory(enum s9x_getdirtype dirtype)
 	if (l > 1)
 		path[index][l - 1] = 0;
 
-	return path[index];
+	return (path[index]);
 }
 
-extern "C" char * osd_GetPackDir(void)
+void _splitpath (const char *path, char *drive, char *dir, char *fname, char *ext)
 {
-	return S9xGetPackDirectory();
-}
+	drive[0] = 0;
+	fname[0] = 0;
+	ext[0]   = 0;
+	dir[0]   = 0;
 
-void _splitpath(const char *path, char *drive, char *dir, char *fname, char *ext)
-{
-	short	x;
-
-	drive[0] = '\0';
-	fname[0] = '\0';
-	ext[0]   = '\0';
-	dir[0]   = '\0';
-
-	if (strlen(path) < 1)
-		return;
+	int	x;
 
 	x = strlen(path) - 1;
+	if (x < 0)
+		return;
+
 	while (x && (path[x] != MAC_PATH_SEP_CHAR))
 		x--;
 
 	if (x)
 	{
 		strcpy(dir, path);
-		dir[x + 1] = '\0';
+		dir[x + 1] = 0;
 
 		strcpy(fname, path + x + 1);
 	}
@@ -871,26 +650,20 @@ void _splitpath(const char *path, char *drive, char *dir, char *fname, char *ext
 	if (x)
 	{
 		strcpy(ext, fname + x);
-		fname[x] = '\0';
+		fname[x] = 0;
 	}
 }
 
-void _makepath(char *path, const char *drive, const char *dir, const char *fname, const char *ext)
+void _makepath (char *path, const char *drive, const char *dir, const char *fname, const char *ext)
 {
-	#pragma unused (drive)
+	static const char	emp[] = "", dot[] = ".";
 
-	path[0] = '\0';
+	const char	*d, *f, *e, *p;
 
-	if (dir && dir[0])
-		strcat(path, dir);
+	d = dir ? dir : emp;
+	f = fname ? fname : emp;
+	e = ext ? ext : emp;
+	p = (e[0] && e[0] != '.') ? dot : emp;
 
-	if (fname && fname[0])
-		strcat(path, fname);
-
-	if (ext && ext[0])
-	{
-		if (ext[0] != '.')
-			strcat(path, ".");
-		strcat(path, ext);
-	}
+	snprintf(path, PATH_MAX + 1, "%s%s%s%s", d, f, p, e);
 }

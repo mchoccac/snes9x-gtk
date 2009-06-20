@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,30 +174,6 @@
 #ifndef _mac_dialog_h_
 #define _mac_dialog_h_
 
-void AboutDialog(void);
-void RomInfoDialog(void);
-void ConfigureAutofire(void);
-void StartCarbonModalDialog(void);
-void FinishCarbonModalDialog(void);
-void RegisterHelpBook(void);
-void MoveWindowPosition(WindowRef, int, Boolean);
-void SaveWindowPosition(WindowRef, int);
-void AppearanceAlert(AlertType, int, int);
-void SetHIViewID(HIViewID *, OSType, SInt32);
-long GetHIToolboxVersion(void);
-OSStatus GetStaticTextText(HIViewRef, Str255);
-OSStatus SetStaticTextText(HIViewRef, Str255, Boolean);
-OSStatus SetStaticTextTrunc(HIViewRef, TruncCode, Boolean);
-OSStatus SetStaticTextCFString(HIViewRef, CFStringRef, Boolean);
-OSStatus SetEditTextCFString(HIViewRef, CFStringRef, Boolean);
-OSStatus GetEditTextText(HIViewRef, Str255);
-OSStatus SetEditTextText(HIViewRef, Str255, Boolean);
-OSStatus SetEditTextSelection(HIViewRef, SInt16, SInt16);
-OSStatus CopyEditTextCFString(HIViewRef, CFStringRef *);
-pascal OSStatus DefaultEventHandler(EventHandlerCallRef, EventRef, void *);
-
-extern int	autofireLastTabIndex;
-
 enum
 {
 	kSoundWarning = 1,
@@ -213,5 +187,27 @@ enum
 	kRequiredSystemWarning,
 	kRequiredSystemHint
 };
+
+extern int	autofireLastTabIndex;
+
+void AboutDialog (void);
+void RomInfoDialog (void);
+void ConfigureAutofire (void);
+void StartCarbonModalDialog (void);
+void FinishCarbonModalDialog (void);
+void RegisterHelpBook (void);
+void MoveWindowPosition (WindowRef, int, Boolean);
+void SaveWindowPosition (WindowRef, int);
+void AppearanceAlert (AlertType, int, int);
+void SetHIViewID (HIViewID *, OSType, SInt32);
+OSStatus SetStaticTextCStr (HIViewRef, char *, Boolean);
+OSStatus SetStaticTextCFString (HIViewRef, CFStringRef, Boolean);
+OSStatus SetStaticTextTrunc (HIViewRef, TruncCode, Boolean);
+OSStatus GetEditTextCStr (HIViewRef, char *);
+OSStatus SetEditTextCStr (HIViewRef, char *, Boolean);
+OSStatus CopyEditTextCFString (HIViewRef, CFStringRef *);
+OSStatus SetEditTextCFString (HIViewRef, CFStringRef, Boolean);
+OSStatus SetEditTextSelection (HIViewRef, SInt16, SInt16);
+pascal OSStatus DefaultEventHandler (EventHandlerCallRef, EventRef, void *);
 
 #endif

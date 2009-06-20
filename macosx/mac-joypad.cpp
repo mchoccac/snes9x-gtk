@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -205,10 +203,6 @@
 #define	kMaskLf					0x0200
 #define	kMaskRt					0x0100
 
-static void JoypadSetDirectionInfo(void);
-static pascal void IdleTimer(EventLoopTimerRef, void *);
-static pascal OSStatus ControllerEventHandler(EventHandlerCallRef, EventRef, void *);
-
 typedef	hu_device_t		*pRecDevice;
 typedef	hu_element_t	*pRecElement;
 
@@ -236,7 +230,7 @@ static actionRec		gActionRecs[kNeedCount];
 static directionInfo	gDirectionInfo[MAC_MAX_PLAYERS];
 static int				gDirectionHint[MAC_MAX_PLAYERS];
 
-static const ControlID	gControlIDs[kNeedCount] =
+static const HIViewID	gControlIDs[kNeedCount] =
 {
 	{ '1_Up', 0 },
 	{ '1_Dn', 0 },
@@ -502,15 +496,152 @@ static char	gNeeds[kNeedCount][64] =
 	"Turbo Control Modifier"
 };
 
-OSStatus Save_Config(void)
+static int	gIconNumber[kNeedCount] =
+{
+	0,
+	1,
+	2,
+	3,
+
+	12,
+	13,
+	14,
+	15,
+
+	24,
+	25,
+	26,
+	27,
+
+	36,
+	37,
+	38,
+	39,
+
+	48,
+	49,
+	50,
+	51,
+
+	60,
+	61,
+	62,
+	63,
+
+	72,
+	73,
+	74,
+	75,
+
+	84,
+	85,
+	86,
+	87,
+
+	5,
+	7,
+	6,
+	4,
+	8,
+	9,
+	11,
+	10,
+
+	17,
+	19,
+	18,
+	16,
+	20,
+	21,
+	23,
+	22,
+
+	29,
+	31,
+	30,
+	28,
+	32,
+	33,
+	35,
+	34,
+
+	41,
+	43,
+	42,
+	40,
+	44,
+	45,
+	47,
+	46,
+
+	53,
+	55,
+	54,
+	52,
+	56,
+	57,
+	59,
+	58,
+
+	65,
+	67,
+	66,
+	64,
+	68,
+	69,
+	71,
+	70,
+
+	77,
+	79,
+	78,
+	76,
+	80,
+	81,
+	83,
+	82,
+
+	89,
+	91,
+	90,
+	88,
+	92,
+	93,
+	95,
+	94,
+
+	101,
+	102,
+	103,
+	104,
+	114,
+	105,
+	116,
+	117,
+	106,
+	107,
+	108,
+	109,
+	110,
+	111,
+	112,
+	113,
+	115
+};
+
+static void JoypadSetDirectionInfo (void);
+static pascal void IdleTimer (EventLoopTimerRef, void *);
+static pascal OSStatus ControllerEventHandler (EventHandlerCallRef, EventRef, void *);
+
+
+void SaveControllerSettings (void)
 {
 	CFStringRef	keyCFStringRef;
  	Boolean		syncFlag;
-	short		a;
 
 	JoypadSetDirectionInfo();
 
-    for (a = 0; a < kNeedCount; a++)
+    for (int a = 0; a < kNeedCount; a++)
     {
 		char	needCStr[64], num[10];
 
@@ -521,21 +652,21 @@ OSStatus Save_Config(void)
 			strcat(needCStr, num);
 		}
 
-		keyCFStringRef = CFStringCreateWithFormat(kCFAllocatorDefault, nil, CFSTR("%s"), needCStr);
+		keyCFStringRef = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("%s"), needCStr);
         if (keyCFStringRef)
         {
 			if (gActionRecs[a].fDevice && gActionRecs[a].fElement)
 				syncFlag = HIDSaveElementPref(keyCFStringRef, kCFPreferencesCurrentApplication, gActionRecs[a].fDevice, gActionRecs[a].fElement);
             else
-				CFPreferencesSetAppValue(keyCFStringRef, nil, kCFPreferencesCurrentApplication);
+				CFPreferencesSetAppValue(keyCFStringRef, NULL, kCFPreferencesCurrentApplication);
 
 			CFRelease(keyCFStringRef);
         }
     }
 
-	for (a = 0; a < MAC_MAX_PLAYERS; a++)
+	for (int a = 0; a < MAC_MAX_PLAYERS; a++)
 	{
-		keyCFStringRef = CFStringCreateWithFormat(kCFAllocatorDefault, nil, CFSTR("DirectionHint_%d_%d"), a, padSetting);
+		keyCFStringRef = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("DirectionHint_%d_%d"), a, padSetting);
 		if (keyCFStringRef)
 		{
 			CFNumberRef	numRef;
@@ -554,19 +685,16 @@ OSStatus Save_Config(void)
 	}
 
 	CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
-
-	return noErr;
 }
 
-OSStatus Load_Config(void)
+void LoadControllerSettings (void)
 {
 	CFStringRef	keyCFStringRef;
-	short		a;
 
-    for (a = 0; a < kNeedCount; a++)
+    for (int a = 0; a < kNeedCount; a++)
     {
-		pRecDevice	pDevice  = nil;
-		pRecElement	pElement = nil;
+		pRecDevice	pDevice  = NULL;
+		pRecElement	pElement = NULL;
 		Boolean		r = false;
 		char		needCStr[64], num[10];
 
@@ -577,7 +705,7 @@ OSStatus Load_Config(void)
 			strcat(needCStr, num);
 		}
 
-		keyCFStringRef = CFStringCreateWithFormat(kCFAllocatorDefault, nil, CFSTR("%s"), needCStr);
+		keyCFStringRef = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("%s"), needCStr);
 		if (keyCFStringRef)
 		{
 			r = HIDRestoreElementPref(keyCFStringRef, kCFPreferencesCurrentApplication, &pDevice, &pElement);
@@ -588,17 +716,17 @@ OSStatus Load_Config(void)
 			}
 			else
 			{
-				gActionRecs[a].fDevice  = nil;
-				gActionRecs[a].fElement = nil;
+				gActionRecs[a].fDevice  = NULL;
+				gActionRecs[a].fElement = NULL;
 			}
 
 			CFRelease(keyCFStringRef);
 		}
 	}
 
-	for (a = 0; a < MAC_MAX_PLAYERS; a++)
+	for (int a = 0; a < MAC_MAX_PLAYERS; a++)
 	{
-		keyCFStringRef = CFStringCreateWithFormat(kCFAllocatorDefault, nil, CFSTR("DirectionHint_%d_%d"), a, padSetting);
+		keyCFStringRef = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("DirectionHint_%d_%d"), a, padSetting);
 		if (keyCFStringRef)
 		{
 			Boolean	r;
@@ -614,14 +742,10 @@ OSStatus Load_Config(void)
 	}
 
 	JoypadSetDirectionInfo();
-
-	return noErr;
 }
 
-static pascal OSStatus ControllerEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus ControllerEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerCallRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef;
 
@@ -635,6 +759,7 @@ static pascal OSStatus ControllerEventHandler(EventHandlerCallRef inHandlerCallR
 				case kEventWindowClose:
 					QuitAppModalLoopForWindow(tWindowRef);
 					result = noErr;
+					break;
 			}
 
 			break;
@@ -645,7 +770,7 @@ static pascal OSStatus ControllerEventHandler(EventHandlerCallRef inHandlerCallR
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -655,8 +780,7 @@ static pascal OSStatus ControllerEventHandler(EventHandlerCallRef inHandlerCallR
 					break;
 
 				case kEventCommandProcess:
-
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						if (tHICommand.commandID == 'CLRa')
@@ -775,17 +899,17 @@ static pascal OSStatus ControllerEventHandler(EventHandlerCallRef inHandlerCallR
 									{
 										int	i = command >> 2;	// Player
 
-										gActionRecs[kUp(i)].fDevice  = gActionRecs[kDn(i)].fDevice  = gActionRecs[kLf(i)].fDevice  = gActionRecs[kRt(i)].fDevice  = nil;
-										gActionRecs[kUp(i)].fElement = gActionRecs[kDn(i)].fElement = gActionRecs[kLf(i)].fElement = gActionRecs[kRt(i)].fElement = nil;
+										gActionRecs[kUp(i)].fDevice  = gActionRecs[kDn(i)].fDevice  = gActionRecs[kLf(i)].fDevice  = gActionRecs[kRt(i)].fDevice  = NULL;
+										gActionRecs[kUp(i)].fElement = gActionRecs[kDn(i)].fElement = gActionRecs[kLf(i)].fElement = gActionRecs[kRt(i)].fElement = NULL;
 
 										gDirectionInfo[i].type = gDirectionHint[i] = kPadElemTypeNone;
-										gDirectionInfo[i].device [0] = gDirectionInfo[i].device [1] = nil;
-										gDirectionInfo[i].element[0] = gDirectionInfo[i].element[1] = nil;
+										gDirectionInfo[i].device [0] = gDirectionInfo[i].device [1] = NULL;
+										gDirectionInfo[i].element[0] = gDirectionInfo[i].element[1] = NULL;
 									}
 									else
 									{
-										gActionRecs[command].fDevice  = nil;
-										gActionRecs[command].fElement = nil;
+										gActionRecs[command].fDevice  = NULL;
+										gActionRecs[command].fElement = NULL;
 									}
 								}
 
@@ -798,32 +922,33 @@ static pascal OSStatus ControllerEventHandler(EventHandlerCallRef inHandlerCallR
 							}
 						}
 					}
+
+					break;
 			}
+
+			break;
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal void IdleTimer(EventLoopTimerRef inTimer, void *userData)
+static pascal void IdleTimer (EventLoopTimerRef inTimer, void *userData)
 {
-	#pragma unused (inTimer)
+	static uint32	old[MAC_MAX_PLAYERS] = { ~0, ~0, ~0, ~0, ~0, ~0, ~0, ~0 };
 
 	HIViewRef	ctl, root;
- 	int			count, i;
 	uint32		pad[MAC_MAX_PLAYERS];
-
-	static uint32	old[MAC_MAX_PLAYERS] = { ~0, ~0, ~0, ~0, ~0, ~0, ~0, ~0 };
 
 	root = HIViewGetRoot((WindowRef) userData);
 
-	for (i = 0; i < MAC_MAX_PLAYERS; i++)
+	for (int i = 0; i < MAC_MAX_PLAYERS; i++)
 	{
 		pad[i] = 0;
-
 		JoypadScanDirection(i, &(pad[i]));
-		if (pad[i] != old[i])
+
+		if (old[i] != pad[i])
 		{
-			old[i] = pad[i];
+			old[i]  = pad[i];
 
 			HIViewFindByID(root, gControlIDs[kUp(i)], &ctl);
 			SetControl32BitValue(ctl, (pad[i] & kMaskUp) ? 1 : 0);
@@ -836,25 +961,25 @@ static pascal void IdleTimer(EventLoopTimerRef inTimer, void *userData)
 		}
 	}
 
-	for (count = MAC_MAX_PLAYERS * 4; count < kNeedCount; count++)
+	for (int i = MAC_MAX_PLAYERS * 4; i < kNeedCount; i++)
 	{
-		gActionRecs[count].fValue = ISpKeyIsPressed(count);
+		gActionRecs[i].fValue = ISpKeyIsPressed(i);
 
-		if (gActionRecs[count].fOldValue != gActionRecs[count].fValue)
+		if (gActionRecs[i].fOldValue != gActionRecs[i].fValue)
 		{
-			HIViewFindByID(root, gControlIDs[count], &ctl);
-			SetControl32BitValue(ctl, (gActionRecs[count].fValue ? 1 : 0));
+			gActionRecs[i].fOldValue  = gActionRecs[i].fValue;
 
-			gActionRecs[count].fOldValue  = gActionRecs[count].fValue;
+			HIViewFindByID(root, gControlIDs[i], &ctl);
+			SetControl32BitValue(ctl, (gActionRecs[i].fValue ? 1 : 0));
 		}
 	}
 }
 
-void SetUpHID(void)
+void SetUpHID (void)
 {
 	pRecDevice	device;
 
-	HIDBuildDeviceList(nil, nil);
+	HIDBuildDeviceList(NULL, NULL);
 	device = HIDGetFirstDevice();
 	if (!device)
 	{
@@ -866,36 +991,34 @@ void SetUpHID(void)
 
 	ClearPadSetting();
 
-	Load_Config();
+	LoadControllerSettings();
 }
 
-void ClearPadSetting(void)
+void ClearPadSetting (void)
 {
-	int	i;
-
-	for (i = 0; i < MAC_MAX_PLAYERS; i++)
+	for (int i = 0; i < MAC_MAX_PLAYERS; i++)
 	{
 		gDirectionInfo[i].type = gDirectionHint[i] = kPadElemTypeNone;
-		gDirectionInfo[i].device [0] = gDirectionInfo[i].device [1] = nil;
-		gDirectionInfo[i].element[0] = gDirectionInfo[i].element[1] = nil;
+		gDirectionInfo[i].device [0] = gDirectionInfo[i].device [1] = NULL;
+		gDirectionInfo[i].element[0] = gDirectionInfo[i].element[1] = NULL;
 	}
 
-	for (i = 0; i < kNeedCount; i++)
+	for (int i = 0; i < kNeedCount; i++)
 	{
-		gActionRecs[i].fDevice   = nil;
-		gActionRecs[i].fElement  = nil;
+		gActionRecs[i].fDevice   = NULL;
+		gActionRecs[i].fElement  = NULL;
 		gActionRecs[i].fValue    = 0;
 		gActionRecs[i].fOldValue = -2;
 	}
 }
 
-void ReleaseHID(void)
+void ReleaseHID (void)
 {
 	if (hidExist)
 		HIDReleaseDeviceList();
 }
 
-void ConfigureHID(void)
+void ConfigureHID (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -911,28 +1034,52 @@ void ConfigureHID(void)
 		err = CreateWindowFromNib(nibRef, CFSTR("Controllers"), &tWindowRef);
 		if (err == noErr)
 		{
-			EventHandlerRef		eref;
-			EventLoopTimerRef	tref;
-			EventHandlerUPP		eventUPP;
-			EventLoopTimerUPP	timerUPP;
-			EventTypeSpec		windowEvents[] = { { kEventClassCommand, kEventCommandProcess      },
-												   { kEventClassCommand, kEventCommandUpdateStatus },
-												   { kEventClassWindow,  kEventWindowClose         } };
-			HIViewRef			ctl, root;
-			HIViewID			cid;
-			CFStringRef			str1, str2;
+			EventHandlerRef				eref;
+			EventLoopTimerRef			tref;
+			EventHandlerUPP				eventUPP;
+			EventLoopTimerUPP			timerUPP;
+			EventTypeSpec				windowEvents[] = { { kEventClassCommand, kEventCommandProcess      },
+														   { kEventClassCommand, kEventCommandUpdateStatus },
+														   { kEventClassWindow,  kEventWindowClose         } };
+			HIViewRef					ctl, root;
+			HIViewID					cid;
+			CFStringRef					str1, str2;
+			ControlButtonContentInfo	info;
 
-			Load_Config();
+			LoadControllerSettings();
 
 			root = HIViewGetRoot(tWindowRef);
 			cid.id = 0;
 			cid.signature = 'PRES';
 			HIViewFindByID(root, cid, &ctl);
 			str1 = CFCopyLocalizedString(CFSTR("PresetNum"), "PresetNum");
-			str2 = CFStringCreateWithFormat(kCFAllocatorDefault, nil, str1, padSetting);
+			str2 = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, str1, padSetting);
 			SetStaticTextCFString(ctl, str2, false);
 			CFRelease(str2);
 			CFRelease(str1);
+
+			if (systemVersion >= 0x1040)
+			{
+				info.contentType = kControlContentCGImageRef;
+				for (int i = 0; i < kNeedCount; i++)
+				{
+					HIViewFindByID(root, gControlIDs[i], &ctl);
+					info.u.imageRef = macIconImage[gIconNumber[i]];
+					err = SetBevelButtonContentInfo(ctl, &info);
+				}
+			}
+		#ifdef MAC_PANTHER_SUPPORT
+			else
+			{
+				info.contentType = kControlContentIconRef;
+				for (int i = 0; i < kNeedCount; i++)
+				{
+					HIViewFindByID(root, gControlIDs[i], &ctl);
+					info.u.iconRef = macIconRef[gIconNumber[i]];
+					err = SetBevelButtonContentInfo(ctl, &info);
+				}
+			}
+		#endif
 
 			eventUPP = NewEventHandlerUPP(ControllerEventHandler);
 			err = InstallWindowEventHandler(tWindowRef, eventUPP, GetEventTypeCount(windowEvents), windowEvents, (void *) tWindowRef, &eref);
@@ -952,21 +1099,21 @@ void ConfigureHID(void)
 			err = RemoveEventHandler(eref);
 			DisposeEventHandlerUPP(eventUPP);
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 
-			Save_Config();
+			SaveControllerSettings();
 		}
 
 		DisposeNibReference(nibRef);
 	}
 }
 
-long ISpKeyIsPressed(short needID)
+long ISpKeyIsPressed (int needID)
 {
 	return (gActionRecs[needID].fDevice ? HIDGetElementValue(gActionRecs[needID].fDevice, gActionRecs[needID].fElement) : 0);
 }
 
-void JoypadScanDirection(int i, uint32 *controlPad)
+void JoypadScanDirection (int i, uint32 *controlPad)
 {
 	long	state;
 
@@ -1008,7 +1155,7 @@ void JoypadScanDirection(int i, uint32 *controlPad)
 					case 5:	*controlPad |=  kMaskDn			  ;	break;
 					case 6:	*controlPad |= (kMaskDn | kMaskLf);	break;
 					case 7:	*controlPad |=  kMaskLf			  ;	break;
-					case 8:	*controlPad |= (kMaskLf | kMaskUp);
+					case 8:	*controlPad |= (kMaskLf | kMaskUp);	break;
 				}
 			}
 
@@ -1023,7 +1170,7 @@ void JoypadScanDirection(int i, uint32 *controlPad)
 					case 1:	*controlPad |=  kMaskUp;	break;
 					case 2:	*controlPad |=  kMaskRt;	break;
 					case 3:	*controlPad |=  kMaskDn;	break;
-					case 4:	*controlPad |=  kMaskLf;
+					case 4:	*controlPad |=  kMaskLf;	break;
 				}
 			}
 
@@ -1042,7 +1189,7 @@ void JoypadScanDirection(int i, uint32 *controlPad)
 					case 4:	*controlPad |=  kMaskDn			  ;	break;
 					case 5:	*controlPad |= (kMaskDn | kMaskLf);	break;
 					case 6:	*controlPad |=  kMaskLf			  ;	break;
-					case 7:	*controlPad |= (kMaskLf | kMaskUp);
+					case 7:	*controlPad |= (kMaskLf | kMaskUp);	break;
 				}
 			}
 
@@ -1057,7 +1204,7 @@ void JoypadScanDirection(int i, uint32 *controlPad)
 					case 0:	*controlPad |=  kMaskUp;	break;
 					case 1:	*controlPad |=  kMaskRt;	break;
 					case 2:	*controlPad |=  kMaskDn;	break;
-					case 3:	*controlPad |=  kMaskLf;
+					case 3:	*controlPad |=  kMaskLf;	break;
 				}
 			}
 
@@ -1072,10 +1219,12 @@ void JoypadScanDirection(int i, uint32 *controlPad)
 				*controlPad |= kMaskLf;
 			if (gActionRecs[kRt(i)].fDevice && HIDGetElementValue(gActionRecs[kRt(i)].fDevice, gActionRecs[kRt(i)].fElement))
 				*controlPad |= kMaskRt;
+
+			break;
 	}
 }
 
-static void JoypadSetDirectionInfo(void)
+static void JoypadSetDirectionInfo (void)
 {
 	for (int i = 0; i < MAC_MAX_PLAYERS; i++)
 	{
@@ -1141,12 +1290,12 @@ static void JoypadSetDirectionInfo(void)
 		}
 		else
 		{
-			gActionRecs[kUp(i)].fDevice  = gActionRecs[kDn(i)].fDevice  = gActionRecs[kLf(i)].fDevice  = gActionRecs[kRt(i)].fDevice  = nil;
-			gActionRecs[kUp(i)].fElement = gActionRecs[kDn(i)].fElement = gActionRecs[kLf(i)].fElement = gActionRecs[kRt(i)].fElement = nil;
+			gActionRecs[kUp(i)].fDevice  = gActionRecs[kDn(i)].fDevice  = gActionRecs[kLf(i)].fDevice  = gActionRecs[kRt(i)].fDevice  = NULL;
+			gActionRecs[kUp(i)].fElement = gActionRecs[kDn(i)].fElement = gActionRecs[kLf(i)].fElement = gActionRecs[kRt(i)].fElement = NULL;
 
 			gDirectionInfo[i].type = gDirectionHint[i] = kPadElemTypeNone;
-			gDirectionInfo[i].device [0] = gDirectionInfo[i].device [1] = nil;
-			gDirectionInfo[i].element[0] = gDirectionInfo[i].element[1] = nil;
+			gDirectionInfo[i].device [0] = gDirectionInfo[i].device [1] = NULL;
+			gDirectionInfo[i].element[0] = gDirectionInfo[i].element[1] = NULL;
 		}
 	}
 }

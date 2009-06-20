@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,7 +171,9 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "memmap.h"
+#include "snapshot.h"
 #include "movie.h"
 
 #include <wchar.h>
@@ -182,25 +182,10 @@
 #include "mac-dialog.h"
 #include "mac-os.h"
 #include "mac-quicktime.h"
-#include "mac-snes9x.h"
 #include "mac-screenshot.h"
+#include "mac-snes9x.h"
 #include "mac-stringtools.h"
 #include "mac-cart.h"
-
-extern wchar_t  macRecordWChar[MOVIE_MAX_METADATA];
-
-static void GlobalPointToWindowLocalPoint(Point *, WindowRef);
-static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
-static pascal void NavRecordMovieToEventHandler(const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
-static pascal void NavPlayMovieFromEventHandler(const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
-static pascal void NavQTMovieRecordToEventHandler(const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
-static pascal void NavGenericOpenEventHandler(const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
-static pascal void NavGenericSaveEventHandler(const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
-static pascal Boolean NavOpenCartFilter(AEDesc *, void *, NavCallBackUserData, NavFilterModes);
-static pascal Boolean NavDefrostFromFilter(AEDesc *, void *, NavCallBackUserData, NavFilterModes);
-static pascal Boolean NavPlayMovieFromFilter(AEDesc *, void *, NavCallBackUserData, NavFilterModes);
-static pascal Boolean NavDefrostFromPreview(NavCBRecPtr, NavCallBackUserData);
-static pascal Boolean NavPlayMovieFromPreview(NavCBRecPtr, NavCallBackUserData);
 
 typedef struct
 {
@@ -216,12 +201,28 @@ typedef struct
 	Boolean			isSheet;
 }	NavState;
 
+extern wchar_t	macRecordWChar[MOVIE_MAX_METADATA];
+
 static NavEventUPP			gSheetEventUPP;
-static NavObjectFilterUPP   gSheetFilterUPP;
+static NavObjectFilterUPP	gSheetFilterUPP;
 static NavState				gSheetNav;
 static WindowRef			gSheetParent;
 
-bool8 NavOpenROMImage(FSRef *ref)
+static void GlobalPointToWindowLocalPoint (Point *, WindowRef);
+static pascal void NavOpenCartEventHandler (const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
+static pascal void NavRecordMovieToEventHandler (const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
+static pascal void NavPlayMovieFromEventHandler (const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
+static pascal void NavQTMovieRecordToEventHandler (const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
+static pascal void NavGenericOpenEventHandler (const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
+static pascal void NavGenericSaveEventHandler (const NavEventCallbackMessage, NavCBRecPtr, NavCallBackUserData);
+static pascal Boolean NavOpenCartFilter (AEDesc *, void *, NavCallBackUserData, NavFilterModes);
+static pascal Boolean NavDefrostFromFilter (AEDesc *, void *, NavCallBackUserData, NavFilterModes);
+static pascal Boolean NavPlayMovieFromFilter (AEDesc *, void *, NavCallBackUserData, NavFilterModes);
+static pascal Boolean NavDefrostFromPreview (NavCBRecPtr, NavCallBackUserData);
+static pascal Boolean NavPlayMovieFromPreview (NavCBRecPtr, NavCallBackUserData);
+
+
+bool8 NavOpenROMImage (FSRef *ref)
 {
 	OSStatus					err;
 	NavDialogCreationOptions	dialogOptions;
@@ -233,13 +234,13 @@ bool8 NavOpenROMImage(FSRef *ref)
 
 	err = CreateNibReference(kMacS9XCFString, &(nav.customNib));
 	if (err)
-		return false;
+		return (false);
 
 	err = CreateWindowFromNib(nav.customNib, CFSTR("OpenROM"), &(nav.customWindow));
 	if (err)
 	{
 		DisposeNibReference(nav.customNib);
-		return false;
+		return (false);
 	}
 
 	nav.isSheet = false;
@@ -256,14 +257,14 @@ bool8 NavOpenROMImage(FSRef *ref)
 	dialogOptions.clientName = kMacS9XCFString;
 	dialogOptions.windowTitle = CFCopyLocalizedString(CFSTR("OpenROMMes"), "Open");
 	dialogOptions.modality = kWindowModalityAppModal;
-	dialogOptions.parentWindow = nil;
+	dialogOptions.parentWindow = NULL;
 
 	eventUPP = NewNavEventUPP(NavOpenCartEventHandler);
 	filterUPP = NewNavObjectFilterUPP(NavOpenCartFilter);
 
-	gSheetParent = nil;
+	gSheetParent = NULL;
 
-	err = NavCreateChooseFileDialog(&dialogOptions, nil, eventUPP, nil, filterUPP, &nav, &(nav.nref));
+	err = NavCreateChooseFileDialog(&dialogOptions, NULL, eventUPP, NULL, filterUPP, &nav, &(nav.nref));
 	if (err == noErr)
 	{
 		err = NavDialogRun(nav.nref);
@@ -276,39 +277,38 @@ bool8 NavOpenROMImage(FSRef *ref)
 
 	CFRelease(dialogOptions.windowTitle);
 
-	ReleaseWindow(nav.customWindow);
+	CFRelease(nav.customWindow);
 	DisposeNibReference(nav.customNib);
 
 	if (err)
-		return false;
+		return (false);
 	else
 	{
 		if (nav.reply)
 		{
 			*ref = nav.ref;
-			return true;
+			return (true);
 		}
 		else
-			return false;
+			return (false);
 	}
 }
 
-static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
+static pascal void NavOpenCartEventHandler (const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
 {
-	OSStatus			err;
-	NavReplyRecord		reply;
-	NavUserAction		userAction;
-	NavState			*nav;
-	HIViewRef			ctl;
-	HIViewID			cid;
-	HIViewPartCode		part;
-	MenuRef				menu;
-	AEDesc				resultDesc;
-	Point				pt;
-	SInt32 				count;
-	int					i;
+	static Boolean	embedded = false;
 
-	static Boolean		embedded = false;
+	OSStatus		err;
+	NavReplyRecord	reply;
+	NavUserAction	userAction;
+	NavState		*nav;
+	HIViewRef		ctl;
+	HIViewID		cid;
+	HIViewPartCode	part;
+	MenuRef			menu;
+	AEDesc			resultDesc;
+	Point			pt;
+	SInt32 			count;
 
 	nav = (NavState *) callBackUD;
 
@@ -328,6 +328,8 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 						if (cid.signature == 'CCTL')
 							part = HandleControlClick(ctl, pt, callBackParms->eventData.eventDataParms.event->modifiers, (ControlActionUPP) -1L);
 					}
+
+					break;
 			}
 
 			break;
@@ -335,63 +337,56 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 		case kNavCBStart:
 			nav->reply = false;
 			cid.signature = 'CCTL';
-		#ifdef MAC_JAGUAR_SUPPORT
-			if (hiToolboxVersion < 0x130)
-			{
-				err = GetRootControl(callBackParms->window, &ctl);
-				err = EmbedControl(nav->customPane, ctl);
-			}
-		#endif
 			err = NavCustomControl(callBackParms->context, kNavCtlAddControl, nav->customPane);
 
 			cid.id = 101;
 			HIViewFindByID(nav->customPane, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			switch (romDetect)
 			{
-				case kAutoROMType:			SetControl32BitValue(ctl, 1); break;
-				case kLoROMForce:  			SetControl32BitValue(ctl, 3); break;
-				case kHiROMForce:  			SetControl32BitValue(ctl, 4);
+				case kAutoROMType:			SetControl32BitValue(ctl, 1);	break;
+				case kLoROMForce:  			SetControl32BitValue(ctl, 3);	break;
+				case kHiROMForce:  			SetControl32BitValue(ctl, 4);	break;
 			}
 
 			cid.id = 102;
 			HIViewFindByID(nav->customPane, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			switch (interleaveDetect)
 			{
-				case kAutoInterleave:		SetControl32BitValue(ctl, 1); break;
-				case kNoInterleaveForce:	SetControl32BitValue(ctl, 3); break;
-				case kInterleaveForce:		SetControl32BitValue(ctl, 4); break;
-				case kInterleave2Force:		SetControl32BitValue(ctl, 5); break;
-				case kInterleaveGD24:		SetControl32BitValue(ctl, 6);
+				case kAutoInterleave:		SetControl32BitValue(ctl, 1);	break;
+				case kNoInterleaveForce:	SetControl32BitValue(ctl, 3);	break;
+				case kInterleaveForce:		SetControl32BitValue(ctl, 4);	break;
+				case kInterleave2Force:		SetControl32BitValue(ctl, 5);	break;
+				case kInterleaveGD24:		SetControl32BitValue(ctl, 6);	break;
 			}
 
 			cid.id = 103;
 			HIViewFindByID(nav->customPane, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			switch (videoDetect)
 			{
-				case kAutoVideo:			SetControl32BitValue(ctl, 1); break;
-				case kPALForce:				SetControl32BitValue(ctl, 3); break;
-				case kNTSCForce:			SetControl32BitValue(ctl, 4);
+				case kAutoVideo:			SetControl32BitValue(ctl, 1);	break;
+				case kPALForce:				SetControl32BitValue(ctl, 3);	break;
+				case kNTSCForce:			SetControl32BitValue(ctl, 4);	break;
 			}
 
 			cid.id = 104;
 			HIViewFindByID(nav->customPane, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			switch (headerDetect)
 			{
-				case kAutoHeader:			SetControl32BitValue(ctl, 1); break;
-				case kNoHeaderForce:		SetControl32BitValue(ctl, 3); break;
-				case kHeaderForce:			SetControl32BitValue(ctl, 4);
+				case kAutoHeader:			SetControl32BitValue(ctl, 1);	break;
+				case kNoHeaderForce:		SetControl32BitValue(ctl, 3);	break;
+				case kHeaderForce:			SetControl32BitValue(ctl, 4);	break;
 			}
 
 			MoveControl(nav->customPane, ((callBackParms->customRect.right  - callBackParms->customRect.left) - nav->customWidth ) / 2 + callBackParms->customRect.left,
@@ -410,7 +405,7 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 			{
 				case 1: romDetect        = kAutoROMType; 		break;
 				case 3: romDetect        = kLoROMForce;  		break;
-				case 4: romDetect        = kHiROMForce;
+				case 4: romDetect        = kHiROMForce;			break;
 			}
 
 			cid.id = 102;
@@ -421,7 +416,7 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 				case 3: interleaveDetect = kNoInterleaveForce;	break;
 				case 4: interleaveDetect = kInterleaveForce;	break;
 				case 5: interleaveDetect = kInterleave2Force;   break;
-				case 6: interleaveDetect = kInterleaveGD24;
+				case 6: interleaveDetect = kInterleaveGD24;		break;
 			}
 
 			cid.id = 103;
@@ -430,7 +425,7 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 			{
 				case 1: videoDetect      = kAutoVideo; 			break;
 				case 3: videoDetect      = kPALForce;  			break;
-				case 4: videoDetect      = kNTSCForce;
+				case 4: videoDetect      = kNTSCForce;			break;
 			}
 
 			cid.id = 104;
@@ -439,7 +434,7 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 			{
 				case 1: headerDetect     = kAutoHeader; 		break;
 				case 3: headerDetect     = kNoHeaderForce;  	break;
-				case 4: headerDetect     = kHeaderForce;
+				case 4: headerDetect     = kHeaderForce;		break;
 			}
 
 			break;
@@ -473,7 +468,7 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 						err = AECountItems(&(reply.selection), &count);
 						if ((err == noErr) && (count == 1))
 						{
-							err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, nil, &resultDesc);
+							err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, NULL, &resultDesc);
 							if (err == noErr)
 							{
 								err = AEGetDescData(&resultDesc, &(nav->ref), sizeof(FSRef));
@@ -486,6 +481,8 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 
 						err = NavDisposeReply(&reply);
 					}
+
+					break;
             }
 
             break;
@@ -500,7 +497,7 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 
 				cmd.commandID          = 'NvDn';
 				cmd.attributes         = kEventAttributeUserEvent;
-				cmd.menu.menuRef       = nil;
+				cmd.menu.menuRef       = NULL;
 				cmd.menu.menuItemIndex = 0;
 
 				err = CreateEvent(kCFAllocatorDefault, kEventClassCommand, kEventCommandProcess, GetCurrentEventTime(), kEventAttributeUserEvent, &event);
@@ -513,13 +510,13 @@ static pascal void NavOpenCartEventHandler(const NavEventCallbackMessage callBac
 					ReleaseEvent(event);
 				}
 			}
+
+			break;
 	}
 }
 
-static pascal Boolean NavOpenCartFilter(AEDesc *theItem, void *ninfo, NavCallBackUserData callbackUD, NavFilterModes filterMode)
+static pascal Boolean NavOpenCartFilter (AEDesc *theItem, void *ninfo, NavCallBackUserData callbackUD, NavFilterModes filterMode)
 {
-	#pragma unused (ninfo, callbackUD, filterMode)
-
 	OSStatus	err;
 	AEDesc 		resultDesc;
 	Boolean		result = true;
@@ -535,7 +532,7 @@ static pascal Boolean NavOpenCartFilter(AEDesc *theItem, void *ninfo, NavCallBac
 			FSCatalogInfo	catinfo;
 			HFSUniStr255	unistr;
 
-			err = FSGetCatalogInfo(&ref, kFSCatInfoNodeFlags, &catinfo, &unistr, nil, nil);
+			err = FSGetCatalogInfo(&ref, kFSCatInfoNodeFlags, &catinfo, &unistr, NULL, NULL);
 			if ((err == noErr) && !(catinfo.nodeFlags & kFSNodeIsDirectoryMask) && (unistr.length > 4))
 			{
 				UInt16	i = unistr.length;
@@ -559,10 +556,10 @@ static pascal Boolean NavOpenCartFilter(AEDesc *theItem, void *ninfo, NavCallBac
 		AEDisposeDesc(&resultDesc);
 	}
 
-	return result;
+	return (result);
 }
 
-bool8 NavFreezeTo(char *path)
+bool8 NavFreezeTo (char *path)
 {
 	OSStatus					err;
 	NavDialogCreationOptions	dialogOptions;
@@ -571,7 +568,7 @@ bool8 NavFreezeTo(char *path)
 	CFStringRef					numRef, romRef, baseRef;
 	CFMutableStringRef			mesRef, saveRef;
 	SInt32						replaceAt;
-	char						drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	char						drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 	_splitpath(Memory.ROMFilename, drive, dir, fname, ext);
 	romRef  = CFStringCreateWithCString(kCFAllocatorDefault, fname, MAC_PATH_ENCODING);
@@ -589,7 +586,7 @@ bool8 NavFreezeTo(char *path)
 	dialogOptions.windowTitle = mesRef;
 	dialogOptions.saveFileName = saveRef;
 	dialogOptions.modality = kWindowModalityAppModal;
-	dialogOptions.parentWindow = nil;
+	dialogOptions.parentWindow = NULL;
 
 	eventUPP = NewNavEventUPP(NavGenericSaveEventHandler);
 
@@ -610,29 +607,30 @@ bool8 NavFreezeTo(char *path)
 	CFRelease(romRef);
 
 	if (err)
-		return false;
+		return (false);
 	else
 	{
 		if (nav.reply)
 		{
-			err = FSRefMakePath(&(nav.ref), (unsigned char *) path, PATH_MAX);
-			strcat(path, MAC_PATH_SEPARATOR);
-			strcat(path, nav.name);
+			char	s[PATH_MAX + 1];
 
-			return true;
+			err = FSRefMakePath(&(nav.ref), (unsigned char *) s, PATH_MAX);
+			snprintf(path, PATH_MAX + 1, "%s%s%s", s, MAC_PATH_SEPARATOR, nav.name);
+
+			return (true);
 		}
 		else
-			return false;
+			return (false);
 	}
 }
 
-static pascal void NavGenericSaveEventHandler(const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
+static pascal void NavGenericSaveEventHandler (const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
 {
-	OSStatus			err;
-	NavReplyRecord		reply;
-	NavUserAction		userAction;
-	NavState			*nav;
-	AEDesc				resultDesc;
+	OSStatus		err;
+	NavReplyRecord	reply;
+	NavUserAction	userAction;
+	NavState		*nav;
+	AEDesc			resultDesc;
 
 	nav = (NavState *) callBackUD;
 
@@ -643,7 +641,6 @@ static pascal void NavGenericSaveEventHandler(const NavEventCallbackMessage call
 
 		case kNavCBStart:
 			nav->reply = false;
-
 			break;
 
 		case kNavCBUserAction:
@@ -654,7 +651,7 @@ static pascal void NavGenericSaveEventHandler(const NavEventCallbackMessage call
 					err = NavDialogGetReply(callBackParms->context, &reply);
 					if (err == noErr)
 					{
-						err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, nil, &resultDesc);
+						err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, NULL, &resultDesc);
 						if (err == noErr)
 						{
 							err = AEGetDescData(&resultDesc, &(nav->ref), sizeof(FSRef));
@@ -672,16 +669,19 @@ static pascal void NavGenericSaveEventHandler(const NavEventCallbackMessage call
 
 						err = NavDisposeReply(&reply);
 					}
+
+					break;
             }
 
             break;
 
 		case kNavCBTerminate:
 			NavDialogDispose(nav->nref);
+			break;
 	}
 }
 
-bool8 NavDefrostFrom(char *path)
+bool8 NavDefrostFrom (char *path)
 {
 	OSStatus					err;
 	NavDialogCreationOptions	dialogOptions;
@@ -692,7 +692,7 @@ bool8 NavDefrostFrom(char *path)
 	CFStringRef					numRef, romRef, baseRef;
 	CFMutableStringRef			mesRef;
 	SInt32						replaceAt;
-	char						drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	char						drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 	_splitpath(Memory.ROMFilename, drive, dir, fname, ext);
 	romRef  = CFStringCreateWithCString(kCFAllocatorDefault, fname, MAC_PATH_ENCODING);
@@ -708,13 +708,13 @@ bool8 NavDefrostFrom(char *path)
 	dialogOptions.clientName = kMacS9XCFString;
 	dialogOptions.windowTitle = mesRef;
 	dialogOptions.modality = kWindowModalityAppModal;
-	dialogOptions.parentWindow = nil;
+	dialogOptions.parentWindow = NULL;
 
 	eventUPP = NewNavEventUPP(NavGenericOpenEventHandler);
 	filterUPP = NewNavObjectFilterUPP(NavDefrostFromFilter);
 	previewUPP = NewNavPreviewUPP(NavDefrostFromPreview);
 
-	err = NavCreateChooseFileDialog(&dialogOptions, nil, eventUPP, previewUPP, filterUPP, &nav, &(nav.nref));
+	err = NavCreateChooseFileDialog(&dialogOptions, NULL, eventUPP, previewUPP, filterUPP, &nav, &(nav.nref));
 	if (err == noErr)
 	{
 		err = NavDialogRun(nav.nref);
@@ -732,27 +732,27 @@ bool8 NavDefrostFrom(char *path)
 	CFRelease(romRef);
 
 	if (err)
-		return false;
+		return (false);
 	else
 	{
 		if (nav.reply)
 		{
 			err = FSRefMakePath(&(nav.ref), (unsigned char *) path, PATH_MAX);
-			return true;
+			return (true);
 		}
 		else
-			return false;
+			return (false);
 	}
 }
 
-static pascal void NavGenericOpenEventHandler(const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
+static pascal void NavGenericOpenEventHandler (const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
 {
-	OSStatus			err;
-	NavReplyRecord		reply;
-	NavUserAction		userAction;
-	NavState			*nav;
-	AEDesc				resultDesc;
-	SInt32				count;
+	OSStatus		err;
+	NavReplyRecord	reply;
+	NavUserAction	userAction;
+	NavState		*nav;
+	AEDesc			resultDesc;
+	SInt32			count;
 
 	nav = (NavState *) callBackUD;
 
@@ -763,7 +763,6 @@ static pascal void NavGenericOpenEventHandler(const NavEventCallbackMessage call
 
 		case kNavCBStart:
 			nav->reply = false;
-
 			break;
 
 		case kNavCBUserAction:
@@ -777,7 +776,7 @@ static pascal void NavGenericOpenEventHandler(const NavEventCallbackMessage call
 						err = AECountItems(&(reply.selection), &count);
 						if ((err == noErr) && (count == 1))
 						{
-							err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, nil, &resultDesc);
+							err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, NULL, &resultDesc);
 							if (err == noErr)
 							{
 								err = AEGetDescData(&resultDesc, &(nav->ref), sizeof(FSRef));
@@ -790,19 +789,20 @@ static pascal void NavGenericOpenEventHandler(const NavEventCallbackMessage call
 
 						err = NavDisposeReply(&reply);
 					}
+
+					break;
             }
 
             break;
 
 		case kNavCBTerminate:
 			NavDialogDispose(nav->nref);
+			break;
 	}
 }
 
-static pascal Boolean NavDefrostFromFilter(AEDesc *theItem, void *ninfo, NavCallBackUserData callbackUD, NavFilterModes filterMode)
+static pascal Boolean NavDefrostFromFilter (AEDesc *theItem, void *ninfo, NavCallBackUserData callbackUD, NavFilterModes filterMode)
 {
-	#pragma unused (ninfo, callbackUD, filterMode)
-
 	OSStatus	err;
 	AEDesc 		resultDesc;
 	Boolean		result = true;
@@ -818,7 +818,7 @@ static pascal Boolean NavDefrostFromFilter(AEDesc *theItem, void *ninfo, NavCall
 			FSCatalogInfo	catinfo;
 			HFSUniStr255	unistr;
 
-			err = FSGetCatalogInfo(&ref, kFSCatInfoNodeFlags | kFSCatInfoFinderInfo, &catinfo, &unistr, nil, nil);
+			err = FSGetCatalogInfo(&ref, kFSCatInfoNodeFlags | kFSCatInfoFinderInfo, &catinfo, &unistr, NULL, NULL);
 			if ((err == noErr) && !(catinfo.nodeFlags & kFSNodeIsDirectoryMask))
 			{
 				if (((FileInfo *) &catinfo.finderInfo)->fileType != 'SAVE')
@@ -828,9 +828,7 @@ static pascal Boolean NavDefrostFromFilter(AEDesc *theItem, void *ninfo, NavCall
 					if (i < 4)
 						result = false;
 					else
-					if  ((unistr.unicode[i - 4] == '.') &&
-					   (((unistr.unicode[i - 3] == 'f') && (unistr.unicode[i - 2] == 'r')) ||
-					    ((unistr.unicode[i - 3] == 'z') && (unistr.unicode[i - 2] == 's'))))
+					if ((unistr.unicode[i - 4] == '.') && (unistr.unicode[i - 3] == 'f') && (unistr.unicode[i - 2] == 'r'))
 						result = true;
 					else
 						result = false;
@@ -841,13 +839,14 @@ static pascal Boolean NavDefrostFromFilter(AEDesc *theItem, void *ninfo, NavCall
 		AEDisposeDesc(&resultDesc);
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal Boolean NavDefrostFromPreview(NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
+static pascal Boolean NavDefrostFromPreview (NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
 {
-	#pragma unused (callBackUD)
-
+#ifndef MAC_TIGER_PANTHER_SUPPORT
+	return (true);
+#else
 	OSStatus	err;
 	Boolean		previewShowing, result = false;
 
@@ -866,7 +865,7 @@ static pascal Boolean NavDefrostFromPreview(NavCBRecPtr callBackParms, NavCallBa
 			{
 				FSCatalogInfo	catinfo;
 
-				err = FSGetCatalogInfo(&ref, kFSCatInfoNodeFlags | kFSCatInfoContentMod, &catinfo, nil, nil, nil);
+				err = FSGetCatalogInfo(&ref, kFSCatInfoNodeFlags | kFSCatInfoContentMod, &catinfo, NULL, NULL, NULL);
 				if ((err == noErr) && !(catinfo.nodeFlags & kFSNodeIsDirectoryMask))
 				{
 					CFMutableStringRef	sref;
@@ -874,38 +873,20 @@ static pascal Boolean NavDefrostFromPreview(NavCBRecPtr callBackParms, NavCallBa
 					sref = CFStringCreateMutable(kCFAllocatorDefault, 0);
 					if (sref)
 					{
-						if (systemVersion >= 0x1030)
-						{
-							CFAbsoluteTime		at;
-							CFDateFormatterRef	format;
-							CFLocaleRef			locale;
-							CFStringRef			datstr;
+						CFAbsoluteTime		at;
+						CFDateFormatterRef	format;
+						CFLocaleRef			locale;
+						CFStringRef			datstr;
 
-							err = UCConvertUTCDateTimeToCFAbsoluteTime(&(catinfo.contentModDate), &at);
-							locale = CFLocaleCopyCurrent();
-							format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterShortStyle, kCFDateFormatterMediumStyle);
-							datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
-							CFStringAppend(sref, datstr);
-							CFRelease(datstr);
-							CFRelease(format);
-							CFRelease(locale);
-						}
-					#ifdef MAC_JAGUAR_SUPPORT
-						else
-						{
-							LocalDateTime	localtime;
-							LongDateTime	ldtime;
-							unsigned char	pstr[256];
+						err = UCConvertUTCDateTimeToCFAbsoluteTime(&(catinfo.contentModDate), &at);
+						locale = CFLocaleCopyCurrent();
+						format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterShortStyle, kCFDateFormatterMediumStyle);
+						datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
+						CFStringAppend(sref, datstr);
+						CFRelease(datstr);
+						CFRelease(format);
+						CFRelease(locale);
 
-							ConvertUTCToLocalDateTime(&(catinfo.contentModDate), &localtime);
-							ldtime = (LongDateTime) ((((UInt64) localtime.highSeconds) << 32) | ((UInt64) localtime.lowSeconds));
-							LongDateString(&ldtime, shortDate, pstr, nil);
-							CFStringAppendPascalString(sref, pstr,   CFStringGetSystemEncoding());
-							CFStringAppendPascalString(sref, "\p  ", CFStringGetSystemEncoding());
-							LongTimeString(&ldtime, true, pstr, nil);
-							CFStringAppendPascalString(sref, pstr,   CFStringGetSystemEncoding());
-						}
-					#endif
 						CGContextRef	ctx;
 						CGRect			bounds;
 						CGrafPtr		port;
@@ -937,45 +918,25 @@ static pascal Boolean NavDefrostFromPreview(NavCBRecPtr callBackParms, NavCallBa
 
 						DrawThumbnailResource(&ref, ctx, bounds);
 
-						if (hiToolboxVersion >= 0x130)
-						{
-							HIThemeTextInfo	textinfo;
+						HIThemeTextInfo	textinfo;
 
-							textinfo.version             = 0;
-							textinfo.state               = kThemeStateActive;
-							textinfo.fontID              = kThemeSmallSystemFont;
-							textinfo.verticalFlushness   = kHIThemeTextVerticalFlushTop;
-							textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushCenter;
-							textinfo.options             = 0;
-							textinfo.truncationPosition  = kHIThemeTextTruncationMiddle;
-							textinfo.truncationMaxLines  = 0;
-							textinfo.truncationHappened  = false;
+						textinfo.version             = 0;
+						textinfo.state               = kThemeStateActive;
+						textinfo.fontID              = kThemeSmallSystemFont;
+						textinfo.verticalFlushness   = kHIThemeTextVerticalFlushTop;
+						textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushCenter;
+						textinfo.options             = 0;
+						textinfo.truncationPosition  = kHIThemeTextTruncationMiddle;
+						textinfo.truncationMaxLines  = 0;
+						textinfo.truncationHappened  = false;
 
-							bounds.origin.x = (float) (callBackParms->previewRect.left + 10);
-							bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 20);
-							bounds.size.width  = (float) (callBackParms->previewRect.right - callBackParms->previewRect.left - 20);
-							bounds.size.height = 20.0;
+						bounds.origin.x = (float) (callBackParms->previewRect.left + 10);
+						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 20);
+						bounds.size.width  = (float) (callBackParms->previewRect.right - callBackParms->previewRect.left - 20);
+						bounds.size.height = 20.0;
 
-							err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
-						}
-					#ifdef MAC_JAGUAR_SUPPORT
-						else
-						{
-							CGrafPtr	old;
+						err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
 
-							GetPort(&old);
-							SetPort(port);
-
-							rct.left   = callBackParms->previewRect.left  + 10;
-							rct.right  = callBackParms->previewRect.right - 10;
-							rct.top    = callBackParms->previewRect.top   + 153;
-							rct.bottom = rct.top + 20;
-
-							DrawThemeTextBox(sref, kThemeSmallSystemFont, kThemeStateActive, false, &rct, teCenter, nil);
-
-							SetPort(old);
-						}
-					#endif
 						CGContextSynchronize(ctx);
 
 						err = QDEndCGContext(port, &ctx);
@@ -991,10 +952,11 @@ static pascal Boolean NavDefrostFromPreview(NavCBRecPtr callBackParms, NavCallBa
 		}
 	}
 
-	return result;
+	return (result);
+#endif
 }
 
-bool8 NavBeginOpenROMImageSheet(WindowRef parent, CFStringRef mes)
+bool8 NavBeginOpenROMImageSheet (WindowRef parent, CFStringRef mes)
 {
 	OSStatus					err;
 	NavDialogCreationOptions	dialogOptions;
@@ -1003,13 +965,13 @@ bool8 NavBeginOpenROMImageSheet(WindowRef parent, CFStringRef mes)
 
 	err = CreateNibReference(kMacS9XCFString, &(gSheetNav.customNib));
 	if (err)
-		return false;
+		return (false);
 
 	err = CreateWindowFromNib(gSheetNav.customNib, CFSTR("OpenROM"), &(gSheetNav.customWindow));
 	if (err)
 	{
 		DisposeNibReference(gSheetNav.customNib);
-		return false;
+		return (false);
 	}
 
 	gSheetNav.isSheet = true;
@@ -1034,7 +996,7 @@ bool8 NavBeginOpenROMImageSheet(WindowRef parent, CFStringRef mes)
 
 	gSheetParent = parent;
 
-	err = NavCreateChooseFileDialog(&dialogOptions, nil, gSheetEventUPP, nil, gSheetFilterUPP, &gSheetNav, &(gSheetNav.nref));
+	err = NavCreateChooseFileDialog(&dialogOptions, NULL, gSheetEventUPP, NULL, gSheetFilterUPP, &gSheetNav, &(gSheetNav.nref));
 	if (err == noErr)
 	{
 		err = NavDialogRun(gSheetNav.nref);
@@ -1043,44 +1005,44 @@ bool8 NavBeginOpenROMImageSheet(WindowRef parent, CFStringRef mes)
 			NavDialogDispose(gSheetNav.nref);
 			DisposeNavObjectFilterUPP(gSheetFilterUPP);
 			DisposeNavEventUPP(gSheetEventUPP);
-			ReleaseWindow(gSheetNav.customWindow);
+			CFRelease(gSheetNav.customWindow);
 			DisposeNibReference(gSheetNav.customNib);
 			CFRelease(dialogOptions.windowTitle);
-			return false;
+			return (false);
 		}
 	}
 	else
 	{
 		DisposeNavObjectFilterUPP(gSheetFilterUPP);
 		DisposeNavEventUPP(gSheetEventUPP);
-		ReleaseWindow(gSheetNav.customWindow);
+		CFRelease(gSheetNav.customWindow);
 		DisposeNibReference(gSheetNav.customNib);
 		CFRelease(dialogOptions.windowTitle);
-		return false;
+		return (false);
 	}
 
 	CFRelease(dialogOptions.windowTitle);
-	return true;
+	return (true);
 }
 
-bool8 NavEndOpenROMImageSheet(FSRef *ref)
+bool8 NavEndOpenROMImageSheet (FSRef *ref)
 {
 	DisposeNavObjectFilterUPP(gSheetFilterUPP);
 	DisposeNavEventUPP(gSheetEventUPP);
 
-	ReleaseWindow(gSheetNav.customWindow);
+	CFRelease(gSheetNav.customWindow);
 	DisposeNibReference(gSheetNav.customNib);
 
 	if (gSheetNav.reply)
 	{
 		*ref = gSheetNav.ref;
-		return true;
+		return (true);
 	}
 	else
-		return false;
+		return (false);
 }
 
-bool8 NavRecordMovieTo(char *path)
+bool8 NavRecordMovieTo (char *path)
 {
 	OSStatus					err;
 	NavDialogCreationOptions	dialogOptions;
@@ -1090,18 +1052,18 @@ bool8 NavRecordMovieTo(char *path)
 	CFMutableStringRef			mesRef, saveRef;
 	Rect						rct;
 	SInt32						replaceAt;
-	char						drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	char						drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 	HIViewID					cid = { 'PANE', 1000 };
 
 	err = CreateNibReference(kMacS9XCFString, &(nav.customNib));
 	if (err)
-		return false;
+		return (false);
 
 	err = CreateWindowFromNib(nav.customNib, CFSTR("RecordSMV"), &(nav.customWindow));
 	if (err)
 	{
 		DisposeNibReference(nav.customNib);
-		return false;
+		return (false);
 	}
 
 	nav.isSheet = false;
@@ -1130,11 +1092,11 @@ bool8 NavRecordMovieTo(char *path)
 	dialogOptions.windowTitle = mesRef;
 	dialogOptions.saveFileName = saveRef;
 	dialogOptions.modality = kWindowModalityAppModal;
-	dialogOptions.parentWindow = nil;
+	dialogOptions.parentWindow = NULL;
 
 	eventUPP = NewNavEventUPP(NavRecordMovieToEventHandler);
 
-	gSheetParent = nil;
+	gSheetParent = NULL;
 
 	err = NavCreatePutFileDialog(&dialogOptions, 'SMOV', '~9X~', eventUPP, &nav, &(nav.nref));
 	if (err == noErr)
@@ -1152,43 +1114,43 @@ bool8 NavRecordMovieTo(char *path)
 	CFRelease(numRef);
 	CFRelease(romRef);
 
-	ReleaseWindow(nav.customWindow);
+	CFRelease(nav.customWindow);
 	DisposeNibReference(nav.customNib);
 
 	if (err)
-		return false;
+		return (false);
 	else
 	{
 		if (nav.reply)
 		{
-			err = FSRefMakePath(&(nav.ref), (unsigned char *) path, PATH_MAX);
-			strcat(path, MAC_PATH_SEPARATOR);
-			strcat(path, nav.name);
+			char	s[PATH_MAX + 1];
 
-			return true;
+			err = FSRefMakePath(&(nav.ref), (unsigned char *) s, PATH_MAX);
+			snprintf(path, PATH_MAX + 1, "%s%s%s", s, MAC_PATH_SEPARATOR, nav.name);
+
+			return (true);
 		}
 		else
-			return false;
+			return (false);
 	}
 }
 
-static pascal void NavRecordMovieToEventHandler(const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
+static pascal void NavRecordMovieToEventHandler (const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
 {
-	OSStatus			err;
-	NavReplyRecord		reply;
-	NavUserAction		userAction;
-	NavState			*nav;
-	HIViewRef 			ctl;
-	HIViewID			cid;
-	HIViewPartCode		part;
-	CFStringRef			sref;
-	CFIndex				cflen;
-	AEDesc				resultDesc;
-	Point				pt;
-	int					i;
-	UniChar				unistr[MOVIE_MAX_METADATA];
+	static Boolean	embedded = false;
 
-	static Boolean		embedded = false;
+	OSStatus		err;
+	NavReplyRecord	reply;
+	NavUserAction	userAction;
+	NavState		*nav;
+	HIViewRef 		ctl;
+	HIViewID		cid;
+	HIViewPartCode	part;
+	CFStringRef		sref;
+	CFIndex			cflen;
+	AEDesc			resultDesc;
+	Point			pt;
+	UniChar			unistr[MOVIE_MAX_METADATA];
 
 	nav = (NavState *) callBackUD;
 
@@ -1219,6 +1181,8 @@ static pascal void NavRecordMovieToEventHandler(const NavEventCallbackMessage ca
 							part = HandleControlClick(ctl, pt, callBackParms->eventData.eventDataParms.event->modifiers, (ControlActionUPP) -1L);
 						}
 					}
+
+					break;
 			}
 
 			break;
@@ -1226,13 +1190,6 @@ static pascal void NavRecordMovieToEventHandler(const NavEventCallbackMessage ca
 		case kNavCBStart:
 			nav->reply = false;
 			cid.signature = 'RCTL';
-		#ifdef MAC_JAGUAR_SUPPORT
-			if (hiToolboxVersion < 0x130)
-			{
-				err = GetRootControl(callBackParms->window, &ctl);
-				err = EmbedControl(nav->customPane, ctl);
-			}
-		#endif
 			err = NavCustomControl(callBackParms->context, kNavCtlAddControl, nav->customPane);
 
 			for (cid.id = 101; cid.id <= 106; cid.id++)
@@ -1275,7 +1232,7 @@ static pascal void NavRecordMovieToEventHandler(const NavEventCallbackMessage ca
 
 				CFStringGetCharacters(sref, CFRangeMake(0, cflen), unistr);
 
-				for (i = 0; i < cflen; i++)
+				for (int i = 0; i < cflen; i++)
 					macRecordWChar[i] = (wchar_t) unistr[i];
 				macRecordWChar[cflen] = 0;
 
@@ -1312,7 +1269,7 @@ static pascal void NavRecordMovieToEventHandler(const NavEventCallbackMessage ca
 					err = NavDialogGetReply(callBackParms->context, &reply);
 					if (err == noErr)
 					{
-						err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, nil, &resultDesc);
+						err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, NULL, &resultDesc);
 						if (err == noErr)
 						{
 							err = AEGetDescData(&resultDesc, &(nav->ref), sizeof(FSRef));
@@ -1330,16 +1287,19 @@ static pascal void NavRecordMovieToEventHandler(const NavEventCallbackMessage ca
 
 						err = NavDisposeReply(&reply);
 					}
+
+					break;
             }
 
             break;
 
 		case kNavCBTerminate:
 			NavDialogDispose(nav->nref);
+			break;
 	}
 }
 
-bool8 NavPlayMovieFrom(char *path)
+bool8 NavPlayMovieFrom (char *path)
 {
 	OSStatus					err;
 	NavDialogCreationOptions	dialogOptions;
@@ -1351,18 +1311,18 @@ bool8 NavPlayMovieFrom(char *path)
 	CFMutableStringRef			mesRef;
 	Rect						rct;
 	SInt32						replaceAt;
-	char						drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	char						drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 	HIViewID					cid = { 'PANE', 1000 };
 
 	err = CreateNibReference(kMacS9XCFString, &(nav.customNib));
 	if (err)
-		return false;
+		return (false);
 
 	err = CreateWindowFromNib(nav.customNib, CFSTR("PlaySMV"), &(nav.customWindow));
 	if (err)
 	{
 		DisposeNibReference(nav.customNib);
-		return false;
+		return (false);
 	}
 
 	nav.isSheet = false;
@@ -1387,15 +1347,15 @@ bool8 NavPlayMovieFrom(char *path)
 	dialogOptions.clientName = kMacS9XCFString;
 	dialogOptions.windowTitle = mesRef;
 	dialogOptions.modality = kWindowModalityAppModal;
-	dialogOptions.parentWindow = nil;
+	dialogOptions.parentWindow = NULL;
 
 	eventUPP = NewNavEventUPP(NavPlayMovieFromEventHandler);
 	filterUPP = NewNavObjectFilterUPP(NavPlayMovieFromFilter);
 	previewUPP = NewNavPreviewUPP(NavPlayMovieFromPreview);
 
-	gSheetParent = nil;
+	gSheetParent = NULL;
 
-	err = NavCreateChooseFileDialog(&dialogOptions, nil, eventUPP, previewUPP, filterUPP, &nav, &(nav.nref));
+	err = NavCreateChooseFileDialog(&dialogOptions, NULL, eventUPP, previewUPP, filterUPP, &nav, &(nav.nref));
 	if (err == noErr)
 	{
 		err = NavDialogRun(nav.nref);
@@ -1412,37 +1372,37 @@ bool8 NavPlayMovieFrom(char *path)
 	CFRelease(numRef);
 	CFRelease(romRef);
 
-	ReleaseWindow(nav.customWindow);
+	CFRelease(nav.customWindow);
 	DisposeNibReference(nav.customNib);
 
 	if (err)
-		return false;
+		return (false);
 	else
 	{
 		if (nav.reply)
 		{
 			err = FSRefMakePath(&(nav.ref), (unsigned char *) path, PATH_MAX);
-			return true;
+			return (true);
 		}
 		else
-			return false;
+			return (false);
 	}
 }
 
-static pascal void NavPlayMovieFromEventHandler(const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
+static pascal void NavPlayMovieFromEventHandler (const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
 {
-	OSStatus			err;
-	NavReplyRecord		reply;
-	NavUserAction		userAction;
-	NavState			*nav;
-	HIViewRef 			ctl;
-	HIViewID			cid;
-	HIViewPartCode		part;
-	AEDesc				resultDesc;
-	Point				pt;
-	SInt32 				count;
+	static Boolean	embedded = false;
 
-	static Boolean		embedded = false;
+	OSStatus		err;
+	NavReplyRecord	reply;
+	NavUserAction	userAction;
+	NavState		*nav;
+	HIViewRef 		ctl;
+	HIViewID		cid;
+	HIViewPartCode	part;
+	AEDesc			resultDesc;
+	Point			pt;
+	SInt32 			count;
 
 	nav = (NavState *) callBackUD;
 
@@ -1462,6 +1422,8 @@ static pascal void NavPlayMovieFromEventHandler(const NavEventCallbackMessage ca
 						if (cid.signature == 'PCTL')
 							part = HandleControlClick(ctl, pt, callBackParms->eventData.eventDataParms.event->modifiers, (ControlActionUPP) -1L);
 					}
+
+					break;
 			}
 
 			break;
@@ -1469,13 +1431,6 @@ static pascal void NavPlayMovieFromEventHandler(const NavEventCallbackMessage ca
 		case kNavCBStart:
 			nav->reply = false;
 			cid.signature = 'PCTL';
-		#ifdef MAC_JAGUAR_SUPPORT
-			if (hiToolboxVersion < 0x130)
-			{
-				err = GetRootControl(callBackParms->window, &ctl);
-				err = EmbedControl(nav->customPane, ctl);
-			}
-		#endif
 			err = NavCustomControl(callBackParms->context, kNavCtlAddControl, nav->customPane);
 
 			for (cid.id = 101; cid.id <= 102; cid.id++)
@@ -1533,7 +1488,7 @@ static pascal void NavPlayMovieFromEventHandler(const NavEventCallbackMessage ca
 						err = AECountItems(&(reply.selection), &count);
 						if ((err == noErr) && (count == 1))
 						{
-							err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, nil, &resultDesc);
+							err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, NULL, &resultDesc);
 							if (err == noErr)
 							{
 								err = AEGetDescData(&resultDesc, &(nav->ref), sizeof(FSRef));
@@ -1546,19 +1501,20 @@ static pascal void NavPlayMovieFromEventHandler(const NavEventCallbackMessage ca
 
 						err = NavDisposeReply(&reply);
 					}
+
+					break;
             }
 
             break;
 
 		case kNavCBTerminate:
 			NavDialogDispose(nav->nref);
+			break;
 	}
 }
 
-static pascal Boolean NavPlayMovieFromFilter(AEDesc *theItem, void *ninfo, NavCallBackUserData callbackUD, NavFilterModes filterMode)
+static pascal Boolean NavPlayMovieFromFilter (AEDesc *theItem, void *ninfo, NavCallBackUserData callbackUD, NavFilterModes filterMode)
 {
-	#pragma unused (ninfo, callbackUD, filterMode)
-
 	OSStatus	err;
 	AEDesc 		resultDesc;
 	Boolean		result = true;
@@ -1574,7 +1530,7 @@ static pascal Boolean NavPlayMovieFromFilter(AEDesc *theItem, void *ninfo, NavCa
 			FSCatalogInfo	catinfo;
 			HFSUniStr255	unistr;
 
-			err = FSGetCatalogInfo(&ref, kFSCatInfoNodeFlags | kFSCatInfoFinderInfo, &catinfo, &unistr, nil, nil);
+			err = FSGetCatalogInfo(&ref, kFSCatInfoNodeFlags | kFSCatInfoFinderInfo, &catinfo, &unistr, NULL, NULL);
 			if ((err == noErr) && !(catinfo.nodeFlags & kFSNodeIsDirectoryMask))
 			{
 				if (((FileInfo *) &catinfo.finderInfo)->fileType != 'SMOV')
@@ -1595,13 +1551,14 @@ static pascal Boolean NavPlayMovieFromFilter(AEDesc *theItem, void *ninfo, NavCa
 		AEDisposeDesc(&resultDesc);
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal Boolean NavPlayMovieFromPreview(NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
+static pascal Boolean NavPlayMovieFromPreview (NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
 {
-	#pragma unused (callBackUD)
-
+#ifndef MAC_TIGER_PANTHER_SUPPORT
+	return (true);
+#else
 	OSStatus	err;
 	Boolean		previewShowing, result = false;
 
@@ -1636,7 +1593,7 @@ static pascal Boolean NavPlayMovieFromPreview(NavCBRecPtr callBackParms, NavCall
 						Rect			rct;
 						CFStringRef		sref;
 						UInt64			t;
-						int				rightedge, border, width, l, sec, min, hr, i, n;
+						int				rightedge, border, width, l, sec, min, hr, n;
 						char			cstr[256], cbuf[512];
 						UniChar			unistr[MOVIE_MAX_METADATA];
 
@@ -1665,50 +1622,29 @@ static pascal Boolean NavPlayMovieFromPreview(NavCBRecPtr callBackParms, NavCall
 						utctime.lowSeconds  = (UInt32) (t & 0xFFFFFFFF);
 						utctime.fraction    = 0;
 
-						if (systemVersion >= 0x1030)
-						{
-							CFAbsoluteTime		at;
-							CFDateFormatterRef	format;
-							CFLocaleRef			locale;
-							CFStringRef			datstr;
-							Boolean				r;
+						CFAbsoluteTime		at;
+						CFDateFormatterRef	format;
+						CFLocaleRef			locale;
+						CFStringRef			datstr;
+						Boolean				r;
 
-							err = UCConvertUTCDateTimeToCFAbsoluteTime(&utctime, &at);
-							locale = CFLocaleCopyCurrent();
-							format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterShortStyle, kCFDateFormatterNoStyle);
-							datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
-							r = CFStringGetCString(datstr, cbuf, sizeof(cbuf), CFStringGetSystemEncoding());
-							CFRelease(datstr);
-							CFRelease(format);
-							strcat(cbuf, "\n");
-							format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterNoStyle, kCFDateFormatterMediumStyle);
-							datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
-							r = CFStringGetCString(datstr, cstr, sizeof(cstr), CFStringGetSystemEncoding());
-							CFRelease(datstr);
-							CFRelease(format);
-							strcat(cbuf, cstr);
-							strcat(cbuf, "\n");
-							CFRelease(locale);
-						}
-					#ifdef MAC_JAGUAR_SUPPORT
-						else
-						{
-							LocalDateTime	localtime;
-							LongDateTime	ldtime;
-							unsigned char	pstr[256];
+						err = UCConvertUTCDateTimeToCFAbsoluteTime(&utctime, &at);
+						locale = CFLocaleCopyCurrent();
+						format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterShortStyle, kCFDateFormatterNoStyle);
+						datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
+						r = CFStringGetCString(datstr, cbuf, sizeof(cbuf), CFStringGetSystemEncoding());
+						CFRelease(datstr);
+						CFRelease(format);
+						strcat(cbuf, "\n");
+						format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterNoStyle, kCFDateFormatterMediumStyle);
+						datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
+						r = CFStringGetCString(datstr, cstr, sizeof(cstr), CFStringGetSystemEncoding());
+						CFRelease(datstr);
+						CFRelease(format);
+						strcat(cbuf, cstr);
+						strcat(cbuf, "\n");
+						CFRelease(locale);
 
-							ConvertUTCToLocalDateTime(&utctime, &localtime);
-							ldtime = (LongDateTime) ((((UInt64) localtime.highSeconds) << 32) | ((UInt64) localtime.lowSeconds));
-							LongDateString(&ldtime, shortDate, pstr, nil);
-							ConvertPString(pstr, cstr);
-							strcpy(cbuf, cstr);
-							strcat(cbuf, "\n");
-							LongTimeString(&ldtime, true, pstr, nil);
-							ConvertPString(pstr, cstr);
-							strcat(cbuf, cstr);
-							strcat(cbuf, "\n");
-						}
-					#endif
 						// Length
 
 						l = (movinfo.LengthFrames + 30) / ((movinfo.Opts & MOVIE_OPT_PAL) ? 50 : 60);
@@ -1755,117 +1691,62 @@ static pascal Boolean NavPlayMovieFromPreview(NavCBRecPtr callBackParms, NavCall
 
 						// Text
 
-						if (hiToolboxVersion >= 0x130)
+						HIThemeTextInfo	textinfo;
+
+						textinfo.version            = 0;
+						textinfo.state              = kThemeStateActive;
+						textinfo.fontID             = kThemeSmallSystemFont;
+						textinfo.verticalFlushness  = kHIThemeTextVerticalFlushTop;
+						textinfo.options            = 0;
+						textinfo.truncationPosition = kHIThemeTextTruncationMiddle;
+						textinfo.truncationMaxLines = 0;
+						textinfo.truncationHappened = false;
+
+						bounds.origin.x = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - width) >> 1) + callBackParms->previewRect.left + border + 7);
+						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 60);
+						bounds.size.width  = (float) callBackParms->previewRect.right - bounds.origin.x;
+						bounds.size.height = 60.0;
+
+						sref = CFStringCreateWithCString(kCFAllocatorDefault, cbuf, CFStringGetSystemEncoding());
+						if (sref)
 						{
-							HIThemeTextInfo	textinfo;
-
-							textinfo.version            = 0;
-							textinfo.state              = kThemeStateActive;
-							textinfo.fontID             = kThemeSmallSystemFont;
-							textinfo.verticalFlushness  = kHIThemeTextVerticalFlushTop;
-							textinfo.options            = 0;
-							textinfo.truncationPosition = kHIThemeTextTruncationMiddle;
-							textinfo.truncationMaxLines = 0;
-							textinfo.truncationHappened = false;
-
-							bounds.origin.x = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - width) >> 1) + callBackParms->previewRect.left + border + 7);
-							bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 60);
-							bounds.size.width  = (float) callBackParms->previewRect.right - bounds.origin.x;
-							bounds.size.height = 60.0;
-
-							sref = CFStringCreateWithCString(kCFAllocatorDefault, cbuf, CFStringGetSystemEncoding());
-							if (sref)
-							{
-								textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushLeft;
-								err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
-								CFRelease(sref);
-							}
-
-							bounds.origin.x = (float) callBackParms->previewRect.left;
-							bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 60);
-							bounds.size.width  = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - width) >> 1) + border);
-							bounds.size.height = 60.0;
-
-							sref = CFCopyLocalizedString(CFSTR("MoviePrevMes"), "MovieInfo");
-							if (sref)
-							{
-								textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushRight;
-								err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
-								CFRelease(sref);
-							}
-
-							bounds.origin.x = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - 132) >> 1) + callBackParms->previewRect.left);
-							bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.bottom + 10);
-							bounds.size.width  = 132.0;
-							bounds.size.height = (float) (callBackParms->previewRect.bottom - callBackParms->previewRect.top - 223 - 10);
-
-							n = wcslen(movinfo.Metadata);
-
-							for (i = 0; i < n; i++)
-								unistr[i] = (UniChar) movinfo.Metadata[i];
-							unistr[n] = 0;
-
-							sref = CFStringCreateWithCharacters(kCFAllocatorDefault, unistr, n);
-							if (sref)
-							{
-								textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushLeft;
-								err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
-								CFRelease(sref);
-							}
+							textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushLeft;
+							err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
+							CFRelease(sref);
 						}
-					#ifdef MAC_JAGUAR_SUPPORT
-						else
+
+						bounds.origin.x = (float) callBackParms->previewRect.left;
+						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 60);
+						bounds.size.width  = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - width) >> 1) + border);
+						bounds.size.height = 60.0;
+
+						sref = CFCopyLocalizedString(CFSTR("MoviePrevMes"), "MovieInfo");
+						if (sref)
 						{
-							CGrafPtr	old;
-
-							GetPort(&old);
-							SetPort(port);
-
-							rct.left   = ((callBackParms->previewRect.right - callBackParms->previewRect.left - width) >> 1) + callBackParms->previewRect.left + border + 7;
-							rct.right  = callBackParms->previewRect.right;
-							rct.top    = callBackParms->previewRect.top + 153;
-							rct.bottom = rct.top + 60;
-
-							sref = CFStringCreateWithCString(kCFAllocatorDefault, cbuf, CFStringGetSystemEncoding());
-							if (sref)
-							{
-								DrawThemeTextBox(sref, kThemeSmallSystemFont, kThemeStateActive, false, &rct, teFlushLeft, nil);
-								CFRelease(sref);
-							}
-
-							rct.left   = callBackParms->previewRect.left;
-							rct.right  = ((callBackParms->previewRect.right - callBackParms->previewRect.left - width) >> 1) + callBackParms->previewRect.left + border;
-							rct.top    = callBackParms->previewRect.top + 153;
-							rct.bottom = rct.top + 60;
-
-							sref = CFCopyLocalizedString(CFSTR("MoviePrevMes"), "MovieInfo");
-							if (sref)
-							{
-								DrawThemeTextBox(sref, kThemeSmallSystemFont, kThemeStateActive, false, &rct, teFlushRight, nil);
-								CFRelease(sref);
-							}
-
-							rct.left   = ((callBackParms->previewRect.right - callBackParms->previewRect.left - 132) >> 1) + callBackParms->previewRect.left;
-							rct.right  = rct.left + 132;
-							rct.top    = callBackParms->previewRect.top    + 223;
-							rct.bottom = callBackParms->previewRect.bottom - 10;
-
-							n = wcslen(movinfo.Metadata);
-
-							for (i = 0; i < n; i++)
-								unistr[i] = (UniChar) movinfo.Metadata[i];
-							unistr[n] = 0;
-
-							sref = CFStringCreateWithCharacters(kCFAllocatorDefault, unistr, n);
-							if (sref)
-							{
-								DrawThemeTextBox(sref, kThemeSmallSystemFont, kThemeStateActive, true, &rct, teFlushLeft, nil);
-								CFRelease(sref);
-							}
-
-							SetPort(old);
+							textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushRight;
+							err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
+							CFRelease(sref);
 						}
-					#endif
+
+						bounds.origin.x = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - 132) >> 1) + callBackParms->previewRect.left);
+						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.bottom + 10);
+						bounds.size.width  = 132.0;
+						bounds.size.height = (float) (callBackParms->previewRect.bottom - callBackParms->previewRect.top - 223 - 10);
+
+						n = wcslen(movinfo.Metadata);
+
+						for (int i = 0; i < n; i++)
+							unistr[i] = (UniChar) movinfo.Metadata[i];
+						unistr[n] = 0;
+
+						sref = CFStringCreateWithCharacters(kCFAllocatorDefault, unistr, n);
+						if (sref)
+						{
+							textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushLeft;
+							err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
+							CFRelease(sref);
+						}
+
 						CGContextSynchronize(ctx);
 
 						err = QDEndCGContext(port, &ctx);
@@ -1879,10 +1760,11 @@ static pascal Boolean NavPlayMovieFromPreview(NavCBRecPtr callBackParms, NavCall
 		}
 	}
 
-	return result;
+	return (result);
+#endif
 }
 
-bool8 NavQTMovieRecordTo(char *path)
+bool8 NavQTMovieRecordTo (char *path)
 {
 	OSStatus					err;
 	NavDialogCreationOptions	dialogOptions;
@@ -1892,18 +1774,18 @@ bool8 NavQTMovieRecordTo(char *path)
 	CFMutableStringRef			mesRef, saveRef;
 	Rect						rct;
 	SInt32						replaceAt;
-	char						drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	char						drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 	HIViewID					cid = { 'PANE', 1000 };
 
 	err = CreateNibReference(kMacS9XCFString, &(nav.customNib));
 	if (err)
-		return false;
+		return (false);
 
 	err = CreateWindowFromNib(nav.customNib, CFSTR("QTMovie"), &(nav.customWindow));
 	if (err)
 	{
 		DisposeNibReference(nav.customNib);
-		return false;
+		return (false);
 	}
 
 	nav.isSheet = false;
@@ -1932,11 +1814,11 @@ bool8 NavQTMovieRecordTo(char *path)
 	dialogOptions.windowTitle = mesRef;
 	dialogOptions.saveFileName = saveRef;
 	dialogOptions.modality = kWindowModalityAppModal;
-	dialogOptions.parentWindow = nil;
+	dialogOptions.parentWindow = NULL;
 
 	eventUPP = NewNavEventUPP(NavQTMovieRecordToEventHandler);
 
-	gSheetParent = nil;
+	gSheetParent = NULL;
 
 	err = NavCreatePutFileDialog(&dialogOptions, 'MooV', 'TVOD', eventUPP, &nav, &(nav.nref));
 	if (err == noErr)
@@ -1954,40 +1836,41 @@ bool8 NavQTMovieRecordTo(char *path)
 	CFRelease(numRef);
 	CFRelease(romRef);
 
-	ReleaseWindow(nav.customWindow);
+	CFRelease(nav.customWindow);
 	DisposeNibReference(nav.customNib);
 
 	if (err)
-		return false;
+		return (false);
 	else
 	{
 		if (nav.reply)
 		{
-			err = FSRefMakePath(&(nav.ref), (unsigned char *) path, PATH_MAX);
-			strcat(path, MAC_PATH_SEPARATOR);
-			strcat(path, nav.name);
+			char	s[PATH_MAX + 1];
 
-			return true;
+			err = FSRefMakePath(&(nav.ref), (unsigned char *) s, PATH_MAX);
+			snprintf(path, PATH_MAX + 1, "%s%s%s", s, MAC_PATH_SEPARATOR, nav.name);
+
+			return (true);
 		}
 		else
-			return false;
+			return (false);
 	}
 }
 
-static pascal void NavQTMovieRecordToEventHandler(const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
+static pascal void NavQTMovieRecordToEventHandler (const NavEventCallbackMessage callBackSelector, NavCBRecPtr callBackParms, NavCallBackUserData callBackUD)
 {
-	OSStatus			err;
-	NavReplyRecord		reply;
-	NavUserAction		userAction;
-	NavState			*nav;
-	HIViewRef 			ctl;
-	HIViewID			cid;
-	HIViewPartCode		part;
-	MenuRef				menu;
-	AEDesc				resultDesc;
-	Point				pt;
+	static Boolean	embedded = false;
 
-	static Boolean		embedded = false;
+	OSStatus		err;
+	NavReplyRecord	reply;
+	NavUserAction	userAction;
+	NavState		*nav;
+	HIViewRef 		ctl;
+	HIViewID		cid;
+	HIViewPartCode	part;
+	MenuRef			menu;
+	AEDesc			resultDesc;
+	Point			pt;
 
 	nav = (NavState *) callBackUD;
 
@@ -2010,6 +1893,8 @@ static pascal void NavQTMovieRecordToEventHandler(const NavEventCallbackMessage 
 						if (cid.id == 103)
 							MacQTVideoConfig(NavDialogGetWindow(callBackParms->context));
 					}
+
+					break;
 			}
 
 			break;
@@ -2017,13 +1902,6 @@ static pascal void NavQTMovieRecordToEventHandler(const NavEventCallbackMessage 
 		case kNavCBStart:
 			nav->reply = false;
 			cid.signature = 'QCTL';
-		#ifdef MAC_JAGUAR_SUPPORT
-			if (hiToolboxVersion < 0x130)
-			{
-				err = GetRootControl(callBackParms->window, &ctl);
-				err = EmbedControl(nav->customPane, ctl);
-			}
-		#endif
 			err = NavCustomControl(callBackParms->context, kNavCtlAddControl, nav->customPane);
 
 			for (cid.id = 101; cid.id <= 102; cid.id++)
@@ -2034,7 +1912,7 @@ static pascal void NavQTMovieRecordToEventHandler(const NavEventCallbackMessage 
 
 			cid.id = 104;
 			HIViewFindByID(nav->customPane, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
+			menu = HIMenuViewGetMenu(ctl);
 			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			SetControl32BitValue(ctl, ((macQTMovFlag & 0xFF00) >> 8) + 1);
@@ -2089,7 +1967,7 @@ static pascal void NavQTMovieRecordToEventHandler(const NavEventCallbackMessage 
 					err = NavDialogGetReply(callBackParms->context, &reply);
 					if (err == noErr)
 					{
-						err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, nil, &resultDesc);
+						err = AEGetNthDesc(&(reply.selection), 1, typeFSRef, NULL, &resultDesc);
 						if (err == noErr)
 						{
 							err = AEGetDescData(&resultDesc, &(nav->ref), sizeof(FSRef));
@@ -2107,16 +1985,19 @@ static pascal void NavQTMovieRecordToEventHandler(const NavEventCallbackMessage 
 
 						err = NavDisposeReply(&reply);
 					}
+
+					break;
             }
 
             break;
 
 		case kNavCBTerminate:
 			NavDialogDispose(nav->nref);
+			break;
 	}
 }
 
-static void GlobalPointToWindowLocalPoint(Point *pt, WindowRef window)
+static void GlobalPointToWindowLocalPoint (Point *pt, WindowRef window)
 {
 	if (systemVersion >= 0x1040)
 	{
@@ -2124,11 +2005,11 @@ static void GlobalPointToWindowLocalPoint(Point *pt, WindowRef window)
 		HIPoint		cpt = CGPointMake((float) pt->h, (float) pt->v);
 
 		HIViewFindByID(HIViewGetRoot(window), kHIViewWindowContentID, &view);
-		HIPointConvert(&cpt, kHICoordSpace72DPIGlobal, nil, kHICoordSpaceView, view);
+		HIPointConvert(&cpt, kHICoordSpace72DPIGlobal, NULL, kHICoordSpaceView, view);
 		pt->h = (short) cpt.x;
 		pt->v = (short) cpt.y;
 	}
-#ifdef MAC_PANTHER_JAGUAR_SUPPORT
+#ifdef MAC_PANTHER_SUPPORT
 	else
 		QDGlobalToLocalPoint(GetWindowPort(window), pt);
 #endif

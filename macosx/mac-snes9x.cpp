@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,16 +171,13 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "memmap.h"
-#include "gfx.h"
 #include "apu.h"
-#include "bsx.h"
-#include "cpuexec.h"
-#include "cheats.h"
-#include "display.h"
-#include "movie.h"
 #include "snapshot.h"
-#include "spc7110.h"
+#include "cheats.h"
+#include "movie.h"
+#include "display.h"
 
 #include <wchar.h>
 
@@ -196,18 +191,19 @@
 #include "mac-os.h"
 #include "mac-quicktime.h"
 #include "mac-screenshot.h"
-#include "mac-snes9x.h"
 #include "mac-stringtools.h"
+#include "mac-snes9x.h"
 
 extern wchar_t  macRecordWChar[MOVIE_MAX_METADATA];
 
-void SNES9X_Go(void)
+
+void SNES9X_Go (void)
 {
 	if (cartOpen)
 		running = true;
 }
 
-bool8 SNES9X_OpenCart(FSRef *inRef)
+bool8 SNES9X_OpenCart (FSRef *inRef)
 {
 	OSStatus		err;
 	FSCatalogInfo	info;
@@ -220,13 +216,8 @@ bool8 SNES9X_OpenCart(FSRef *inRef)
 	{
 		SNES9X_SaveSRAM();
 		S9xResetSaveTimer(false);
-		S9xSaveCheatFile(S9xGetFilename(".cht", PATCH_DIR));
+		S9xSaveCheatFile(S9xGetFilename(".cht", CHEAT_DIR));
 	}
-
-	Settings.MouseMaster = true;
-	Settings.SuperScopeMaster = true;
-	Settings.MultiPlayer5Master = true;
-	Settings.JustifierMaster = true;
 
 	ResetCheatFinder();
 
@@ -235,7 +226,7 @@ bool8 SNES9X_OpenCart(FSRef *inRef)
 		if (!NavOpenROMImage(&cartRef))
 		{
 			cartOpen = false;
-			return false;
+			return (false);
 		}
 	}
 	else
@@ -243,27 +234,21 @@ bool8 SNES9X_OpenCart(FSRef *inRef)
 
 	spcFileCount = pngFileCount = 0;
 
-	err = FSGetCatalogInfo(&cartRef, kFSCatInfoVolume, &info, nil, nil, nil);
+	err = FSGetCatalogInfo(&cartRef, kFSCatInfoVolume, &info, NULL, NULL, NULL);
 	lockedROMMedia = IsLockedMedia(info.volume);
 
 	Settings.ForceLoROM          = (romDetect        == kLoROMForce       );
 	Settings.ForceHiROM          = (romDetect        == kHiROMForce       );
-	Settings.ForceNotInterleaved = (interleaveDetect == kNoInterleaveForce);
+	Settings.ForceHeader         = (headerDetect     == kHeaderForce      );
+	Settings.ForceNoHeader       = (headerDetect     == kNoHeaderForce    );
 	Settings.ForceInterleaved    = (interleaveDetect == kInterleaveForce  );
 	Settings.ForceInterleaved2   = (interleaveDetect == kInterleave2Force );
 	Settings.ForceInterleaveGD24 = (interleaveDetect == kInterleaveGD24   );
+	Settings.ForceNotInterleaved = (interleaveDetect == kNoInterleaveForce);
 	Settings.ForcePAL            = (videoDetect      == kPALForce         );
 	Settings.ForceNTSC           = (videoDetect      == kNTSCForce        );
-	Settings.ForceHeader         = (headerDetect     == kHeaderForce      );
-	Settings.ForceNoHeader       = (headerDetect     == kNoHeaderForce    );
 
-	Settings.ForceSuperFX = Settings.ForceNoSuperFX = false;
-	Settings.ForceDSP1    = Settings.ForceNoDSP1    = false;
-	Settings.ForceSA1     = Settings.ForceNoSA1     = false;
-	Settings.ForceC4      = Settings.ForceNoC4      = false;
-	Settings.ForceSDD1    = Settings.ForceNoSDD1    = false;
-
-	GFX.InfoString = nil;
+	GFX.InfoString = NULL;
 	GFX.InfoStringTimeout = 0;
 
 	S9xResetSaveTimer(true);
@@ -288,16 +273,16 @@ bool8 SNES9X_OpenCart(FSRef *inRef)
 			for (int b = 0; b < 12; b++)
 				autofireRec[a].nextTime[b] = 0;
 
-		return true;
+		return (true);
 	}
 	else
 	{
 		cartOpen = false;
-		return false;
+		return (false);
 	}
 }
 
-bool8 SNES9X_OpenMultiCart(void)
+bool8 SNES9X_OpenMultiCart (void)
 {
 	Boolean	r;
 	char	cart[2][PATH_MAX + 1];
@@ -308,36 +293,25 @@ bool8 SNES9X_OpenMultiCart(void)
 	{
 		SNES9X_SaveSRAM();
 		S9xResetSaveTimer(false);
-		S9xSaveCheatFile(S9xGetFilename(".cht", PATCH_DIR));
+		S9xSaveCheatFile(S9xGetFilename(".cht", CHEAT_DIR));
 	}
-
-	Settings.MouseMaster = true;
-	Settings.SuperScopeMaster = true;
-	Settings.MultiPlayer5Master = true;
-	Settings.JustifierMaster = true;
 
 	ResetCheatFinder();
 
 	if (!MultiCartDialog())
 	{
 		cartOpen = false;
-		return false;
+		return (false);
 	}
 
 	spcFileCount = pngFileCount = 0;
 
-	Settings.ForcePAL            = (videoDetect      == kPALForce         );
-	Settings.ForceNTSC           = (videoDetect      == kNTSCForce        );
-	Settings.ForceHeader         = (headerDetect     == kHeaderForce      );
-	Settings.ForceNoHeader       = (headerDetect     == kNoHeaderForce    );
+	Settings.ForceHeader   = (headerDetect     == kHeaderForce  );
+	Settings.ForceNoHeader = (headerDetect     == kNoHeaderForce);
+	Settings.ForcePAL      = (videoDetect      == kPALForce     );
+	Settings.ForceNTSC     = (videoDetect      == kNTSCForce    );
 
-	Settings.ForceSuperFX = Settings.ForceNoSuperFX = false;
-	Settings.ForceDSP1    = Settings.ForceNoDSP1    = false;
-	Settings.ForceSA1     = Settings.ForceNoSA1     = false;
-	Settings.ForceC4      = Settings.ForceNoC4      = false;
-	Settings.ForceSDD1    = Settings.ForceNoSDD1    = false;
-
-	GFX.InfoString = nil;
+	GFX.InfoString = NULL;
 	GFX.InfoStringTimeout = 0;
 
 	S9xResetSaveTimer(true);
@@ -368,22 +342,22 @@ bool8 SNES9X_OpenMultiCart(void)
 			for (int b = 0; b < 12; b++)
 				autofireRec[a].nextTime[b] = 0;
 
-		return true;
+		return (true);
 	}
 	else
 	{
 		cartOpen = false;
-		return false;
+		return (false);
 	}
 }
 
-void SNES9X_LoadSRAM(void)
+void SNES9X_LoadSRAM (void)
 {
 	if (cartOpen)
 		Memory.LoadSRAM(S9xGetFilename(".srm", SRAM_DIR));
 }
 
-void SNES9X_SaveSRAM(void)
+void SNES9X_SaveSRAM (void)
 {
 	const char	*sramFilename;
 
@@ -391,13 +365,11 @@ void SNES9X_SaveSRAM(void)
 	{
 		sramFilename = S9xGetFilename(".srm", SRAM_DIR);
 		Memory.SaveSRAM(sramFilename);
-
-		sramFilename = S9xGetFilename(".srm", SRAM_DIR);
 		ChangeTypeAndCreator(sramFilename, 'SRAM', '~9X~');
 	}
 }
 
-void SNES9X_Reset(void)		// Hardware Reset
+void SNES9X_Reset (void)
 {
 	if (cartOpen)
 	{
@@ -407,7 +379,7 @@ void SNES9X_Reset(void)		// Hardware Reset
 	}
 }
 
-void SNES9X_SoftReset(void)	// Software Reset
+void SNES9X_SoftReset (void)
 {
 	if (cartOpen)
 	{
@@ -417,7 +389,7 @@ void SNES9X_SoftReset(void)	// Software Reset
 	}
 }
 
-bool8 SNES9X_Freeze(void)
+bool8 SNES9X_Freeze (void)
 {
 	OSStatus	err;
 	FSRef		ref;
@@ -434,31 +406,31 @@ bool8 SNES9X_Freeze(void)
 		{
 			filename = S9xGetFreezeFilename(which);
 
-			err = FSPathMakeRef((unsigned char *) filename, &ref, nil);
+			err = FSPathMakeRef((unsigned char *) filename, &ref, NULL);
 			if (!err)
 				FSDeleteObject(&ref);
 
 			S9xFreezeGame(filename);
 			ChangeTypeAndCreator(filename, 'SAVE', '~9X~');
-			err = FSPathMakeRef((unsigned char *) filename, &ref, nil);
+			err = FSPathMakeRef((unsigned char *) filename, &ref, NULL);
 			WriteThumbnailToResourceFork(&ref, 128, 120);
 
 			SNES9X_Go();
 
 			MacStartSound();
-			return true;
+			return (true);
 		}
 		else
 		{
 			MacStartSound();
-			return false;
+			return (false);
 		}
 	}
 	else
-		return false;
+		return (false);
 }
 
-bool8 SNES9X_Defrost(void)
+bool8 SNES9X_Defrost (void)
 {
 	int			which;
 	const char	*filename;
@@ -477,19 +449,19 @@ bool8 SNES9X_Defrost(void)
 			SNES9X_Go();
 
 			MacStartSound();
-			return true;
+			return (true);
 		}
 		else
 		{
 			MacStartSound();
-			return false;
+			return (false);
 		}
 	}
 	else
-		return false;
+		return (false);
 }
 
-bool8 SNES9X_FreezeTo(void)
+bool8 SNES9X_FreezeTo (void)
 {
 	OSStatus	err;
 	FSRef		ref;
@@ -499,23 +471,23 @@ bool8 SNES9X_FreezeTo(void)
 	{
 		if (NavFreezeTo(filename))
 		{
-			err = FSPathMakeRef((unsigned char *) filename, &ref, nil);
+			err = FSPathMakeRef((unsigned char *) filename, &ref, NULL);
 			if (!err)
 				FSDeleteObject(&ref);
 
 			S9xFreezeGame(filename);
 			ChangeTypeAndCreator(filename, 'SAVE', '~9X~');
-			err = FSPathMakeRef((unsigned char *) filename, &ref, nil);
+			err = FSPathMakeRef((unsigned char *) filename, &ref, NULL);
 			WriteThumbnailToResourceFork(&ref, 128, 120);
 
-			return true;
+			return (true);
 		}
 	}
 
-	return false;
+	return (false);
 }
 
-bool8 SNES9X_DefrostFrom(void)
+bool8 SNES9X_DefrostFrom (void)
 {
 	char	filename[PATH_MAX + 1];
 
@@ -527,14 +499,14 @@ bool8 SNES9X_DefrostFrom(void)
 
 			SNES9X_Go();
 
-			return true;
+			return (true);
 		}
 	}
 
-	return false;
+	return (false);
 }
 
-bool8 SNES9X_RecordMovie(void)
+bool8 SNES9X_RecordMovie (void)
 {
 	OSStatus	err;
 	FSRef		ref;
@@ -544,7 +516,7 @@ bool8 SNES9X_RecordMovie(void)
 	{
 		if (NavRecordMovieTo(filename))
 		{
-			err = FSPathMakeRef((unsigned char *) filename, &ref, nil);
+			err = FSPathMakeRef((unsigned char *) filename, &ref, NULL);
 			if (!err)
 				FSDeleteObject(&ref);
 
@@ -567,21 +539,21 @@ bool8 SNES9X_RecordMovie(void)
 
 				if ((macRecordFlag & (1 << 5)) == 0)
 				{
-					err = FSPathMakeRef((unsigned char *) filename, &ref, nil);
+					err = FSPathMakeRef((unsigned char *) filename, &ref, NULL);
 					WriteThumbnailToResourceFork(&ref, 128, 120);
 				}
 
 				SNES9X_Go();
 
-				return true;
+				return (true);
 			}
 		}
 	}
 
-	return false;
+	return (false);
 }
 
-bool8 SNES9X_PlayMovie(void)
+bool8 SNES9X_PlayMovie (void)
 {
 	char	filename[PATH_MAX + 1];
 
@@ -596,15 +568,15 @@ bool8 SNES9X_PlayMovie(void)
 			{
 				SNES9X_Go();
 
-				return true;
+				return (true);
 			}
 		}
 	}
 
-	return false;
+	return (false);
 }
 
-bool8 SNES9X_QTMovieRecord(void)
+bool8 SNES9X_QTMovieRecord (void)
 {
     char	filename[PATH_MAX + 1];
 
@@ -616,32 +588,29 @@ bool8 SNES9X_QTMovieRecord(void)
 			macQTRecord = true;
 			SNES9X_Go();
 
-			return true;
+			return (true);
 		}
 	}
 
 	macQTRecord = false;
 
-	return false;
+	return (false);
 }
 
-void SNES9X_Quit(void)
+void SNES9X_Quit (void)
 {
 	DeinitGameWindow();
 
 	if (cartOpen)
 	{
 		SNES9X_SaveSRAM();
-		S9xSaveCheatFile(S9xGetFilename(".cht", PATCH_DIR));
+		S9xSaveCheatFile(S9xGetFilename(".cht", CHEAT_DIR));
 	}
-
-	if (Settings.SPC7110)
-		(*CleanUp7110)();
 
 	finished = true;
 }
 
-void SNES9X_InitSound(void)
+void SNES9X_InitSound (void)
 {
 	S9xInitSound(1, Settings.Stereo, 2048);
 }

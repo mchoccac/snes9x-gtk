@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -175,9 +173,6 @@
 
 #ifndef _mac_controls_h_
 #define _mac_controls_h_
-
-void ControlPadFlagsToS9xReportButtons(int, uint32);
-void ControlPadFlagsToS9xPseudoPointer(uint32);
 
 enum
 {
@@ -333,5 +328,8 @@ enum
 
 	kMacCMapPseudoPtrBase     = k_HD | k_PS | k_LG | k_C2	// for Justifier 2P
 };
+
+void ControlPadFlagsToS9xReportButtons (int, uint32);
+void ControlPadFlagsToS9xPseudoPointer (uint32);
 
 #endif

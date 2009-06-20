@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,20 +171,16 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
-#ifdef MAC_COREIMAGE_SUPPORT
-
 #ifndef _mac_coreimage_h_
 #define _mac_coreimage_h_
 
-void InitCoreImage(void);
-void DeinitCoreImage(void);
-void InitCoreImageFilter(void);
-void DeinitCoreImageFilter(void);
-void ConfigureCoreImageFilter(void);
-void InitCoreImageContext(CGLContextObj, CGLPixelFormatObj);
-void DeinitCoreImageContext(void);
-void DrawWithCoreImageFilter(CGRect, CGImageRef);
-
-#endif
+void InitCoreImage (void);
+void DeinitCoreImage (void);
+void InitCoreImageFilter (void);
+void DeinitCoreImageFilter (void);
+void ConfigureCoreImageFilter (void);
+void InitCoreImageContext (CGLContextObj, CGLPixelFormatObj);
+void DeinitCoreImageContext (void);
+void DrawWithCoreImageFilter (CGRect, CGImageRef);
 
 #endif

@@ -159,20 +159,12 @@
 **********************************************************************************/
 
 
+#ifndef _LOGGER_H_
+#define _LOGGER_H_
 
-#ifndef LOGGER_H
-#define LOGGER_H
-
-extern int dumpstreams;
-extern char autodemo[128];
-extern int maxframes;
-extern int logger_pivot;
-
-int Logger_FrameCounter();
-void Logger_NextFrame();
-
-void ResetLogger();
-void VideoLogger(void *pixels, int width, int height, int depth, int bytes_per_row);
-void AudioLogger(void *samples, int length);
+void S9xResetLogger(void);
+void S9xCloseLogger(void);
+void S9xVideoLogger(void *, int, int, int, int);
+void S9xAudioLogger(void *, int);
 
 #endif

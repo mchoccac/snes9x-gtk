@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,10 +174,10 @@
 #ifndef _mac_file_h_
 #define _mac_file_h_
 
-void ChangeTypeAndCreator(const char *, OSType, OSType);
-Boolean IsLockedMedia(FSVolumeRefNum);
-const char * S9xGetSPCFilename(void);
-const char * S9xGetPNGFilename(void);
-const char * S9xGetFreezeFilename(int);
+void ChangeTypeAndCreator (const char *, OSType, OSType);
+Boolean IsLockedMedia (FSVolumeRefNum);
+const char * S9xGetSPCFilename (void);
+const char * S9xGetPNGFilename (void);
+const char * S9xGetFreezeFilename (int);
 
 #endif

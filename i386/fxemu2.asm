@@ -15,7 +15,7 @@
 ;along with this program; if not, write to the Free Software
 ;Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-%include "i386/macros.mac"
+%include "macros.mac"
 
 EXTSYM FxTable,FxTableb,FxTablec,FxTabled,SfxMemTable,flagnz,fxbit01,fxbit23
 EXTSYM fxxand,sfx128lineloc,sfx160lineloc,sfx192lineloc,sfxobjlineloc
@@ -24,7 +24,7 @@ EXTSYM PLOTJmpa,PLOTJmpb
 
 NEWSYM FxEmu2AsmStart
 
-%include "i386/fxemu2.mac"
+%include "fxemu2.mac"
 
 
 

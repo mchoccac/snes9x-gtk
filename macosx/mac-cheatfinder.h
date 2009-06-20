@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,12 +174,12 @@
 #ifndef _mac_cheatfinder_h_
 #define _mac_cheatfinder_h_
 
-void CheatFinder(void);
-void InitCheatFinder(void);
-void ResetCheatFinder(void);
-void DeinitCheatFinder(void);
-void CheatFinderDrawWatchAddr(void);
-
 extern Boolean	cfIsWatching;
+
+void CheatFinder (void);
+void InitCheatFinder (void);
+void ResetCheatFinder (void);
+void DeinitCheatFinder (void);
+void CheatFinderDrawWatchAddr (void);
 
 #endif

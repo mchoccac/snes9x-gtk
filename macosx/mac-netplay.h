@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -236,9 +234,9 @@ enum
 	kNPServerStart
 };
 
-int socket_read(int, unsigned char *, int);
-int socket_write(int, unsigned char *, int);
-void NPError(char *, int);
-void NPNotification(char *, int);
+int socket_read (int, unsigned char *, int);
+int socket_write (int, unsigned char *, int);
+void NPError (const char *, int);
+void NPNotification (const char *, int);
 
 #endif

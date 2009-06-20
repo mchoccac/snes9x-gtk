@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,13 +171,12 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "memmap.h"
 #include "apu.h"
-#include "cpuexec.h"
-#include "snapshot.h"
 #include "soundux.h"
+#include "snapshot.h"
 
-#include <unistd.h>
 #include <pthread.h>
 
 #include "mac-prefix.h"
@@ -187,11 +184,11 @@
 #include "mac-dialog.h"
 #include "mac-file.h"
 #include "mac-os.h"
-#include "mac-musicbox.h"
 #include "mac-stringtools.h"
+#include "mac-musicbox.h"
 
 const float	mbxOffsetX   = 0.0,
-			mbxOffsetY   = 0.0,	// 0.5
+			mbxOffsetY   = 0.0,
 			mbxBarWidth  = 12.0,
 			mbxBarHeight = 128.0,
 			mbxBarSpace  = 2.0,
@@ -199,41 +196,41 @@ const float	mbxOffsetX   = 0.0,
 			mbxRightBarX = (mbxLRSpace + (mbxBarWidth * 8.0 + mbxBarSpace * 7.0)),
 			yyscale      = (128.0 / (sqrt(64.0)));
 
-extern char gMacRomName[ROM_NAME_LEN];
+extern char				gMacRomName[ROM_NAME_LEN];
 
-volatile Boolean	mboxPause = false;
-
-static void SPCPlayExec(void);
-static void SPCPlayFreeze(void);
-static void SPCPlayDefrost(void);
-static void MusicBoxForceFreeze(void);
-static void MusicBoxForceDefrost(void);
-static void MusicBoxInitIndicator(void);
-static void MusicBoxDrawIndicator(HIViewRef, CGContextRef);
-static void * SoundTask(void *);
-static pascal void MusicBoxTimerHandler(EventLoopTimerRef, void *);
-static pascal OSStatus MusicBoxEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus IndicatorEventHandler(EventHandlerCallRef, EventRef, void *);
-
-static volatile Boolean	stopNow, showIndicator, mbxFinished;
-
-static pthread_t		mbxThread;
-
-static short			mbxOpenedHeight, mbxClosedHeight;
-static float			mbxMarginX, mbxMarginY, mbxViewWidth, mbxViewHeight;
+volatile Boolean		mboxPause = false;
 
 static SAPU				*StoredAPU;
 static SAPURegisters	*StoredAPURegisters;
 static SSoundData		*StoredSoundData;
 static uint8			*StoredIAPURAM;
-static int32			oldNextAPUTimerPos, oldAPUTimerCounter;
-static int32			oldCPUCycles;
+static int32			oldCPUCycles, oldNextAPUTimerPos, oldAPUTimerCounter;
+
+static short			mbxOpenedHeight, mbxClosedHeight;
+static float			mbxMarginX, mbxMarginY, mbxViewWidth, mbxViewHeight;
 
 static short			prevLMax[8], prevRMax[8];
 static short			prevLVol[8], prevRVol[8];
 static long long		barTimeL[8], barTimeR[8];
 
-void MusicBoxDialog(void)
+static pthread_t		mbxThread;
+
+static volatile Boolean	stopNow, showIndicator, mbxFinished;
+
+static void SPCPlayExec (void);
+static void SPCPlayFreeze (void);
+static void SPCPlayDefrost (void);
+static void MusicBoxForceFreeze (void);
+static void MusicBoxForceDefrost (void);
+static void MusicBoxInitIndicator (void);
+static void MusicBoxDrawIndicator (HIViewRef, CGContextRef);
+static void * SoundTask (void *);
+static pascal void MusicBoxTimerHandler (EventLoopTimerRef, void *);
+static pascal OSStatus MusicBoxEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus IndicatorEventHandler (EventHandlerCallRef, EventRef, void *);
+
+
+void MusicBoxDialog (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -249,12 +246,12 @@ void MusicBoxDialog(void)
 		IconRef		actIcon;
 		WindowRef	tWindowRef;
 
-		actIcon = nil;
+		actIcon = NULL;
 
 		if (musicboxmode == kMBXSoundEmulation)
-			iconURL = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("musicbox_ledoff"), CFSTR("icns"), nil);
+			iconURL = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("musicbox_ledoff"), CFSTR("icns"), NULL);
 		else
-			iconURL = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("musicbox_ledon" ), CFSTR("icns"), nil);
+			iconURL = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("musicbox_ledon" ), CFSTR("icns"), NULL);
 
 		if (iconURL)
 		{
@@ -267,22 +264,23 @@ void MusicBoxDialog(void)
 		err = CreateWindowFromNib(nibRef, CFSTR("MusicBox"), &tWindowRef);
 		if (err == noErr)
 		{
-			EventHandlerRef		mboxRef, paneRef;
-			EventHandlerUPP		mboxUPP, paneUPP;
-			EventLoopTimerRef	timeRef;
-			EventLoopTimerUPP	timeUPP;
-			EventTypeSpec		mboxEvents[] = { { kEventClassCommand, kEventCommandProcess      },
-												 { kEventClassCommand, kEventCommandUpdateStatus } },
-								paneEvents[] = { { kEventClassControl, kEventControlDraw         } };
-			CFStringRef			sref;
-			CGDataProviderRef	prov;
-			CGImageRef			ipng;
-			CFURLRef			iurl;
-			HIViewRef			ctl, root, paneView, imageView, contentView;
-			HIViewID			cid;
-			HIRect				bounds;
-			Rect				windowRect, barRect;
-			char				drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+			EventHandlerRef				mboxRef, paneRef;
+			EventHandlerUPP				mboxUPP, paneUPP;
+			EventLoopTimerRef			timeRef;
+			EventLoopTimerUPP			timeUPP;
+			EventTypeSpec				mboxEvents[] = { { kEventClassCommand, kEventCommandProcess      },
+														 { kEventClassCommand, kEventCommandUpdateStatus } },
+										paneEvents[] = { { kEventClassControl, kEventControlDraw         } };
+			CFStringRef					sref;
+			CGDataProviderRef			prov;
+			CGImageRef					ipng;
+			CFURLRef					iurl;
+			ControlButtonContentInfo	info;
+			HIViewRef					ctl, root, paneView, imageView, contentView;
+			HIViewID					cid;
+			HIRect						bounds;
+			Rect						windowRect, barRect;
+			char						drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 			mboxPause = false;
 			mbxFinished = false;
@@ -291,17 +289,6 @@ void MusicBoxDialog(void)
 
 			for (int i = 0; i < MAC_MAX_PLAYERS; i++)
 				controlPad[i] = 0;
-
-			switch (drawingMethod)
-			{
-				case kDrawingOpenGL:
-					Settings.OpenGLEnable = true;
-					break;
-
-				case kDrawingDirect:
-				case kDrawingBlitGL:
-					Settings.OpenGLEnable = false;
-			}
 
 			// 107's enhanced SPC player
 
@@ -317,7 +304,10 @@ void MusicBoxDialog(void)
 				StoredAPU          = new SAPU;
 				StoredAPURegisters = new SAPURegisters;
 				StoredSoundData    = new SSoundData;
-				StoredIAPURAM      = new uint8 [0x10000];
+				StoredIAPURAM      = new uint8[0x10000];
+
+				if (!StoredAPU || !StoredAPURegisters || !StoredSoundData || !StoredIAPURAM)
+					QuitWithFatalError(0, "musicbox 01");
 
 				SPCPlayFreeze();
 			}
@@ -335,22 +325,22 @@ void MusicBoxDialog(void)
 				CFRelease(sref);
 			}
 
-			ipng = nil;
+			ipng = NULL;
 
-			iurl = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("musicbox_indicator"), CFSTR("png"), nil);
+			iurl = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("musicbox_indicator"), CFSTR("png"), NULL);
 			if (iurl)
 			{
 				prov = CGDataProviderCreateWithURL(iurl);
 				if (prov)
 				{
-					ipng = CGImageCreateWithPNGDataProvider(prov, nil, false, kCGRenderingIntentDefault);
+					ipng = CGImageCreateWithPNGDataProvider(prov, NULL, false, kCGRenderingIntentDefault);
 					CGDataProviderRelease(prov);
 				}
 
 				CFRelease(iurl);
 			}
 
-			imageView = nil;
+			imageView = NULL;
 
 			if (ipng)
 			{
@@ -385,6 +375,41 @@ void MusicBoxDialog(void)
 				HIViewAddSubview(imageView, paneView);
 			}
 
+			if (systemVersion >= 0x1040)
+			{
+				info.contentType = kControlContentCGImageRef;
+				cid.signature = 'Paus';
+				HIViewFindByID(root, cid, &ctl);
+				info.u.imageRef = macIconImage[98];
+				err = SetBevelButtonContentInfo(ctl, &info);
+				cid.signature = 'HEAD';
+				HIViewFindByID(root, cid, &ctl);
+				info.u.imageRef = macIconImage[99];
+				err = SetBevelButtonContentInfo(ctl, &info);
+				cid.signature = 'S_EF';
+				HIViewFindByID(root, cid, &ctl);
+				info.u.imageRef = macIconImage[100];
+				err = SetBevelButtonContentInfo(ctl, &info);
+			}
+		#ifdef MAC_PANTHER_SUPPORT
+			else
+			{
+				info.contentType = kControlContentIconRef;
+				cid.signature = 'Paus';
+				HIViewFindByID(root, cid, &ctl);
+				info.u.iconRef = macIconRef[98];
+				err = SetBevelButtonContentInfo(ctl, &info);
+				cid.signature = 'HEAD';
+				HIViewFindByID(root, cid, &ctl);
+				info.u.iconRef = macIconRef[99];
+				err = SetBevelButtonContentInfo(ctl, &info);
+				cid.signature = 'S_EF';
+				HIViewFindByID(root, cid, &ctl);
+				info.u.iconRef = macIconRef[100];
+				err = SetBevelButtonContentInfo(ctl, &info);
+			}
+		#endif
+
 			cid.signature = 'Tr_i';
 			HIViewFindByID(root, cid, &ctl);
 			HIViewGetFrame(ctl, &bounds);
@@ -410,7 +435,7 @@ void MusicBoxDialog(void)
 
 			stopNow = false;
 			MacStartSound();
-			pthread_create(&mbxThread, nil, SoundTask, nil);
+			pthread_create(&mbxThread, NULL, SoundTask, NULL);
 
 			MoveWindowPosition(tWindowRef, kWindowMusicBox, true);
 			GetWindowBounds(tWindowRef, kWindowStructureRgn, &windowRect);
@@ -423,11 +448,10 @@ void MusicBoxDialog(void)
 			ShowWindow(tWindowRef);
 			err = RunAppModalLoopForWindow(tWindowRef);
 			HideWindow(tWindowRef);
-
 			SaveWindowPosition(tWindowRef, kWindowMusicBox);
 
 			stopNow = true;
-			pthread_join(mbxThread, nil);
+			pthread_join(mbxThread, NULL);
 			MacStopSound();
 
 			err = RemoveEventLoopTimer(timeRef);
@@ -439,7 +463,7 @@ void MusicBoxDialog(void)
 			err = RemoveEventHandler(paneRef);
 			DisposeEventHandlerUPP(paneUPP);
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 
 			so.stereo_switch = ~0;
 
@@ -456,8 +480,6 @@ void MusicBoxDialog(void)
 			}
 			else
 				MusicBoxForceDefrost();
-
-			Settings.OpenGLEnable = false;
 		}
 
 		if (actIcon)
@@ -467,10 +489,8 @@ void MusicBoxDialog(void)
 	}
 }
 
-static pascal OSStatus MusicBoxEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *userData)
+static pascal OSStatus MusicBoxEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *userData)
 {
-    #pragma unused (inHandlerCallRef)
-
     OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) userData;
 
@@ -482,7 +502,7 @@ static pascal OSStatus MusicBoxEventHandler(EventHandlerCallRef inHandlerCallRef
 				HICommand	cmd;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &cmd);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &cmd);
 					if (err == noErr && cmd.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(false);
@@ -492,7 +512,7 @@ static pascal OSStatus MusicBoxEventHandler(EventHandlerCallRef inHandlerCallRef
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &cmd);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &cmd);
 					if (err == noErr)
 					{
 						HIViewRef	root, c1, c2, c3, c4;
@@ -580,13 +600,13 @@ static pascal OSStatus MusicBoxEventHandler(EventHandlerCallRef inHandlerCallRef
 			}
 	}
 
-	return result;
+	return (result);
 }
 
-static void * SoundTask(void *)
+static void * SoundTask (void *)
 {
-	long long			curt;
 	static long long	last;
+	long long			curt;
 
 	Microseconds((UnsignedWide *) &last);
 
@@ -607,23 +627,23 @@ static void * SoundTask(void *)
 			usleep(last - curt);
 	}
 
-	return nil;
+	return (NULL);
 }
 
-static void SPCPlayExec(void)
+static void SPCPlayExec (void)
 {
 	for (int v = 0; v < Timings.V_Max; v++)
 	{
 		S9xAPUExecute();
 		APU.Cycles -= (Timings.H_Max << SNES_APU_ACCURACY);
-		IAPU.NextAPUTimerPos -= (Timings.H_Max << SNES_APU_ACCURACY);
+		APU.NextAPUTimerPos -= (Timings.H_Max << SNES_APU_ACCURACY);
 	}
 
 	APURegisters.PC = IAPU.PC - IAPU.RAM;
     S9xAPUPackStatus();
 }
 
-static void MusicBoxForceFreeze(void)
+static void MusicBoxForceFreeze (void)
 {
 	char	filename[PATH_MAX + 1];
 
@@ -633,7 +653,7 @@ static void MusicBoxForceFreeze(void)
 	S9xFreezeGame(filename);
 }
 
-static void MusicBoxForceDefrost(void)
+static void MusicBoxForceDefrost (void)
 {
 	char	filename[PATH_MAX + 1];
 
@@ -644,19 +664,13 @@ static void MusicBoxForceDefrost(void)
 	remove(filename);
 }
 
-static void SPCPlayFreeze(void)
+static void SPCPlayFreeze (void)
 {
 	S9xSetSoundMute(true);
 
-	oldNextAPUTimerPos = IAPU.NextAPUTimerPos;
-	oldAPUTimerCounter = IAPU.APUTimerCounter;
+	oldNextAPUTimerPos = APU.NextAPUTimerPos;
+	oldAPUTimerCounter = APU.APUTimerCounter;
 	oldCPUCycles       = CPU.Cycles;
-
-	for (int i = 0; i < 8; i++)
-    {
-		SoundData.channels[i].previous16[0] = (int16) SoundData.channels[i].previous[0];
-		SoundData.channels[i].previous16[1] = (int16) SoundData.channels[i].previous[1];
-    }
 
 	memcpy(StoredAPU,          &APU,          sizeof(SAPU));
 	memcpy(StoredAPURegisters, &APURegisters, sizeof(SAPURegisters));
@@ -666,16 +680,15 @@ static void SPCPlayFreeze(void)
 	S9xSetSoundMute(false);
 
 	APU.Cycles = 0;
-	IAPU.NextAPUTimerPos = 0;
+	APU.NextAPUTimerPos = 0;
 	CPU.Cycles = Timings.H_Max;
 
 	IAPU.APUExecuting = true;
 }
 
-static void SPCPlayDefrost(void)
+static void SPCPlayDefrost (void)
 {
 	uint16	savedswitch;
-	short   i;
 
 	savedswitch = so.stereo_switch;
 
@@ -689,10 +702,10 @@ static void SPCPlayDefrost(void)
 
 	if (!mbxFinished)
 	{
-		for (i = 0; i < 4; i++)
+		for (int i = 0; i < 4; i++)
 			APU.OutPorts[i] = IAPU.RAM[0xf4 + i];
 
-		for (i = 0; i < 3; i++)
+		for (int i = 0; i < 3; i++)
 		{
 			if (IAPU.RAM[0xfa + i] == 0)
 				APU.TimerTarget[i] = 0x100;
@@ -715,16 +728,16 @@ static void SPCPlayDefrost(void)
 
 	IAPU.APUExecuting = true;
 
-	IAPU.NextAPUTimerPos = oldNextAPUTimerPos;
-	IAPU.APUTimerCounter = oldAPUTimerCounter;
-	CPU.Cycles           = oldCPUCycles;
+	APU.NextAPUTimerPos = oldNextAPUTimerPos;
+	APU.APUTimerCounter = oldAPUTimerCounter;
+	CPU.Cycles          = oldCPUCycles;
 
-	S9xFixSoundAfterSnapshotLoad(SNAPSHOT_VERSION);
+	S9xSoundPostLoadState(SNAPSHOT_VERSION);
 
 	so.stereo_switch = savedswitch;
 }
 
-static void MusicBoxInitIndicator(void)
+static void MusicBoxInitIndicator (void)
 {
 	long long	currentTime;
 
@@ -738,20 +751,16 @@ static void MusicBoxInitIndicator(void)
 	}
 }
 
-static pascal void MusicBoxTimerHandler(EventLoopTimerRef inHandlerCallRef, void *userData)
+static pascal void MusicBoxTimerHandler (EventLoopTimerRef inHandlerCallRef, void *userData)
 {
-	#pragma unused (inHandlerCallRef)
-
 	OSStatus	err;
 
 	if (showIndicator)
 		err = HIViewSetNeedsDisplay((HIViewRef) userData, true);
 }
 
-static pascal OSStatus IndicatorEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *userData)
+static pascal OSStatus IndicatorEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *userData)
 {
-    #pragma unused (inHandlerCallRef)
-
     OSStatus	err, result = eventNotHandledErr;
 	HIViewRef	view = (HIViewRef) userData;
 
@@ -763,7 +772,7 @@ static pascal OSStatus IndicatorEventHandler(EventHandlerCallRef inHandlerCallRe
 				case kEventControlDraw:
 					CGContextRef	ctx;
 
-					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, nil, sizeof(CGContextRef), nil, &ctx);
+					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, NULL, sizeof(CGContextRef), NULL, &ctx);
 					if (err == noErr)
 					{
 						HIRect	bounds;
@@ -778,10 +787,10 @@ static pascal OSStatus IndicatorEventHandler(EventHandlerCallRef inHandlerCallRe
 			}
 	}
 
-	return result;
+	return (result);
 }
 
-static void MusicBoxDrawIndicator(HIViewRef view, CGContextRef mboxctx)
+static void MusicBoxDrawIndicator (HIViewRef view, CGContextRef mboxctx)
 {
 	if (!showIndicator)
 		return;
@@ -797,6 +806,7 @@ static void MusicBoxDrawIndicator(HIViewRef view, CGContextRef mboxctx)
 	CGContextBeginPath(mboxctx);
 
 	float   x = mbxOffsetX + mbxMarginX + mbxBarWidth / 2.0;
+
 	for (int h = 0; h < 8; h++)
 	{
 		// Inactive
@@ -815,12 +825,8 @@ static void MusicBoxDrawIndicator(HIViewRef view, CGContextRef mboxctx)
 
 		Channel	*ch = &SoundData.channels[h];
 
-		ch->envx = ch->xenvx >> 4;
-		ch-> left_vol_level = (ch->xenvx * ch->volume_left ) >> 11;
-		ch->right_vol_level = (ch->xenvx * ch->volume_right) >> 11;
-
-		short		vl = ch-> left_vol_level;
-		short		vr = ch->right_vol_level;
+		short		vl = (ch->xenvx * ch->volume_left ) >> 11;
+		short		vr = (ch->xenvx * ch->volume_right) >> 11;
 		long long	currentTime;
 
 		if (vl <= 0) vl = 0; else if (vl > 64) vl = 64; else vl = (short) (yyscale * sqrt((double) vl)) & (~0 << 1);

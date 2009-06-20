@@ -167,7 +167,10 @@
 #include <vector>
 #include <string>
 
-#include "port.h"
+#ifdef UNZIP_SUPPORT
+#include "unzip.h"
+#endif
+#include "snes9x.h"
 #include "reader.h"
 
 class ConfigFile {
@@ -281,6 +284,7 @@ class ConfigFile {
 			for(;;){
 				i=s.find('#',off); // find trailing comment
 				if(i>=0)
+				{
 					if((int)s.length()>i+1 && s.at(i+1) == '#') {
 						s.erase(i,1);  // ignore ## and change to #
 						off = i+1;
@@ -290,6 +294,7 @@ class ConfigFile {
 						if(j!=-1) cmt = s.substr(j); // store
 						s.erase(i); // erase trailing comment
 					}
+				}
 				break;
 			}
             i=s.find_last_not_of(" \f\n\r\t\v");
@@ -379,6 +384,6 @@ class ConfigFile {
 void S9xParsePortConfig(ConfigFile &, int pass);
 
 /* This may or may not be useful to you */
-char *S9xParseDisplayConfig(ConfigFile &, int pass);
+const char *S9xParseDisplayConfig(ConfigFile &, int pass);
 
 #endif

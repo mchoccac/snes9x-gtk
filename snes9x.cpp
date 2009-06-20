@@ -159,1082 +159,787 @@
 **********************************************************************************/
 
 
-
-#include <stdlib.h>
-#include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
 
 #include "snes9x.h"
 #include "memmap.h"
-#include "display.h"
-#include "cheats.h"
 #include "controls.h"
+#include "crosshairs.h"
+#include "cheats.h"
+#include "display.h"
+#include "conffile.h"
+#ifdef NETPLAY_SUPPORT
 #include "netplay.h"
-#include "logger.h"
-#include "gfx.h"
+#endif
 
 #ifdef DEBUGGER
-extern FILE *trace;
+extern FILE	*trace;
 #endif
 
-static char *rom_filename=NULL;
+static char	*rom_filename = NULL;
 
-void S9xUsage ()
+static bool parse_controller_spec (int, const char *);
+static void parse_crosshair_spec (enum crosscontrols, const char *);
+static bool try_load_config_file (const char *, ConfigFile &);
+
+
+static bool parse_controller_spec (int port, const char *arg)
 {
-    S9xMessage (S9X_INFO, S9X_USAGE, "snes9x: S9xUsage: snes9x <options> <rom image filename>\n");
-    S9xMessage (S9X_INFO, S9X_USAGE, "Where <options> can be:");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
+	if (!strcasecmp(arg, "none"))
+		S9xSetController(port, CTL_NONE,       0, 0, 0, 0);
+	else
+	if (!strncasecmp(arg, "pad",   3) && arg[3] >= '1' && arg[3] <= '8' && arg[4] == '\0')
+		S9xSetController(port, CTL_JOYPAD, arg[3] - '1', 0, 0, 0);
+	else
+	if (!strncasecmp(arg, "mouse", 5) && arg[5] >= '1' && arg[5] <= '2' && arg[6] == '\0')
+		S9xSetController(port, CTL_MOUSE,  arg[5] - '1', 0, 0, 0);
+	else
+	if (!strcasecmp(arg, "superscope"))
+		S9xSetController(port, CTL_SUPERSCOPE, 0, 0, 0, 0);
+	else
+	if (!strcasecmp(arg, "justifier") || !strcasecmp(arg, "one-justifier"))
+		S9xSetController(port, CTL_JUSTIFIER,  0, 0, 0, 0);
+	else
+	if (!strcasecmp(arg, "two-justifiers"))
+		S9xSetController(port, CTL_JUSTIFIER,  1, 0, 0, 0);
+	else
+	if (!strncasecmp(arg, "mp5:", 4) && ((arg[4] >= '1' && arg[4] <= '8') || arg[4] == 'n') &&
+										((arg[5] >= '1' && arg[5] <= '8') || arg[5] == 'n') &&
+										((arg[6] >= '1' && arg[6] <= '8') || arg[6] == 'n') &&
+										((arg[7] >= '1' && arg[7] <= '8') || arg[7] == 'n') && arg[8] == '\0')
+		S9xSetController(port, CTL_MP5, (arg[4] == 'n') ? -1 : arg[4] - '1',
+										(arg[5] == 'n') ? -1 : arg[5] - '1',
+										(arg[6] == 'n') ? -1 : arg[6] - '1',
+										(arg[7] == 'n') ? -1 : arg[7] - '1');
+	else
+		return (false);
 
-    /* SOUND OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-sound or -so                   Enable digital sound output");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nosound or -ns                 Disable digital sound output");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-soundskip or -sk <0-3>         Sound CPU skip-waiting method");
-#ifdef SHOW_OBSOLETE_OPTIONS
-    S9xMessage(S9X_INFO, S9X_USAGE, "-ratio or -ra <num>             Ratio of 65c816 to SPC700 instructions (ignored)");
-#endif
-    S9xMessage(S9X_INFO, S9X_USAGE, "-soundquality, -sq, or -r <num> Set sound playback quality");
-#ifndef __MSDOS__
-    S9xMessage (S9X_INFO, S9X_USAGE, "\
-                                  0 - off, 1 - 8192, 2 - 11025, 3 - 16000,\n\
-                                  4 - 22050, 5 - 32000 (default), 6 - 44100,\n\
-                                  7 - 48000");
-#else
-    S9xMessage (S9X_INFO, S9X_USAGE, "\
-                                  0 - off, 1 - 8192, 2 - 11025, 3 - 16500,\n\
-                                  4 - 22050 (default), 5 - 29300, 6 - 36600,\n\
-                                  7 - 44000");
-#endif
-    S9xMessage(S9X_INFO, S9X_USAGE, "-altsampledecode or -alt        Use alternate sample decoder");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-stereo or -st                  Enable stereo sound output (implies -sound)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-mono                           Enable monaural sound output (implies -sound)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-soundsync or -sy               Enable sound sync to CPU at startup");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-soundsync2 or -sy2             Alternate method to sync sound");
-#ifdef USE_THREADS
-    S9xMessage(S9X_INFO, S9X_USAGE, "-threadsound or -ts             Use a separate thread to output sound");
-#endif
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nois                           Turn off interpolated sound");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-echo or -e                     Enable DSP echo effects at startup");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-noecho or -ne                  Disable DSP echo effects at startup");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-envx or -ex                    Enable volume envelope height reading");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nosamplecaching, -nsc, or -nc  Disable sample caching");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nomastervolume or -nmv         Disable master volume setting");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-fix                            'Fix' sound frequencies");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-
-    /* FEATURE OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-conf <filename>                Use specified conf file (after standard files)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nostdconf                      Do not load the standard config files");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-hdma or -ha                    Enable HDMA emulation at startup");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nohdma or -nh                  Disable HDMA emulation at startup");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-transparency or -tr            Enable transparency effects");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-notransparency or -nt          Disable transparency effects at start");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-windows                        Enable graphic window effects");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nowindows or -nw               Disable graphic window effects");
-#ifdef SHOW_OBSOLETE_OPTIONS
-    S9xMessage(S9X_INFO, S9X_USAGE, "-layering or -L                 Enable BG Layering Hack at startup (ignored)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nolayering or -nl              Disable BG Layering Hack at startup (ignored)");
-#endif
-    S9xMessage(S9X_INFO, S9X_USAGE, "-im7                            Enable Mode 7 interpolation effects");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-displayframerate or -dfr       Display the frame rate counter");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-aidoshm <shmid>                Run in AIDO mode, with specified SHM ID");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-
-    /* DISPLAY OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-hires or -hi                   Enable support for hi-res and interlace modes");
-#ifdef SHOW_OBSOLETE_OPTIONS
-    S9xMessage(S9X_INFO, S9X_USAGE, "-16 or -sixteen                 Enable 16-bit rendering");
-#endif
-    S9xMessage(S9X_INFO, S9X_USAGE, "-frameskip or -f <num>          Screen update frame skip rate");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-frametime or -ft <float>       Milliseconds per frame for frameskip auto-adjust");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-
-    /* ROM OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-hirom, -hr, or -fh             Force Hi-ROM memory map");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-lorom, -lr, or -fl             Force Lo-ROM memory map");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-bs                             Use BS Satellite System ROM mapping");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-bsxbootup                      Boot up BS games from BS-X");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nointerleave or -ni            ROM image is not in interleaved format");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-interleaved or -i              ROM image is in interleaved format");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-interleaved2 or -i2            ROM image is in interleaved 2 format");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-interleavedgd24 or -gd24       ROM image is in interleaved gd24 format");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-header, -he, or -hd            Force the detection of a ROM image header");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-noheader or -nhd               Force the detection of no ROM image header");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-ntsc or -n                     Force NTSC timing (60 frames/sec)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-pal or -p                      Force PAL timing (50 frames/sec)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-superfx or -sfx                Force detection of the SuperFX chip");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nosuperfx or -nosfx            Force detection of no SuperFX chip");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-dsp1                           Force detection of the DSP-1 chip");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nodsp1                         Force detection of no DSP-1 chip");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-
-    /* Multi ROMs OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-multi                          Enable multi cartridge system");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-carta <filename>               ROM in slot A. Use with -multi");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-cartb <filename>               ROM in slot B. Use with -multi");
-
-    /* OPTIONS FOR DEBUGGING USE */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-hdmahacks or -h <1-199>        Changes HDMA transfer timing");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-speedhacks or -sh              Enable speed hacks");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nospeedhacks or -nsh           Disable speed hacks");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-invalidvramaccess              Allow invalid VRAM access");
-#ifdef DEBUGGER
-    S9xMessage(S9X_INFO, S9X_USAGE, "-debug or -d                    Set the Debugger flag at startup");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-trace or -t                    Begin CPU instruction tracing at startup");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-noirq                          Disable processor IRQ (for debugging)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "--selftest                      Run self tests and exit");
-#ifdef DEBUG_MAXCOUNT
-    S9xMessage(S9X_INFO, S9X_USAGE, "-maxcount <N>                   Only run through N cycles of the main loop");
-#endif
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-#endif
-
-    /* PATCH/CHEAT OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nopatch                        Do not apply any available IPS patches");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-cheat                          Apply saved cheats");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nocheat                        Do not apply saved cheats");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-gamegenie or -gg <code>        Supply a Game Genie code");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-actionreplay or -ar <code>     Supply a Pro-Action Reply code");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-goldfinger or -gf <code>       Supply a Gold Finger code");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-
-    /* CONTROLLER OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nomp5                          Disable emulation of the Multiplayer 5 adapter");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nomouse                        Disable emulation of the SNES mouse");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nosuperscope                   Disable emulation of the Superscope");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nojustifier                    Disable emulation of the Konami Justifier");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-port# <control>                Specify which controller to emulate in port 1/2");
-    S9xMessage(S9X_INFO, S9X_USAGE, "      Controllers: none            No controller");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                   pad#            Joypad number 1-8");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                   mouse#          Mouse number 1-2");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                   superscope      Superscope (not useful with -port1)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                   justifier       Blue Justifier (not useful with -port1)");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                   one-justifier   ditto");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                   two-justifiers  Blue & Pink Justifiers");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                   mp5:####        MP5 with the 4 named pads (1-8 or n)");
-
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-
-#ifdef NETPLAY_SUPPORT
-    /* NETPLAY OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-net                            Enable netplay");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-port or -po <num>              Use port <num> for netplay");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-server or -srv <string>        Use the specified server for netplay");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-#endif
-
-#ifdef STORM
-    /* "STORM" OPTIONS */
-    S9xMessage(S9X_INFO, S9X_USAGE, "-nosecondjoy                    Set secondjoy=0");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-showfps                        Set dofps=1");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-hicolor                        Set hicolor=1");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-minimal                        Turn off "Keyboard with exception of ESC"");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-ahiunit <num>                  Set AHI Unit to <num>");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-#endif
-    S9xMessage(S9X_INFO, S9X_USAGE, "   DeHackEd's commands:");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-dumpstreams                    Save audio/video data to disk");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-mute                           Don't output audio to sound card, use with above.");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-upanddown                      Override protection from pressing");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                                left+right or up+down together");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-autodemo                       Start emulator playing a movie");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-maxframes <num>                Stop emulator after playing specified");
-    S9xMessage(S9X_INFO, S9X_USAGE, "                                number of frames. Requires -dumpstreams");
-    S9xMessage(S9X_INFO, S9X_USAGE, "-oldturbo                       Turbo button renders all frames, but slower");
-    S9xMessage(S9X_INFO, S9X_USAGE, "");
-    S9xExtraUsage();
-
-    S9xMessage (S9X_INFO, S9X_USAGE, "\
-\nROM image needs to be in Super MagiCom (*.smc), Super FamiCom (*.sfc),\n\
-*.fig, or split (*.1, *.2, or sf32527a, sf32527b, etc) format and can be\n\
-compressed with zip, gzip, JMA, or compress.\n");
-
-    exit (1);
+	return (true);
 }
 
-#ifdef STORM
-extern int dofps;
-extern int hicolor;
-extern int secondjoy;
-extern int minimal;
-int prelude=0;
-extern int unit;
-#endif
-
-static bool parse_controller_spec(int port, const char *arg){
-    if(!strcasecmp(arg, "none")) {
-        S9xSetController(port, CTL_NONE, 0, 0, 0, 0);
-    } else if(!strncasecmp(arg, "pad", 3) &&
-              arg[3]>='1' && arg[3]<='8' &&
-              arg[4]=='\0'){
-        S9xSetController(port, CTL_JOYPAD, arg[3]-'1', 0, 0, 0);
-    } else if(!strncasecmp(arg, "mouse", 5) &&
-              arg[5]>='1' && arg[5]<='2' &&
-              arg[6]=='\0'){
-        S9xSetController(port, CTL_MOUSE, arg[5]-'1', 0, 0, 0);
-    } else if(!strcasecmp(arg, "superscope")) {
-        S9xSetController(port, CTL_SUPERSCOPE, 0, 0, 0, 0);
-    } else if(!strcasecmp(arg, "justifier") ||
-              !strcasecmp(arg, "one-justifier")) {
-        S9xSetController(port, CTL_JUSTIFIER, 0, 0, 0, 0);
-    } else if(!strcasecmp(arg, "two-justifiers")) {
-        S9xSetController(port, CTL_JUSTIFIER, 1, 0, 0, 0);
-    } else if(!strncasecmp(arg, "mp5:", 4) &&
-              ((arg[4]>='1' && arg[4]<='8') || arg[4]=='n') &&
-              ((arg[5]>='1' && arg[5]<='8') || arg[5]=='n') &&
-              ((arg[6]>='1' && arg[6]<='8') || arg[6]=='n') &&
-              ((arg[7]>='1' && arg[7]<='8') || arg[7]=='n') &&
-              arg[8]=='\0'){
-        S9xSetController(port, CTL_MP5,
-                         (arg[4]=='n')?-1:arg[4]-'1',
-                         (arg[5]=='n')?-1:arg[5]-'1',
-                         (arg[6]=='n')?-1:arg[6]-'1',
-                         (arg[7]=='n')?-1:arg[7]-'1');
-    } else {
-        return false;
-    }
-    return true;
-}
-
-char *S9xParseArgs (char **argv, int argc)
+static void parse_crosshair_spec (enum crosscontrols ctl, const char *spec)
 {
-    for (int i = 1; i < argc; i++)
-    {
-	if (*argv[i] == '-')
+	int			idx = -1, i;
+	const char	*fg = NULL, *bg = NULL, *s = spec;
+
+	if (s[0] == '"')
 	{
-            if (strcasecmp (argv [i], "--selftest") == 0)
-	    {
-              // FIXME: Probable missuse of S9X_USAGE
-              // FIXME: Actual tests. But at least this checks for coredumps.
-              S9xMessage (S9X_INFO, S9X_USAGE, "Running selftest ...");
-              S9xMessage (S9X_INFO, S9X_USAGE, "snes9x started:\t[OK]");
-              S9xMessage (S9X_INFO, S9X_USAGE, "All tests ok.");
-              exit(0);
-	    }
-	    if (strcasecmp (argv [i], "-so") == 0 ||
-		strcasecmp (argv [i], "-sound") == 0)
-	    {
-		Settings.NextAPUEnabled = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-ns") == 0 ||
-		     strcasecmp (argv [i], "-nosound") == 0)
-	    {
-		Settings.NextAPUEnabled = FALSE;
-	    }
-	    else if (strcasecmp (argv [i], "-soundskip") == 0 ||
-		     strcasecmp (argv [i], "-sk") == 0)
-	    {
-		if (i + 1 < argc)
-		    Settings.SoundSkipMethod = atoi (argv [++i]);
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-ra") == 0 ||
-		     strcasecmp (argv [i], "-ratio") == 0)
-	    {
-		if ((i + 1) < argc)
-		{
-		}
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-h") == 0 ||
-		     strcasecmp (argv [i], "-hdmahacks") == 0)
-	    {
-		if (i + 1 < argc)
-		{
-		    int p = atoi (argv [++i]);
-		    if (p > 0 && p < 200)
-			Settings.HDMATimingHack = p;
-		}
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-nh") == 0 ||
-		     strcasecmp (argv [i], "-nohdma") == 0)
-	    {
-		Settings.DisableHDMA = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-ha") == 0 ||
-		     strcasecmp (argv [i], "-hdma") == 0)
-	    {
-		Settings.DisableHDMA = FALSE;
-	    }
-	    else if (strcasecmp (argv [i], "-nsh") == 0 ||
-		     strcasecmp (argv [i], "-nospeedhacks") == 0)
-	    {
-		Settings.ShutdownMaster = FALSE;
-	    }
-	    else if (strcasecmp (argv [i], "-sh") == 0 ||
-		     strcasecmp (argv [i], "-speedhacks") == 0)
-	    {
-		Settings.ShutdownMaster = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-invalidvramaccess") == 0)
-	    {
-		Settings.BlockInvalidVRAMAccess = FALSE;
-	    }
-	    else if (strcasecmp (argv [i], "-p") == 0 ||
-		     strcasecmp (argv [i], "-pal") == 0)
-	    {
-		Settings.ForcePAL = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-n") == 0 ||
-		     strcasecmp (argv [i], "-ntsc") == 0)
-	    {
-		Settings.ForceNTSC = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-f") == 0 ||
-		     strcasecmp (argv [i], "-frameskip") == 0)
-	    {
-		if (i + 1 < argc)
-		    Settings.SkipFrames = atoi (argv [++i]) + 1;
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-fh") == 0 ||
-		     strcasecmp (argv [i], "-hr") == 0 ||
-		     strcasecmp (argv [i], "-hirom") == 0)
-		Settings.ForceHiROM = TRUE;
-	    else if (strcasecmp (argv [i], "-fl") == 0 ||
-		     strcasecmp (argv [i], "-lr") == 0 ||
-		     strcasecmp (argv [i], "-lorom") == 0)
-		Settings.ForceLoROM = TRUE;
-	    else if (strcasecmp (argv [i], "-hd") == 0 ||
-		     strcasecmp (argv [i], "-header") == 0 ||
-		     strcasecmp (argv [i], "-he") == 0)
-	    {
-		Settings.ForceHeader = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-nhd") == 0 ||
-		     strcasecmp (argv [i], "-noheader") == 0)
-	    {
-		Settings.ForceNoHeader = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-bs") == 0)
-	    {
-		Settings.BS = TRUE;
-	    }
-		else if (strcasecmp (argv [i], "-bsxbootup") == 0)
-		{
-		Settings.BSXBootup = TRUE;
-		}
-#ifdef DEBUGGER
-	    else if (strcasecmp (argv [i], "-d") == 0 ||
-		     strcasecmp (argv [i], "-debug") == 0)
-	    {
-		CPU.Flags |= DEBUG_MODE_FLAG;
-	    }
-	    else if (strcasecmp (argv [i], "-t") == 0 ||
-		     strcasecmp (argv [i], "-trace") == 0)
-	    {
-		if(!trace) trace = fopen ("trace.log", "wb");
-		CPU.Flags |= TRACE_FLAG;
-	    }
-#endif
-	    else if (strcasecmp (argv [i], "-L") == 0 ||
-		     strcasecmp (argv [i], "-layering") == 0)
-		Settings.BGLayering = TRUE;
-	    else if (strcasecmp (argv [i], "-nl") == 0 ||
-		     strcasecmp (argv [i], "-nolayering") == 0)
-		Settings.BGLayering = FALSE;
-	    else if (strcasecmp (argv [i], "-tr") == 0 ||
-		     strcasecmp (argv [i], "-transparency") == 0)
-	    {
-		Settings.ForceTransparency = TRUE;
-		Settings.ForceNoTransparency = FALSE;
-	    }
-	    else if (strcasecmp (argv [i], "-nt") == 0 ||
-		     strcasecmp (argv [i], "-notransparency") == 0)
-	    {
-		Settings.ForceNoTransparency = TRUE;
-		Settings.ForceTransparency = FALSE;
-	    }
-	    else if (strcasecmp (argv [i], "-hi") == 0 ||
-		     strcasecmp (argv [i], "-hires") == 0)
-	    {
-		Settings.SupportHiRes = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-16") == 0 ||
-		     strcasecmp (argv [i], "-sixteen") == 0)
-	    {
-	    }
-	    else if (strcasecmp (argv [i], "-displayframerate") == 0 ||
-		     strcasecmp (argv [i], "-dfr") == 0)
-	    {
-		Settings.DisplayFrameRate = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-nomessagesinimage") == 0)
-		Settings.AutoDisplayMessages = FALSE;
-	    else if (strcasecmp (argv [i], "-i") == 0 ||
-		     strcasecmp (argv [i], "-interleaved") == 0)
-		Settings.ForceInterleaved = TRUE;
-	    else if (strcasecmp (argv [i], "-i2") == 0 ||
-		     strcasecmp (argv [i], "-interleaved2") == 0)
-		Settings.ForceInterleaved2=TRUE;
-	    else if (strcasecmp (argv [i], "-gd24") == 0 ||
-		     strcasecmp (argv [i], "-interleavedgd24") == 0)
-		Settings.ForceInterleaveGD24 = TRUE;
-	    else if (strcasecmp (argv [i], "-ni") == 0 ||
-		     strcasecmp (argv [i], "-nointerleave") == 0)
-		Settings.ForceNotInterleaved = TRUE;
-	    else if (strcasecmp (argv [i], "-noirq") == 0)
-		Settings.DisableIRQ = TRUE;
-	    else if (strcasecmp (argv [i], "-nw") == 0 ||
-		     strcasecmp (argv [i], "-nowindows") == 0)
-	    {
-		Settings.DisableGraphicWindows = TRUE;
-	    }
-		else if (strcasecmp (argv [i], "-nopatch") == 0)
-		{
-			Settings.NoPatch=TRUE;
-		}
-		else if (strcasecmp (argv [i], "-nocheat") == 0)
-		{
-			Settings.ApplyCheats=FALSE;
-		}
-		else if (strcasecmp (argv [i], "-cheat") == 0)
-		{
-			Settings.ApplyCheats=TRUE;
-		}
-	    else if (strcasecmp (argv [i], "-windows") == 0)
-	    {
-		Settings.DisableGraphicWindows = FALSE;
-	    }
-            else if (strcasecmp (argv [i], "-aidoshm") == 0)
-            {
-                if (i + 1 < argc)
-                {
-                    Settings.AIDOShmId = atoi (argv [++i]);
-                    fprintf(stderr, "Snes9X running in AIDO mode. shmid: %d\n",
-                            Settings.AIDOShmId);
-                } else
-                    S9xUsage ();
-            }
-#ifdef DEBUG_MAXCOUNT
-            else if (strcasecmp (argv [i], "-maxcount") == 0)
-            {
-                if (i + 1 < argc)
-                {
-                    Settings.MaxCount = atol (argv [++i]);
-                    fprintf(stderr, "Running for a maximum of %d loops.\n",
-                            Settings.MaxCount);
-                } else
-                    S9xUsage ();
-            }
-#endif
-	    else if (strcasecmp (argv [i], "-im7") == 0)
-	    {
-		Settings.Mode7Interpolate = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-gg") == 0 ||
-		     strcasecmp (argv [i], "-gamegenie") == 0)
-	    {
-		if (i + 1 < argc)
-		{
-		    uint32 address;
-		    uint8 byte;
-		    const char *error;
-		    if ((error = S9xGameGenieToRaw (argv [++i], address, byte)) == NULL)
-			S9xAddCheat (TRUE, FALSE, address, byte);
-		    else
-			S9xMessage (S9X_ERROR, S9X_GAME_GENIE_CODE_ERROR,
-				    error);
-		}
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-ar") == 0 ||
-		     strcasecmp (argv [i], "-actionreplay") == 0)
-	    {
-		if (i + 1 < argc)
-		{
-		    uint32 address;
-		    uint8 byte;
-		    const char *error;
-		    if ((error = S9xProActionReplayToRaw (argv [++i], address, byte)) == NULL)
-			S9xAddCheat (TRUE, FALSE, address, byte);
-		    else
-			S9xMessage (S9X_ERROR, S9X_ACTION_REPLY_CODE_ERROR,
-				    error);
-		}
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-gf") == 0 ||
-		     strcasecmp (argv [i], "-goldfinger") == 0)
-	    {
-		if (i + 1 < argc)
-		{
-		    uint32 address;
-		    uint8 bytes [3];
-		    bool8 sram;
-		    uint8 num_bytes;
-		    const char *error;
-		    if ((error = S9xGoldFingerToRaw (argv [++i], address, sram,
-						     num_bytes, bytes)) == NULL)
-		    {
-			for (int c = 0; c < num_bytes; c++)
-			    S9xAddCheat (TRUE, FALSE, address + c, bytes [c]);
-		    }
-		    else
-			S9xMessage (S9X_ERROR, S9X_GOLD_FINGER_CODE_ERROR,
-				    error);
-		}
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv[i], "-ft") == 0 ||
-		     strcasecmp (argv [i], "-frametime") == 0)
-	    {
-		if (i + 1 < argc)
-		{
-		    double ft;
-		    if (sscanf (argv [++i], "%lf", &ft) == 1)
-		    {
-				Settings.FrameTimePAL = (int32) ft;
-				Settings.FrameTimeNTSC = (int32) ft;
-		    }
-		}
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-e") == 0 ||
-		     strcasecmp (argv [i], "-echo") == 0)
-		Settings.DisableSoundEcho = FALSE;
-	    else if (strcasecmp (argv [i], "-ne") == 0 ||
-		     strcasecmp (argv [i], "-noecho") == 0)
-		Settings.DisableSoundEcho = TRUE;
-	    else if (strcasecmp (argv [i], "-r") == 0 ||
-		     strcasecmp (argv [i], "-soundquality") == 0 ||
-		     strcasecmp (argv [i], "-sq") == 0)
-	    {
-		if (i + 1 < argc)
-		    Settings.SoundPlaybackRate = atoi (argv [++i]) & 7;
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-stereo") == 0 ||
-		     strcasecmp (argv [i], "-st") == 0)
-	    {
-		Settings.Stereo = TRUE;
-		Settings.APUEnabled = TRUE;
-		Settings.NextAPUEnabled = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-mono") == 0)
-	    {
-		Settings.Stereo = FALSE;
-		Settings.NextAPUEnabled = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-envx") == 0 ||
-		     strcasecmp (argv [i], "-ex") == 0)
-	    {
-		Settings.SoundEnvelopeHeightReading = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-nosamplecaching") == 0 ||
-		     strcasecmp (argv [i], "-nsc") == 0 ||
-		     strcasecmp (argv [i], "-nc") == 0)
-	    {
-		Settings.DisableSampleCaching = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-nomastervolume") == 0 ||
-		     strcasecmp (argv [i], "-nmv") == 0)
-	    {
-		Settings.DisableMasterVolume = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-soundsync") == 0 ||
-		     strcasecmp (argv [i], "-sy") == 0)
-	    {
-		Settings.SoundSync = TRUE;
-		Settings.SoundEnvelopeHeightReading = TRUE;
-		Settings.InterpolatedSound = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-soundsync2") == 0 ||
-		     strcasecmp (argv [i], "-sy2") == 0)
-	    {
-		Settings.SoundSync = 2;
-		Settings.SoundEnvelopeHeightReading = TRUE;
-		Settings.InterpolatedSound = TRUE;
-	    }
-	    else if (strcasecmp (argv [i], "-nois") == 0)
-	    {
-		Settings.InterpolatedSound = FALSE;
-	    }
-#ifdef USE_THREADS
-	    else if (strcasecmp (argv [i], "-threadsound") == 0 ||
-		     strcasecmp (argv [i], "-ts") == 0)
-	    {
-		Settings.ThreadSound = TRUE;
-	    }
-#endif
-	    else if (strcasecmp (argv [i], "-alt") == 0 ||
-		     strcasecmp (argv [i], "-altsampledecode") == 0)
-	    {
-		Settings.AltSampleDecode = 1;
-	    }
-	    else if (strcasecmp (argv [i], "-fix") == 0)
-	    {
-		Settings.FixFrequency = 1;
-	    }
-	    else if (strcasecmp (argv [i], "-nosuperfx") == 0 ||
-		     strcasecmp (argv [i], "-nosfx") == 0)
-		Settings.ForceNoSuperFX = TRUE;
-	    else if (strcasecmp (argv [i], "-superfx") == 0 ||
-		     strcasecmp (argv [i], "-sfx") == 0)
-		Settings.ForceSuperFX = TRUE;
-	    else if (strcasecmp (argv [i], "-dsp1") == 0)
-		Settings.ForceDSP1 = TRUE;
-	    else if (strcasecmp (argv [i], "-nodsp1") == 0)
-		Settings.ForceNoDSP1 = TRUE;
-	    else if (strcasecmp (argv [i], "-nomp5") == 0)
-		Settings.MultiPlayer5Master = FALSE;
-	    else if (strcasecmp (argv [i], "-nomouse") == 0)
-		Settings.MouseMaster = FALSE;
-	    else if (strcasecmp (argv [i], "-nosuperscope") == 0)
-		Settings.SuperScopeMaster = FALSE;
-	    else if (strcasecmp (argv [i], "-nojustifier") == 0)
-		Settings.JustifierMaster = FALSE;
-            else if (strcasecmp (argv[i], "-port1") == 0 ||
-                     strcasecmp (argv[i], "-port2") == 0)
-            {
-		if (i + 1 < argc)
-		{
-                    i++;
-                    if(!parse_controller_spec(argv[i-1][5]-'1', argv[i]))
-                        S9xUsage ();
-                }
-		else
-		    S9xUsage ();
-            }
-#ifdef NETPLAY_SUPPORT
-	    else if (strcasecmp (argv [i], "-port") == 0 ||
-		     strcasecmp (argv [i], "-po") == 0)
-	    {
-		if (i + 1 < argc)
-		{
-		    Settings.NetPlay = TRUE;
-		    Settings.Port = -atoi (argv [++i]);
-		}
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-server") == 0 ||
-		     strcasecmp (argv [i], "-srv") == 0)
-	    {
-		if (i + 1 < argc)
-		{
-		    Settings.NetPlay = TRUE;
-		    strncpy (Settings.ServerName, argv [++i], 127);
-		    Settings.ServerName [127] = 0;
-		}
-		else
-		    S9xUsage ();
-	    }
-	    else if (strcasecmp (argv [i], "-net") == 0)
-	    {
-		Settings.NetPlay = TRUE;
-	    }
-#endif
-#ifdef STORM
-            else if (strcasecmp(argv[i],"-nosecondjoy")==0){secondjoy=0;}
-            else if (strcasecmp(argv[i],"-showfps")==0){dofps=1;}
-            else if (strcasecmp(argv[i],"-hicolor")==0){hicolor=1;}
-            else if (strcasecmp(argv[i],"-minimal")==0){minimal=1;printf("Keyboard with exception of ESC switched off!\n");}
-            else if (strcasecmp(argv[i],"-ahiunit")==0)
-            {
-             if (i+1<argc)
-             {
-              fprintf(stderr,"AHI Unit set to: Unit %i\n",atoi(argv[++i]));
-              unit=atoi(argv[++i]);
-             }
-            }
-#endif
-            else if (strcasecmp (argv[i], "-dumpstreams") == 0)
-                dumpstreams = 1;
-            else if (strcasecmp (argv[i], "-maxframes") == 0)
-                maxframes = atoi(argv[++i]);
-            else if (strcasecmp (argv[i], "-mute") == 0)
-                Settings.Mute = 1;
-            else if (strcasecmp (argv[i], "-upanddown") == 0)
-                Settings.UpAndDown = 1;
-            else if (strcasecmp (argv[i], "-oldturbo") == 0)
-                Settings.OldTurbo = 1;
-            else if (strcasecmp(argv[i], "-autodemo") == 0) {
-		i++;
-		if (!argv[i])
-			abort();
-                strcpy(autodemo, argv[i]);
-            }
-            else if (strcasecmp(argv[i], "-keypress") == 0) // videologger output of controller 1
-                Settings.DisplayPressedKeys = 1;
-            else if (strcasecmp(argv[i], "-keypress2") == 0) // S9xDisplayMessages output of all controllers and peripherals
-                Settings.DisplayPressedKeys = 2;
-	    else if (strcasecmp (argv [i], "-conf") == 0)
-	    {
-                if (++i>=argc) S9xUsage();
-                // Else do nothing, S9xLoadConfigFiles() handled it
-            }
-	    else if (strcasecmp (argv [i], "-nostdconf") == 0)
-            {
-                // Do nothing, S9xLoadConfigFiles() handled it
-            }
-	    else if (strcasecmp (argv [i], "-version") == 0)
-	    {
-              printf("Snes9X " VERSION "\n");
-              exit(0);
-	    }
-	    else if (strcasecmp (argv [i], "-help") == 0)
-	    {
-			S9xUsage();
-	    }
-	    else if (strcasecmp (argv [i], "-multi") == 0)
-		{
-			Settings.Multi = TRUE;
-		}
-	    else if (strcasecmp (argv [i], "-carta") == 0)
-	    {
-			if (i + 1 < argc)
-			{
-		    	strncpy (Settings.CartAName, argv [++i], _MAX_PATH);
-			}
-		}
-	    else if (strcasecmp (argv [i], "-cartb") == 0)
-	    {
-			if (i + 1 < argc)
-			{
-		    	strncpy (Settings.CartBName, argv [++i], _MAX_PATH);
-			}
-		}
+		s++;
+		for (i = 0; s[i] != '\0'; i++)
+			if (s[i] == '"' && s[i - 1] != '\\')
+				break;
 
-	    else
-		S9xParseArg (argv, i, argc);
+		idx = 31 - ctl;
+
+		std::string	fname(s, i);
+		if (!S9xLoadCrosshairFile(idx, fname.c_str()))
+			return;
+
+		s += i + 1;
 	}
 	else
-	    rom_filename = argv [i];
-    }
+	{
+		if (isdigit(*s))
+		{
+			idx = *s - '0';
+			s++;
+		}
 
-    S9xVerifyControllers();
-    return (rom_filename);
+		if (isdigit(*s))
+		{
+			idx = idx * 10 + *s - '0';
+			s++;
+		}
+
+		if (idx > 31)
+		{
+			fprintf(stderr, "Invalid crosshair spec '%s'.\n", spec);
+			return;
+		}
+	}
+
+	while (*s != '\0' && isspace(*s))
+		s++;
+
+	if (*s != '\0')
+	{
+		fg = s;
+
+		while (isalnum(*s))
+			s++;
+
+		if (*s != '/' || !isalnum(s[1]))
+		{
+			fprintf(stderr, "Invalid crosshair spec '%s.'\n", spec);
+			return;
+		}
+
+		bg = ++s;
+
+		while (isalnum(*s))
+			s++;
+
+		if (*s != '\0')
+		{
+			fprintf(stderr, "Invalid crosshair spec '%s'.\n", spec);
+			return;
+		}
+	}
+
+	S9xSetControllerCrosshair(ctl, idx, fg, bg);
 }
 
-void S9xParseCheatsFile (const char *rom_filename)
+static bool try_load_config_file (const char *fname, ConfigFile &conf)
 {
-    FILE *f;
-    char dir [_MAX_DIR];
-    char drive [_MAX_DRIVE];
-    char name [_MAX_FNAME];
-    char ext [_MAX_EXT];
-    char fname [_MAX_PATH];
-    char buf [80];
-    uint32 address;
-    uint8 byte;
-    uint8 bytes [3];
-    bool8 sram;
-    uint8 num_bytes;
-    const char *error;
-    char *p;
+	STREAM	fp;
 
-    _splitpath (rom_filename, drive, dir, name, ext);
-    _makepath (fname, drive, dir, name, "pat");
+	fp = OPEN_STREAM(fname, "r");
+	if (fp)
+	{
+		fprintf(stdout, "Reading config file %s.\n", fname);
+		conf.LoadFile(new fReader(fp));
+		CLOSE_STREAM(fp);
+		return (true);
+	}
 
-    if ((f = fopen(fname, "r")) != NULL)
-    {
-        while(fgets(buf, 80, f) != NULL)
-        {
-	    if ((p = strrchr (buf, '\n')) != NULL)
-		*p = '\0';
-	    if (((error = S9xGameGenieToRaw (buf, address, byte)) == NULL) ||
-		((error = S9xProActionReplayToRaw (buf, address, byte)) == NULL))
-	    {
-		S9xAddCheat (TRUE, FALSE, address, byte);
-	    }
-	    else
-	    if ((error = S9xGoldFingerToRaw (buf, address, sram,
-					     num_bytes, bytes)) == NULL)
-	    {
-		for (int c = 0; c < num_bytes; c++)
-		    S9xAddCheat (TRUE, FALSE, address + c, bytes [c]);
-	    }
-	    else
-		S9xMessage (S9X_ERROR, S9X_GAME_GENIE_CODE_ERROR, error);
-        }
-        fclose(f);
-    }
+	return (false);
 }
 
-#include "conffile.h"
-#include "crosshairs.h"
+void S9xLoadConfigFiles (char **argv, int argc)
+{
+	static ConfigFile	conf; // static because some of its functions return pointers
+	conf.Clear();
 
-static void parse_crosshair_spec(enum crosscontrols ctl, const char *spec){
-    int idx=-1, i;
-    const char *fg=NULL, *bg=NULL, *s=spec;
+	bool	skip = false;
+	for (int i = 0; i < argc; i++)
+	{
+		if (!strcasecmp(argv[i], "-nostdconf"))
+		{
+			skip = true;
+			break;
+		}
+	}
 
-    if(s[0]=='"'){
-        s++;
-        for(i=0; s[i]!='\0'; i++){
-            if(s[i]=='"' && s[i-1]!='\\') break;
-        }
-        idx=31-ctl;
-        std::string fname(s, i);
-        if(!S9xLoadCrosshairFile(idx, fname.c_str())) return;
-        s+=i+1;
-    } else {
-        if(isdigit(*s)){ idx=*s-'0'; s++; }
-        if(isdigit(*s)){ idx=idx*10+*s-'0'; s++; }
-        if(idx>31){
-            fprintf(stderr, "Invalid crosshair spec '%s'\n", spec);
-            return;
-        }
-    }
+	if (!skip)
+	{
+	#ifdef SYS_CONFIG_FILE
+		try_load_config_file(SYS_CONFIG_FILE, conf);
+		S9xParsePortConfig(conf, 0);
+	#endif
 
-    while(*s!='\0' && isspace(*s)){ s++; }
-    if(*s!='\0'){
-        fg=s;
-        while(isalnum(*s)){ s++; }
-        if(*s!='/' || !isalnum(s[1])){
-            fprintf(stderr, "Invalid crosshair spec '%s'\n", spec);
-            return;
-        }
-        bg=++s;
-        while(isalnum(*s)){ s++; }
-        if(*s!='\0'){
-            fprintf(stderr, "Invalid crosshair spec '%s'\n", spec);
-            return;
-        }
-    }
+		std::string	fname;
 
-    S9xSetControllerCrosshair(ctl, idx, fg, bg);
-}
+		fname = S9xGetDirectory(DEFAULT_DIR);
+		fname += SLASH_STR "snes9x.conf";
+		if (!try_load_config_file(fname.c_str(), conf))
+		{
+			fname = S9xGetDirectory(DEFAULT_DIR);
+			fname += SLASH_STR "snes9x.cfg";
+			try_load_config_file(fname.c_str(), conf);
+		}
 
-static bool try_load(const char *fname, ConfigFile &conf){
-    STREAM fp;
-    if((fp=OPEN_STREAM(fname, "r"))!=NULL){
-        fprintf(stdout, "Reading config file %s\n", fname);
-        conf.LoadFile(new fReader(fp));
-        CLOSE_STREAM(fp);
-        return true;
-    }
-    return false;
-}
+		fname = S9xGetDirectory(ROM_DIR);
+		fname += SLASH_STR "snes9x.conf";
+		if (!try_load_config_file(fname.c_str(), conf))
+		{
+			fname = S9xGetDirectory(ROM_DIR);
+			fname += SLASH_STR "snes9x.cfg";
+			try_load_config_file(fname.c_str(), conf);
+		}
+	}
+	else
+		fprintf(stderr, "Skipping standard config files.\n");
 
-void S9xLoadConfigFiles(char **argv, int argc){
-    int i;
-    bool skip=false;
+	for (int i = 0; i < argc - 1; i++)
+		if (!strcasecmp(argv[i], "-conf"))
+			try_load_config_file(argv[++i], conf);
 
-    for(i=0; i<argc; i++){
-        if(!strcasecmp(argv[i], "-nostdconf")){
-            skip=true;
-            break;
-        }
-    }
+	/* Parse config file here */
 
-	static ConfigFile conf; // static because some of its functions return pointers that would otherwise become invalid after this function
-    conf.Clear();
+	Settings.BSXBootup                  =  conf.GetBool("Settings::BSXBootup",                 false);
+	Settings.MouseMaster                =  conf.GetBool("Controls::MouseMaster",               true);
+	Settings.SuperScopeMaster           =  conf.GetBool("Controls::SuperscopeMaster",          true);
+	Settings.JustifierMaster            =  conf.GetBool("Controls::JustifierMaster",           true);
+	Settings.MultiPlayer5Master         =  conf.GetBool("Controls::MP5Master",                 true);
+	Settings.ForceInterleaved2          =  conf.GetBool("ROM::Interleaved2",                   false);
+	Settings.ForceInterleaveGD24        =  conf.GetBool("ROM::InterleaveGD24",                 false);
+	Settings.DisableSoundEcho           = !conf.GetBool("Sound::Echo",                         true);
+	Settings.SixteenBitSound            =  conf.GetBool("Sound::16BitSound",                   true);
+	Settings.InterpolatedSound          =  conf.GetBool("Sound::Interpolate",                  true);
+	Settings.Stereo                     =  conf.GetBool("Sound::Stereo",                       true);
+	Settings.ReverseStereo              =  conf.GetBool("Sound::ReverseStereo",                false);
+	Settings.Mute                       =  conf.GetBool("Sound::Mute",                         false);
+	Settings.FixFrequency               =  conf.GetBool("Sound::FixFrequency",                 false);
+	Settings.SoundSync                  =  conf.GetBool("Sound::Sync",                         false);
+	Settings.SupportHiRes               =  conf.GetBool("Display::HiRes",                      true);
+	Settings.Transparency               =  conf.GetBool("Display::Transparency",               true);
+	Settings.DisableGraphicWindows      = !conf.GetBool("Display::GraphicWindows",             true);
+	Settings.DisplayFrameRate           =  conf.GetBool("Display::FrameRate",                  false);
+	Settings.DisplayWatchedAddresses    =  conf.GetBool("Display::DisplayWatchedAddresses",    false);
+	Settings.DisplayPressedKeys         =  conf.GetBool("Display::DisplayInput",               false);
+	Settings.DisplayMovieFrame          =  conf.GetBool("Display::DisplayFrameCount",          false);
+	Settings.AutoDisplayMessages        =  conf.GetBool("Display::MessagesInImage",            true);
+	Settings.DisableGameSpecificHacks   = !conf.GetBool("Hack::EnableGameSpecificHacks",       true);
+	Settings.ShutdownMaster             =  conf.GetBool("Hack::SpeedHacks",                    false);
+	Settings.DisableIRQ                 =  conf.GetBool("Hack::DisableIRQ",                    false);
+	Settings.DisableHDMA                =  conf.GetBool("Hack::DisableHDMA",                   false);
+	Settings.NextAPUEnabled             = !conf.GetBool("Hack::DisableAPUEmulation",           false);
+	Settings.BlockInvalidVRAMAccess     = !conf.GetBool("Hack::AllowInvalidVRAMAccess",        false);
+	Settings.SoundEnvelopeHeightReading = !conf.GetBool("Hack::DisableEnvelopeHeightReading",  false);
+	Settings.TurboMode                  =  conf.GetBool("Settings::TurboMode",                 false);
+	Settings.MovieTruncate              =  conf.GetBool("Settings::MovieTruncateAtEnd",        false);
+	Settings.MovieNotifyIgnored         =  conf.GetBool("Settings::MovieNotifyIgnored",        false);
+	Settings.WrongMovieStateProtection  =  conf.GetBool("Settings::WrongMovieStateProtection", true);
+	Settings.SnapshotScreenshots        =  conf.GetBool("Settings::SnapshotScreenshots",       true);
+	Settings.ApplyCheats                =  conf.GetBool("ROM::Cheat",                          false);
+	Settings.NoPatch                    = !conf.GetBool("ROM::Patch",                          true);
+	Settings.DontSaveOopsSnapshot       =  conf.GetBool("Settings::DontSaveOopsSnapshot",      false);
+	Settings.UpAndDown                  =  conf.GetBool("Controls::AllowLeftRight",            false);
+	Settings.SoundPlaybackRate          =  conf.GetUInt("Sound::Rate",                         5);
+	Settings.InitialInfoStringTimeout   =  conf.GetInt ("Display::MessageDisplayTime",         120);
+	Settings.SoundSkipMethod            =  conf.GetInt ("Hack::SoundSkip",                     0);
+	Settings.TurboSkipFrames            =  conf.GetUInt("Settings::TurboFrameSkip",            15);
+	Settings.StretchScreenshots         =  conf.GetInt ("Settings::StretchScreenshots",        1);
+	Settings.AutoSaveDelay              =  conf.GetUInt("Settings::AutoSaveDelay",             0);
 
-    if(!skip){
-#ifdef SYS_CONFIG_FILE
-        try_load(SYS_CONFIG_FILE, conf);
-        S9xParsePortConfig(conf, 0);
-#endif
+	Settings.ForceLoROM = conf.GetBool("ROM::LoROM", false);
+	Settings.ForceHiROM = conf.GetBool("ROM::HiROM", false);
+	if (Settings.ForceLoROM)
+		Settings.ForceHiROM = false;
 
-        std::string fname;
-        fname=S9xGetDirectory(DEFAULT_DIR);
-        fname+=SLASH_STR "snes9x.conf";
-        if(!try_load(fname.c_str(), conf)){
-            fname=S9xGetDirectory(DEFAULT_DIR);
-            fname+=SLASH_STR "snes9x.cfg";
-            try_load(fname.c_str(), conf);
-        }
+	Settings.ForcePAL   = conf.GetBool("ROM::PAL",  false);
+	Settings.ForceNTSC  = conf.GetBool("ROM::NTSC", false);
+	if (Settings.ForcePAL)
+		Settings.ForceNTSC = false;
 
-        fname=S9xGetDirectory(ROM_DIR);
-        fname+=SLASH_STR "snes9x.conf";
-        if(!try_load(fname.c_str(), conf)){
-            fname=S9xGetDirectory(ROM_DIR);
-            fname+=SLASH_STR "snes9x.cfg";
-            try_load(fname.c_str(), conf);
-        }
-    } else {
-        fprintf(stderr, "Skipping standard config files\n");
-    }
+	if (conf.Exists("ROM::Header"))
+	{
+		Settings.ForceHeader = conf.GetBool("ROM::Header", false);
+		Settings.ForceNoHeader = !Settings.ForceHeader;
+	}
 
-    for(i=0; i<argc-1; i++){
-        if(!strcasecmp(argv[i], "-conf")) try_load(argv[++i], conf);
-    }
+	if (conf.Exists("ROM::Interleaved"))
+	{
+		Settings.ForceInterleaved = conf.GetBool("ROM::Interleaved", false);
+		Settings.ForceNotInterleaved = !Settings.ForceInterleaved;
+	}
 
-    /* Parse config file here */
-    Settings.NextAPUEnabled=conf.GetBool("Sound::APUEnabled", Settings.APUEnabled);
-    Settings.SoundSkipMethod=conf.GetInt("Sound::SoundSkip", 0);
-    i=conf.GetInt("CPU::HDMATimingHack", 100);
-    if(i>0 && i<200) Settings.HDMATimingHack = i;
-    Settings.DisableHDMA=conf.GetBool("Settings::DisableHDMA", false);
-    Settings.ShutdownMaster=conf.GetBool("Settings::SpeedHacks", false);
-	Settings.BlockInvalidVRAMAccess=conf.GetBool("Settings::BlockInvalidVRAMAccess", true);
-    Settings.ForcePAL=conf.GetBool("ROM::PAL", false);
-    Settings.ForceNTSC=conf.GetBool("ROM::NTSC", false);
-    if(!strcasecmp(conf.GetString("Settings::FrameSkip", "Auto"),"Auto")){
-        Settings.SkipFrames=AUTO_FRAMERATE;
-    } else {
-        Settings.SkipFrames=conf.GetUInt("Settings::FrameSkip", 0)+1;
-    }
-    Settings.TurboSkipFrames=conf.GetUInt("Settings::TurboFrameSkip", 15);
-    Settings.TurboMode=conf.GetBool("Settings::TurboMode",false);
-    Settings.StretchScreenshots=conf.GetInt("Settings::StretchScreenshots",1);
-    Settings.InitialInfoStringTimeout=conf.GetInt("Settings::MessageDisplayTime",120);
-    Settings.AutoSaveDelay=conf.GetUInt("Settings::AutoSaveDelay", 30);
-    Settings.ForceHiROM=conf.GetBool("ROM::HiROM", false);
-    Settings.ForceLoROM=conf.GetBool("ROM::LoROM", false);
-    if(conf.Exists("ROM::Header")){
-        Settings.ForceHeader=conf.GetBool("ROM::Header");
-        Settings.ForceNoHeader=!Settings.ForceHeader;
-    }
-    Settings.BS=conf.GetBool("ROM::BS", false);
-#ifdef DEBUGGER
-    if(conf.GetBool("DEBUG::Debugger", false)) CPU.Flags |= DEBUG_MODE_FLAG;
-    if(conf.GetBool("DEBUG::Trace", false)){
-        if(!trace) trace = fopen ("trace.log", "wb");
-        CPU.Flags |= TRACE_FLAG;
-    }
-#endif
-    Settings.BGLayering=conf.GetBool("Settings::BGLayeringHack", false);
-    if(conf.Exists("Display::Transparency")){
-        Settings.ForceTransparency=conf.GetBool("Display::Transparency", true);
-        Settings.ForceNoTransparency=!Settings.ForceTransparency;
-    }
-    Settings.SupportHiRes=conf.GetBool("Display::HiRes", true);
-    Settings.DisplayFrameRate=conf.GetBool("Display::FrameRate", false);
-    if(conf.Exists("Display::DisplayInput"))
-		Settings.DisplayPressedKeys=conf.GetBool("Display::DisplayInput", false)?1:0;
-//    GFX.FrameDisplay=conf.GetBool("Display::DisplayFrameCount", false);
-    GFX.FrameDisplay=TRUE;
-	Settings.AutoDisplayMessages=conf.GetBool("Display::MessagesInImage", true);
-    if(conf.Exists("ROM::Interleaved")){
-        Settings.ForceInterleaved=conf.GetBool("ROM::Interleaved", false);
-        Settings.ForceNotInterleaved=!Settings.ForceInterleaved;
-    }
-    Settings.ForceInterleaved2=conf.GetBool("ROM::Interleaved2", false);
-    Settings.ForceInterleaveGD24=conf.GetBool("ROM::InterleaveGD24", false);
-    Settings.DisableIRQ=conf.GetBool("CPU::DisableIRQ", false);
-    Settings.DisableGraphicWindows=!conf.GetBool("Display::GraphicWindows", true);
-    Settings.NoPatch=!conf.GetBool("ROM::Patch", true);
-    Settings.ApplyCheats=conf.GetBool("ROM::Cheat", true);
-#ifdef DEBUG_MAXCOUNT
-    if(conf.Exists("DEBUG::MaxCount")){
-        Settings.MaxCount = conf.GetUInt("DEBUG::MaxCount", 1);
-        fprintf(stderr, "Running for a maximum of %d loops.\n", Settings.MaxCount);
-    }
-#endif
-    Settings.Mode7Interpolate=conf.GetBool("Display::Mode7Interpolate", false);
-    Settings.FrameTimePAL=conf.GetUInt("Settings::PALFrameTime", 20000);
-    Settings.FrameTimeNTSC=conf.GetUInt("Settings::NTSCFrameTime", 16667);
-    if(conf.Exists("Settings::FrameTime")){
-        double ft;
-        if (sscanf(conf.GetString("Settings::FrameTime"), "%lf", &ft) == 1)
-        {
-            Settings.FrameTimePAL = (int32) ft;
-            Settings.FrameTimeNTSC = (int32) ft;
-        }
-    }
-    Settings.FrameTime = Settings.FrameTimeNTSC;
-    Settings.DisableSoundEcho=!conf.GetBool("Sound::Echo", true);
-    Settings.SoundPlaybackRate=conf.GetUInt("Sound::Rate", Settings.SoundPlaybackRate) & 7;
-    Settings.SoundBufferSize=conf.GetUInt("Sound::BufferSize", Settings.SoundBufferSize);
-    if(conf.Exists("Sound::Stereo")){
-        Settings.Stereo = conf.GetBool("Sound::Stereo");
-        Settings.APUEnabled = TRUE;
-        Settings.NextAPUEnabled = TRUE;
-    }
-    if(conf.Exists("Sound::Mono")){
-        Settings.Stereo = !conf.GetBool("Sound::Mono");
-        Settings.NextAPUEnabled = TRUE;
-    }
-    Settings.SoundEnvelopeHeightReading=conf.GetBool("Sound::EnvelopeHeightReading");
-    Settings.DisableSampleCaching=!conf.GetBool("Sound::SampleCaching");
-    Settings.DisableMasterVolume=!conf.GetBool("Sound::MasterVolume");
-    Settings.InterpolatedSound=conf.GetBool("Sound::Interpolate", true);
-    if(conf.Exists("Sound::Sync")){
-        Settings.SoundSync=conf.GetInt("Sound::Sync", 1);
-        if(Settings.SoundSync>2) Settings.SoundSync=1;
-        Settings.SoundEnvelopeHeightReading = TRUE;
-        Settings.InterpolatedSound = TRUE;
-    }
-#ifdef USE_THREADS
-    Settings.ThreadSound=conf.GetBool("Sound::ThreadSound", false);
-#endif
-    if(conf.Exists("Sound::AltDecode")){
-        Settings.AltSampleDecode=conf.GetInt("Sound::AltDecode", 1);
-    }
-    if(conf.Exists("Sound::FixFrequency")){
-        Settings.FixFrequency=conf.GetInt("Sound::FixFrequency", 1);
-    }
-    if(conf.Exists("ROM::SuperFX")){
-        Settings.ForceSuperFX=conf.GetBool("ROM::SuperFX");
-        Settings.ForceNoSuperFX=!Settings.ForceSuperFX;
-    }
-    if(conf.Exists("ROM::DSP1")){
-        Settings.ForceDSP1=conf.GetBool("ROM::DSP1");
-        Settings.ForceNoDSP1=!Settings.ForceDSP1;
-    }
-    Settings.MultiPlayer5Master=conf.GetBool("Controls::MP5Master", true);
-    Settings.MouseMaster=conf.GetBool("Controls::MouseMaster", true);
-    Settings.SuperScopeMaster=conf.GetBool("Controls::SuperscopeMaster", true);
-    Settings.JustifierMaster=conf.GetBool("Controls::JustifierMaster", true);
-    if(conf.Exists("Controls::Port1")){
-        parse_controller_spec(0, conf.GetString("Controls::Port1"));
-    }
-    if(conf.Exists("Controls::Port2")){
-        parse_controller_spec(1, conf.GetString("Controls::Port2"));
-    }
-    if(conf.Exists("Controls::Mouse1Crosshair")){
-        parse_crosshair_spec(X_MOUSE1, conf.GetString("Controls::Mouse1Crosshair"));
-    }
-    if(conf.Exists("Controls::Mouse2Crosshair")){
-        parse_crosshair_spec(X_MOUSE2, conf.GetString("Controls::Mouse2Crosshair"));
-    }
-    if(conf.Exists("Controls::SuperscopeCrosshair")){
-        parse_crosshair_spec(X_SUPERSCOPE, conf.GetString("Controls::SuperscopeCrosshair"));
-    }
-    if(conf.Exists("Controls::Justifier1Crosshair")){
-        parse_crosshair_spec(X_JUSTIFIER1, conf.GetString("Controls::Justifier1Crosshair"));
-    }
-    if(conf.Exists("Controls::Justifier2Crosshair")){
-        parse_crosshair_spec(X_JUSTIFIER2, conf.GetString("Controls::Justifier2Crosshair"));
-    }
+	if (conf.Exists("Settings::FrameTime"))
+	{
+		double ft;
+		if (sscanf(conf.GetString("Settings::FrameTime"), "%lf", &ft) == 1)
+			Settings.FrameTimePAL = Settings.FrameTimeNTSC = (int32) ft;
+	}
+
+	int	n = conf.GetInt("Hack::HDMATiming", 100);
+	if (n > 0 && n < 200)
+		Settings.HDMATimingHack = n;
+
+	if (!strcasecmp(conf.GetString("Settings::FrameSkip", "Auto"), "Auto"))
+		Settings.SkipFrames = AUTO_FRAMERATE;
+	else
+		Settings.SkipFrames = conf.GetUInt("Settings::FrameSkip", 0) + 1;
+
 #ifdef NETPLAY_SUPPORT
-    Settings.Port = NP_DEFAULT_PORT;
-    if(conf.Exists("Netplay::Port")){
-        Settings.NetPlay = TRUE;
-        Settings.Port = -(int)conf.GetUInt("Netplay::Port");
-    }
-    Settings.ServerName[0]='\0';
-    if(conf.Exists("Netplay::Server")){
-        Settings.NetPlay = TRUE;
-        conf.GetString("Netplay::Server", Settings.ServerName, 128);
-    }
-    Settings.NetPlay=conf.GetBool("Netplay::Enable");
-#endif
-#ifdef STORM
-    secondjoy=conf.GetBool("STORM::EnableSecondJoy",true)?1:0;
-    dofps=conf.GetBool("STORM::ShowFPS",false)?1:0;
-    hicolor=conf.GetBool("STORM::HiColor",false)?1:0;
-    if((minimal=conf.GetBool("STORM::Minimal")?1:0)){
-        printf("Keyboard with exception of ESC switched off!\n");
-    }
-    if(conf.Exists("STORM::AHIunit")){
-        unit=conf.GetInt("STORM::AHIunit",0);
-        fprintf(stderr,"AHI Unit set to: Unit %i\n",unit);
-    }
-#endif
-    Settings.JoystickEnabled=conf.GetBool("Controls::Joystick", Settings.JoystickEnabled);
-    Settings.UpAndDown=conf.GetBool("Controls::AllowLeftRight", false);
-	Settings.SnapshotScreenshots=conf.GetBool("Settings::SnapshotScreenshots", true);
-    Settings.MovieTruncate=conf.GetBool("Settings::MovieTruncateAtEnd", false);
-	Settings.MovieNotifyIgnored=conf.GetBool("Settings::MovieNotifyIgnored", false);
-	Settings.DisplayWatchedAddresses=conf.GetBool("Settings::DisplayWatchedAddresses", false);
-	Settings.WrongMovieStateProtection=conf.GetBool("Settings::WrongMovieStateProtection", true);
-    rom_filename=conf.GetStringDup("ROM::Filename", NULL);
+	Settings.NetPlay = conf.GetBool("Netplay::Enable");
 
-    S9xParsePortConfig(conf, 1);
-    S9xVerifyControllers();
+	Settings.Port = NP_DEFAULT_PORT;
+	if (conf.Exists("Netplay::Port"))
+		Settings.Port = -(int) conf.GetUInt("Netplay::Port");
+
+	Settings.ServerName[0] = '\0';
+	if (conf.Exists("Netplay::Server"))
+		conf.GetString("Netplay::Server", Settings.ServerName, 128);
+#endif
+
+#ifdef DEBUGGER
+	if (conf.GetBool("DEBUG::Debugger", false))
+		CPU.Flags |= DEBUG_MODE_FLAG;
+
+	if (conf.GetBool("DEBUG::Trace", false))
+	{
+		if (!trace)
+			trace = fopen("trace.log", "wb");
+		CPU.Flags |= TRACE_FLAG;
+	}
+#endif
+
+	if (conf.Exists("Controls::Port1"))
+		parse_controller_spec(0, conf.GetString("Controls::Port1"));
+	if (conf.Exists("Controls::Port2"))
+		parse_controller_spec(1, conf.GetString("Controls::Port2"));
+
+	if (conf.Exists("Controls::Mouse1Crosshair"))
+		parse_crosshair_spec(X_MOUSE1,     conf.GetString("Controls::Mouse1Crosshair"));
+	if (conf.Exists("Controls::Mouse2Crosshair"))
+		parse_crosshair_spec(X_MOUSE2,     conf.GetString("Controls::Mouse2Crosshair"));
+	if (conf.Exists("Controls::SuperscopeCrosshair"))
+		parse_crosshair_spec(X_SUPERSCOPE, conf.GetString("Controls::SuperscopeCrosshair"));
+	if (conf.Exists("Controls::Justifier1Crosshair"))
+		parse_crosshair_spec(X_JUSTIFIER1, conf.GetString("Controls::Justifier1Crosshair"));
+	if (conf.Exists("Controls::Justifier2Crosshair"))
+		parse_crosshair_spec(X_JUSTIFIER2, conf.GetString("Controls::Justifier2Crosshair"));
+
+	rom_filename = conf.GetStringDup("ROM::Filename", NULL);
+
+	S9xParsePortConfig(conf, 1);
+	S9xVerifyControllers();
+}
+
+void S9xUsage (void)
+{
+	S9xMessage(S9X_INFO, S9X_USAGE, "Snes9x " VERSION);
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+	S9xMessage(S9X_INFO, S9X_USAGE, "usage: snes9x [options] <ROM image filename>");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+
+	// SOUND OPTIONS
+	S9xMessage(S9X_INFO, S9X_USAGE, "-soundquality, -sq, or -r <num> Set sound playback rate");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                                   0 -   off, 1 -  8192, 2 - 11025, 3 - 16000,");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                                   4 - 22050, 5 - 32000, 6 - 44100, 7 - 48000");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-reversestereo                  Reverse stereo sound output");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nostereo                       Disable stereo sound output");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-noecho or -ne                  Disable sound echo effects");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nois                           Turn off interpolated sound");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-fix                            Fix sound frequencies for some sound devices");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-mute                           Don't output audio to sound card");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-soundsync or -sy               Enable sound sync to CPU");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nosound or -ns                 (Not recommended) Disable whole sound emulation");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-soundskip or -sk <0-3>         (Not recommended) Sound CPU skip-waiting method (use with -nosound)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-noenvx                         (Not recommended) Disable volume envelope height reading");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+
+	// DISPLAY OPTIONS
+	S9xMessage(S9X_INFO, S9X_USAGE, "-displayframerate or -dfr       Display the frame rate counter");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-displaykeypress                Display output of all controllers and peripherals");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nohires                        (Not recommended) Disable support for hi-res and interlace modes");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-notransparency or -nt          (Not recommended) Disable transparency effects");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nowindows or -nw               (Not recommended) Disable graphic window effects");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+
+	// CONTROLLER OPTIONS
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nomp5                          Disable emulation of the Multiplayer 5 adapter");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nomouse                        Disable emulation of the SNES mouse");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nosuperscope                   Disable emulation of the Superscope");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nojustifier                    Disable emulation of the Konami Justifier");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-port# <control>                Specify which controller to emulate in port 1/2");
+	S9xMessage(S9X_INFO, S9X_USAGE, "    Controllers: none              No controller");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                 pad#              Joypad number 1-8");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                 mouse#            Mouse number 1-2");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                 superscope        Superscope (not useful with -port1)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                 justifier         Blue Justifier (not useful with -port1)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                 one-justifier     ditto");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                 two-justifiers    Blue & Pink Justifiers");
+	S9xMessage(S9X_INFO, S9X_USAGE, "                 mp5:####          MP5 with the 4 named pads (1-8 or n)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+
+	// ROM OPTIONS
+	S9xMessage(S9X_INFO, S9X_USAGE, "-hirom, -hr, or -fh             Force Hi-ROM memory map");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-lorom, -lr, or -fl             Force Lo-ROM memory map");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-ntsc or -n                     Force NTSC timing (60 frames/sec)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-pal or -p                      Force PAL timing (50 frames/sec)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nointerleave or -ni            Assume the ROM image is not in interleaved format");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-interleaved or -i              Assume the ROM image is in interleaved format");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-interleaved2 or -i2            Assume the ROM image is in interleaved 2 format");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-interleavedgd24 or -gd24       Assume the ROM image is in interleaved gd24 format");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-noheader or -nhd               Assume the ROM image doesn't have a header of a copier");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-header, -he, or -hd            Assume the ROM image has a header of a copier");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-bsxbootup                      Boot up BS games from BS-X");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+
+	// PATCH/CHEAT OPTIONS
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nopatch                        Do not apply any available IPS patches");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-cheat                          Apply saved cheats");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-gamegenie or -gg <code>        Supply a Game Genie code");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-actionreplay or -ar <code>     Supply a Pro-Action Reply code");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-goldfinger or -gf <code>       Supply a Gold Finger code");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+
+#ifdef NETPLAY_SUPPORT
+	// NETPLAY OPTIONS
+	S9xMessage(S9X_INFO, S9X_USAGE, "-net                            Enable netplay");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-port or -po <num>              Use port <num> for netplay (use with -net)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-server or -srv <string>        Use the specified server for netplay (use with -net)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+#endif
+
+	// HACKING OR DEBUGGING OPTIONS
+#ifdef DEBUGGER
+	S9xMessage(S9X_INFO, S9X_USAGE, "-debug                          Set the Debugger flag");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-trace                          Begin CPU instruction tracing");
+#endif
+	S9xMessage(S9X_INFO, S9X_USAGE, "-noirq                          (Not recommended) Disable IRQ emulation");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nohdma                         (Not recommended) Disable HDMA emulation");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-hdmatiming <1-199>             (Not recommended) Changes HDMA transfer timings");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-cpushutdown                    (Not recommended) Skip emulation until the next event comes");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-invalidvramaccess              (Not recommended) Allow invalid VRAM access");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+
+	// OTHER OPTIONS
+	S9xMessage(S9X_INFO, S9X_USAGE, "-frameskip or -f <num>          Screen update frame skip rate");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-frametime or -ft <float>       Milliseconds per frame for frameskip auto-adjust");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-upanddown                      Override protection from pressing left+right or up+down together");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-conf <filename>                Use specified conf file (after standard files)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-nostdconf                      Do not load the standard config files");
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+
+	S9xExtraUsage();
+
+	S9xMessage(S9X_INFO, S9X_USAGE, "");
+	S9xMessage(S9X_INFO, S9X_USAGE, "ROM image can be compressed with zip, gzip, JMA, or compress.");
+
+	exit(1);
+}
+
+char * S9xParseArgs (char **argv, int argc)
+{
+	for (int i = 1; i < argc; i++)
+	{
+		if (*argv[i] == '-')
+		{
+			if (strcasecmp(argv[i], "-help") == 0)
+				S9xUsage();
+			else
+
+			// SOUND OPTIONS
+
+			if (strcasecmp(argv[i], "-soundquality") == 0 ||
+				strcasecmp(argv[i], "-sq") == 0 ||
+				strcasecmp(argv[i], "-r") == 0)
+			{
+				if (i + 1 < argc)
+					Settings.SoundPlaybackRate = atoi(argv[++i]) & 7;
+				else
+					S9xUsage();
+			}
+			else
+			if (strcasecmp(argv[i], "-reversestereo") == 0)
+				Settings.ReverseStereo = TRUE;
+			else
+			if (strcasecmp(argv[i], "-nostereo") == 0)
+				Settings.Stereo = FALSE;
+			else
+			if (strcasecmp(argv[i], "-noecho") == 0 ||
+				strcasecmp(argv[i], "-ne") == 0)
+				Settings.DisableSoundEcho = TRUE;
+			else
+			if (strcasecmp(argv[i], "-nois") == 0)
+				Settings.InterpolatedSound = FALSE;
+			else
+			if (strcasecmp(argv[i], "-fix") == 0)
+				Settings.FixFrequency = TRUE;
+			else
+			if (strcasecmp(argv[i], "-mute") == 0)
+				Settings.Mute = TRUE;
+			else
+			if (strcasecmp(argv[i], "-soundsync") == 0 ||
+				strcasecmp(argv[i], "-sy") == 0)
+				Settings.SoundSync = TRUE;
+			else
+			if (strcasecmp(argv[i], "-nosound") == 0 ||
+				strcasecmp(argv[i], "-ns") == 0)
+				Settings.NextAPUEnabled = FALSE;
+			else
+			if (strcasecmp(argv[i], "-soundskip") == 0 ||
+				strcasecmp(argv[i], "-sk") == 0)
+			{
+				if (i + 1 < argc)
+					Settings.SoundSkipMethod = atoi(argv[++i]);
+				else
+					S9xUsage();
+			}
+			else
+			if (strcasecmp(argv[i], "-noenvx") == 0)
+				Settings.SoundEnvelopeHeightReading = FALSE;
+			else
+
+			// DISPLAY OPTIONS
+
+			if (strcasecmp(argv[i], "-displayframerate") == 0 ||
+				strcasecmp(argv[i], "-dfr") == 0)
+				Settings.DisplayFrameRate = TRUE;
+			else
+			if (strcasecmp(argv[i], "-displaykeypress") == 0)
+				Settings.DisplayPressedKeys = TRUE;
+			else
+			if (strcasecmp(argv[i], "-nohires") == 0)
+				Settings.SupportHiRes = FALSE;
+			else
+			if (strcasecmp(argv[i], "-notransparency") == 0 ||
+				strcasecmp(argv[i], "-nt") == 0)
+				Settings.Transparency = FALSE;
+			else
+			if (strcasecmp(argv[i], "-nowindows") == 0 ||
+				strcasecmp(argv[i], "-nw") == 0)
+				Settings.DisableGraphicWindows = TRUE;
+			else
+
+			// CONTROLLER OPTIONS
+
+			if (strcasecmp(argv[i], "-nomp5") == 0)
+				Settings.MultiPlayer5Master = FALSE;
+			else
+			if (strcasecmp(argv[i], "-nomouse") == 0)
+				Settings.MouseMaster = FALSE;
+			else
+			if (strcasecmp(argv[i], "-nosuperscope") == 0)
+				Settings.SuperScopeMaster = FALSE;
+			else
+			if (strcasecmp(argv[i], "-nojustifier") == 0)
+				Settings.JustifierMaster = FALSE;
+			else
+			if (strcasecmp(argv[i], "-port1") == 0 ||
+				strcasecmp(argv[i], "-port2") == 0)
+			{
+				if (i + 1 < argc)
+				{
+					i++;
+					if (!parse_controller_spec(argv[i - 1][5] - '1', argv[i]))
+						S9xUsage();
+				}
+				else
+					S9xUsage();
+			}
+			else
+
+			// ROM OPTIONS
+
+			if (strcasecmp(argv[i], "-hirom") == 0 ||
+				strcasecmp(argv[i], "-hr") == 0 ||
+				strcasecmp(argv[i], "-fh") == 0)
+				Settings.ForceHiROM = TRUE;
+			else
+			if (strcasecmp(argv[i], "-lorom") == 0 ||
+				strcasecmp(argv[i], "-lr") == 0 ||
+				strcasecmp(argv[i], "-fl") == 0)
+				Settings.ForceLoROM = TRUE;
+			else
+			if (strcasecmp(argv[i], "-ntsc") == 0 ||
+				strcasecmp(argv[i], "-n") == 0)
+				Settings.ForceNTSC = TRUE;
+			else
+			if (strcasecmp(argv[i], "-pal") == 0 ||
+				strcasecmp(argv[i], "-p") == 0)
+				Settings.ForcePAL = TRUE;
+			else
+			if (strcasecmp(argv[i], "-nointerleave") == 0 ||
+				strcasecmp(argv[i], "-ni") == 0)
+				Settings.ForceNotInterleaved = TRUE;
+			else
+			if (strcasecmp(argv[i], "-interleaved") == 0 ||
+				strcasecmp(argv[i], "-i") == 0)
+				Settings.ForceInterleaved = TRUE;
+			else
+			if (strcasecmp(argv[i], "-interleaved2") == 0 ||
+				strcasecmp(argv[i], "-i2") == 0)
+				Settings.ForceInterleaved2 = TRUE;
+			else
+			if (strcasecmp(argv[i], "-interleavedgd24") == 0 ||
+				strcasecmp(argv[i], "-gd24") == 0)
+				Settings.ForceInterleaveGD24 = TRUE;
+			else
+			if (strcasecmp(argv[i], "-noheader") == 0 ||
+				strcasecmp(argv[i], "-nhd") == 0)
+				Settings.ForceNoHeader = TRUE;
+			else
+			if (strcasecmp(argv[i], "-header") == 0 ||
+				strcasecmp(argv[i], "-he") == 0 ||
+				strcasecmp(argv[i], "-hd") == 0)
+				Settings.ForceHeader = TRUE;
+			else
+			if (strcasecmp(argv[i], "-bsxbootup") == 0)
+				Settings.BSXBootup = TRUE;
+			else
+
+			// PATCH/CHEAT OPTIONS
+
+			if (strcasecmp(argv[i], "-nopatch") == 0)
+				Settings.NoPatch = TRUE;
+			else
+			if (strcasecmp(argv[i], "-cheat") == 0)
+				Settings.ApplyCheats = TRUE;
+			else
+			if (strcasecmp(argv[i], "-gamegenie") == 0 ||
+				strcasecmp(argv[i], "-gg") == 0)
+			{
+				if (i + 1 < argc)
+				{
+					uint32		address;
+					uint8		byte;
+					const char	*error;
+
+					if ((error = S9xGameGenieToRaw(argv[++i], address, byte)) == NULL)
+						S9xAddCheat(TRUE, FALSE, address, byte);
+					else
+						S9xMessage(S9X_ERROR, S9X_GAME_GENIE_CODE_ERROR, error);
+				}
+				else
+					S9xUsage();
+			}
+			else
+			if (strcasecmp(argv[i], "-actionreplay") == 0 ||
+				strcasecmp(argv[i], "-ar") == 0)
+			{
+				if (i + 1 < argc)
+				{
+					uint32		address;
+					uint8		byte;
+					const char	*error;
+
+					if ((error = S9xProActionReplayToRaw(argv[++i], address, byte)) == NULL)
+						S9xAddCheat(TRUE, FALSE, address, byte);
+					else
+						S9xMessage(S9X_ERROR, S9X_ACTION_REPLY_CODE_ERROR, error);
+				}
+				else
+					S9xUsage();
+			}
+			else
+			if (strcasecmp(argv[i], "-goldfinger") == 0 ||
+				strcasecmp(argv[i], "-gf") == 0)
+			{
+				if (i + 1 < argc)
+				{
+					uint32		address;
+					uint8		bytes[3];
+					bool8		sram;
+					uint8		num_bytes;
+					const char	*error;
+
+					if ((error = S9xGoldFingerToRaw(argv[++i], address, sram, num_bytes, bytes)) == NULL)
+					{
+						for (int c = 0; c < num_bytes; c++)
+							S9xAddCheat(TRUE, FALSE, address + c, bytes[c]);
+					}
+					else
+						S9xMessage(S9X_ERROR, S9X_GOLD_FINGER_CODE_ERROR, error);
+				}
+				else
+					S9xUsage();
+			}
+			else
+
+			// NETPLAY OPTIONS
+
+		#ifdef NETPLAY_SUPPORT
+			if (strcasecmp(argv[i], "-net") == 0)
+				Settings.NetPlay = TRUE;
+			else
+			if (strcasecmp(argv[i], "-port") == 0 ||
+				strcasecmp(argv[i], "-po") == 0)
+			{
+				if (i + 1 < argc)
+					Settings.Port = -atoi(argv[++i]);
+				else
+					S9xUsage();
+			}
+			else
+			if (strcasecmp(argv[i], "-server") == 0 ||
+				strcasecmp(argv[i], "-srv") == 0)
+			{
+				if (i + 1 < argc)
+				{
+					strncpy(Settings.ServerName, argv[++i], 127);
+					Settings.ServerName[127] = 0;
+				}
+				else
+					S9xUsage();
+			}
+			else
+		#endif
+
+			// HACKING OR DEBUGGING OPTIONS
+		
+		#ifdef DEBUGGER
+			if (strcasecmp(argv[i], "-debug") == 0)
+				CPU.Flags |= DEBUG_MODE_FLAG;
+			else
+			if (strcasecmp(argv[i], "-trace") == 0)
+			{
+				if (!trace)
+					trace = fopen("trace.log", "wb");
+				CPU.Flags |= TRACE_FLAG;
+			}
+			else
+		#endif
+
+			if (strcasecmp(argv[i], "-noirq") == 0)
+				Settings.DisableIRQ = TRUE;
+			else
+			if (strcasecmp(argv[i], "-nohdma") == 0)
+				Settings.DisableHDMA = TRUE;
+			else
+			if (strcasecmp(argv[i], "-hdmatiming") == 0)
+			{
+				if (i + 1 < argc)
+				{
+					int	p = atoi(argv[++i]);
+
+					if (p > 0 && p < 200)
+						Settings.HDMATimingHack = p;
+				}
+				else
+					S9xUsage();
+			}
+			else
+			if (strcasecmp(argv[i], "-cpushutdown") == 0)
+				Settings.ShutdownMaster = TRUE;
+			else
+			if (strcasecmp(argv[i], "-invalidvramaccess") == 0)
+				Settings.BlockInvalidVRAMAccess = FALSE;
+			else
+
+			// OTHER OPTIONS
+
+			if (strcasecmp(argv[i], "-frameskip") == 0 ||
+				strcasecmp(argv[i], "-f") == 0)
+			{
+				if (i + 1 < argc)
+					Settings.SkipFrames = atoi(argv[++i]) + 1;
+				else
+					S9xUsage();
+			}
+			else
+			if (strcasecmp(argv[i], "-frametime") == 0 ||
+				strcasecmp(argv[i], "-ft") == 0)
+			{
+				if (i + 1 < argc)
+				{
+					double	ft;
+
+					if (sscanf(argv[++i], "%lf", &ft) == 1)
+						Settings.FrameTimePAL = Settings.FrameTimeNTSC = (int32) ft;
+				}
+				else
+					S9xUsage();
+			}
+			else
+			if (strcasecmp(argv[i], "-upanddown") == 0)
+				Settings.UpAndDown = TRUE;
+			else
+			if (strcasecmp(argv[i], "-conf") == 0)
+			{
+				if (++i >= argc)
+					S9xUsage();
+				// Else do nothing, S9xLoadConfigFiles() handled it.
+			}
+			else
+			if (strcasecmp(argv[i], "-nostdconf") == 0)
+			{
+				// Do nothing, S9xLoadConfigFiles() handled it.
+			}
+			else
+				S9xParseArg(argv, i, argc);
+		}
+		else
+			rom_filename = argv[i];
+	}
+
+	S9xVerifyControllers();
+
+	return (rom_filename);
 }

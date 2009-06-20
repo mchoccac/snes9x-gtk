@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -189,7 +187,8 @@
 
 #define KeyIsPressed(km, k)		(1 & (((unsigned char *) km) [(k) >> 3] >> ((k) & 7)))
 
-void S9xSetupDefaultKeymap(void)
+
+void S9xSetupDefaultKeymap (void)
 {
 	s9xcommand_t	cmd;
 
@@ -327,7 +326,7 @@ void S9xSetupDefaultKeymap(void)
 	ASSIGN_BUTTONf(kMacCMapPseudoPtrBase + 3, "ButtonToPointer 1r Med");
 }
 
-bool S9xPollButton(uint32 id, bool *pressed)
+bool S9xPollButton (uint32 id, bool *pressed)
 {
 	#define kmControlKey	0x3B
 
@@ -383,7 +382,7 @@ bool S9xPollButton(uint32 id, bool *pressed)
 	return (true);
 }
 
-bool S9xPollPointer(uint32 id, int16 *x, int16 *y)
+bool S9xPollPointer (uint32 id, int16 *x, int16 *y)
 {
 	if (id & k_PT)
 	{
@@ -398,12 +397,12 @@ bool S9xPollPointer(uint32 id, int16 *x, int16 *y)
 	return (true);
 }
 
-bool S9xPollAxis(uint32 id, int16 *value)
+bool S9xPollAxis (uint32 id, int16 *value)
 {
 	return (false);
 }
 
-s9xcommand_t S9xGetPortCommandT(const char *name)
+s9xcommand_t S9xGetPortCommandT (const char *name)
 {
 	s9xcommand_t	cmd;
 
@@ -413,24 +412,24 @@ s9xcommand_t S9xGetPortCommandT(const char *name)
 	return (cmd);
 }
 
-char * S9xGetPortCommandName(s9xcommand_t command)
+char * S9xGetPortCommandName (s9xcommand_t command)
 {
 	static char	str[] = "PortCommand";
 
 	return (str);
 }
 
-void S9xHandlePortCommand(s9xcommand_t cmd, int16 data1, int16 data2)
+void S9xHandlePortCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 {
 	return;
 }
 
-bool8 S9xMapInput(const char *name, s9xcommand_t *cmd)
+bool8 S9xMapInput (const char *name, s9xcommand_t *cmd)
 {
 	return (true);
 }
 
-void ControlPadFlagsToS9xReportButtons(int n, uint32 p)
+void ControlPadFlagsToS9xReportButtons (int n, uint32 p)
 {
 	uint32	base = k_HD | k_BT | k_JP | (0x100 << n);
 
@@ -448,7 +447,7 @@ void ControlPadFlagsToS9xReportButtons(int n, uint32 p)
 	S9xReportButton(base + 11, (p & 0x0100));
 }
 
-void ControlPadFlagsToS9xPseudoPointer(uint32 p)
+void ControlPadFlagsToS9xPseudoPointer (uint32 p)
 {
 	// prevent screwiness caused by trying to move the pointer left+right or up+down
 	if ((p & 0x0c00) == 0x0c00) p &= ~0x0c00;

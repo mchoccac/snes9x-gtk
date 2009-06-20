@@ -15,15 +15,15 @@
 ;along with this program; if not, write to the Free Software
 ;Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-%include "i386/macros.mac"
+%include "macros.mac"
 
 EXTSYM FxTable,FxTableb,FxTablec,SfxB,SfxCPB,SfxCROM,SfxCarry,SfxOverflow
 EXTSYM SfxR0,SfxR14,SfxR15,SfxRomBuffer,SfxSignZero,withr15sk
 
 NEWSYM FxEmu2BAsmStart
 
-%include "i386/fxemu2.mac"
-%include "i386/fxemu2b.mac"
+%include "fxemu2.mac"
+%include "fxemu2b.mac"
 
 
 

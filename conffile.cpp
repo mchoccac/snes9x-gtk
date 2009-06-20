@@ -555,9 +555,9 @@ bool ConfigFile::DeleteKey(const char *key){
 bool ConfigFile::DeleteSection(const char *section){
     set<ConfigEntry, ConfigEntry::key_less>::iterator s, e;
 
-    for(s=data.begin(); s!=data.end() && s->section!=section; s++);
+    for(s=data.begin(); s!=data.end() && s->section!=section; s++) ;
     if(s==data.end()) return false;
-    for(e=s; e!=data.end() && e->section==section; e++);
+    for(e=s; e!=data.end() && e->section==section; e++) ;
     data.erase(s, e);
     return true;
 }

@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -175,23 +173,6 @@
 
 #ifndef _mac_snes9x_h_
 #define _mac_snes9x_h_
-
-void SNES9X_Go(void);
-void SNES9X_LoadSRAM(void);
-void SNES9X_SaveSRAM(void);
-void SNES9X_Reset(void);
-void SNES9X_SoftReset(void);
-void SNES9X_Quit(void);
-void SNES9X_InitSound(void);
-bool8 SNES9X_OpenCart(FSRef *);
-bool8 SNES9X_OpenMultiCart(void);
-bool8 SNES9X_Freeze(void);
-bool8 SNES9X_FreezeTo(void);
-bool8 SNES9X_Defrost(void);
-bool8 SNES9X_DefrostFrom(void);
-bool8 SNES9X_RecordMovie(void);
-bool8 SNES9X_PlayMovie(void);
-bool8 SNES9X_QTMovieRecord(void);
 
 enum
 {
@@ -222,5 +203,22 @@ enum
 	kNoHeaderForce,
 	kHeaderForce
 };
+
+void SNES9X_Go (void);
+void SNES9X_LoadSRAM (void);
+void SNES9X_SaveSRAM (void);
+void SNES9X_Reset (void);
+void SNES9X_SoftReset (void);
+void SNES9X_Quit (void);
+void SNES9X_InitSound (void);
+bool8 SNES9X_OpenCart (FSRef *);
+bool8 SNES9X_OpenMultiCart (void);
+bool8 SNES9X_Freeze (void);
+bool8 SNES9X_FreezeTo (void);
+bool8 SNES9X_Defrost (void);
+bool8 SNES9X_DefrostFrom (void);
+bool8 SNES9X_RecordMovie (void);
+bool8 SNES9X_PlayMovie (void);
+bool8 SNES9X_QTMovieRecord (void);
 
 #endif

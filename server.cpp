@@ -205,9 +205,9 @@
 #endif // !__WIN32__
 
 #include "snes9x.h"
-#include "netplay.h"
 #include "memmap.h"
 #include "snapshot.h"
+#include "netplay.h"
 
 #ifdef __WIN32__
 #define NP_ONE_CLIENT 1
@@ -679,7 +679,7 @@ void S9xNPAcceptClient (int Listen, bool8 block)
 #endif
     S9xNPSetAction ("SERVER: Attempting to accept client connection...", TRUE);
     memset (&remote_address, 0, sizeof (remote_address));
-    ACCEPT_SIZE_T len = sizeof (remote_address);
+    socklen_t len = sizeof (remote_address);
 
     new_fd = accept (Listen, (struct sockaddr *)&remote_address, &len);
 

@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,9 +171,11 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "memmap.h"
 
 #include "mac-prefix.h"
+#include "mac-audio.h"
 #include "mac-joypad.h"
 #include "mac-keyboard.h"
 #include "mac-os.h"
@@ -185,25 +185,25 @@
 
 int	autofireLastTabIndex = 1;
 
-static void RomInfoCopyToClipboard(void);
-static void RomInfoBuildInfoText(char *);
-static void RomInfoGetLicenseeText(char *);
-static void RomInfoGetRegionText(char *);
-static void AutofireReadAllSettings(int, HIViewRef);
-static void AutofireReadSetting(int, uint16, HIViewRef);
-static void AutofireWriteAllSettings(int, HIViewRef);
-static void AutofireWriteSetting(int, uint16 *, HIViewRef);
-static void AutofireSelectTabPane(HIViewRef, SInt16);
-static char *StaticRAMBitSize(void);
-static OSStatus UpdateTextControlView(HIViewRef);
-static pascal void AutofireSliderActionProc(HIViewRef, HIViewPartCode);
-static pascal OSStatus RomInfoEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus AutofireTabEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus AutofireWindowEventHandler(EventHandlerCallRef, EventRef, void *);
+static int	tabList[] = { 2, 257, 258 };
 
-static int	tabList[]    = { 2, 257, 258 };
+static void RomInfoCopyToClipboard (void);
+static void RomInfoBuildInfoText (char *);
+static void AutofireSetAllIconImages (int, HIViewRef);
+static void AutofireSetIconImages (int, HIViewRef);
+static void AutofireReadAllSettings (int, HIViewRef);
+static void AutofireReadSetting (int, uint16, HIViewRef);
+static void AutofireWriteAllSettings (int, HIViewRef);
+static void AutofireWriteSetting (int, uint16 *, HIViewRef);
+static void AutofireSelectTabPane (HIViewRef, SInt16);
+static OSStatus UpdateTextControlView (HIViewRef);
+static pascal void AutofireSliderActionProc (HIViewRef, HIViewPartCode);
+static pascal OSStatus RomInfoEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus AutofireTabEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus AutofireWindowEventHandler (EventHandlerCallRef, EventRef, void *);
 
-static OSStatus UpdateTextControlView(HIViewRef control)
+
+static OSStatus UpdateTextControlView (HIViewRef control)
 {
 	OSStatus			err;
 	WindowAttributes	attr;
@@ -217,46 +217,45 @@ static OSStatus UpdateTextControlView(HIViewRef control)
 			Draw1Control(control);
 	}
 
-	return err;
+	return (err);
 }
 
-OSStatus GetStaticTextText(HIViewRef control, Str255 text)
-{
-	OSStatus	err;
-	Size		actualSize;
-
-	if ((!control) || (!text))
-		return paramErr;
-
-	err = GetControlData(control, 0, kControlStaticTextTextTag, 255, (Ptr) (text + 1), &actualSize);
-	if (err == noErr)
-		text[0] = (actualSize > 255) ? 255 : actualSize;
-
-	return err;
-}
-
-OSStatus SetStaticTextText(HIViewRef control, Str255 text, Boolean draw)
+OSStatus SetStaticTextCStr (HIViewRef control, char *text, Boolean draw)
 {
 	OSStatus	err;
 
-	if ((!control) || (!text))
-		return paramErr;
+	if (!control || !text)
+		return (paramErr);
 
-	err = SetControlData(control, 0, kControlStaticTextTextTag, text[0], (Ptr) (text + 1));
+	err = SetControlData(control, 0, kControlStaticTextTextTag, strlen(text), text);
 	if ((err == noErr) && draw)
 		err = UpdateTextControlView(control);
 
-	return err;
+	return (err);
 }
 
-OSStatus SetStaticTextTrunc(HIViewRef control, TruncCode mode, Boolean draw)
+OSStatus SetStaticTextCFString (HIViewRef control, CFStringRef text, Boolean draw)
+{
+	OSStatus	err;
+
+	if (!control || !text)
+		return (paramErr);
+
+	err = SetControlData(control, 0, kControlStaticTextCFStringTag, sizeof(CFStringRef), &text);
+	if ((err == noErr) && draw)
+		err = UpdateTextControlView(control);
+
+	return (err);
+}
+
+OSStatus SetStaticTextTrunc (HIViewRef control, TruncCode mode, Boolean draw)
 {
 	OSStatus	err;
 	TruncCode	trunc;
 	Boolean		multiline;
 
 	if (!control)
-		return paramErr;
+		return (paramErr);
 
 	trunc = mode;
 	multiline = false;
@@ -269,111 +268,97 @@ OSStatus SetStaticTextTrunc(HIViewRef control, TruncCode mode, Boolean draw)
 			err = UpdateTextControlView(control);
 	}
 
-	return err;
+	return (err);
 }
 
-OSStatus SetStaticTextCFString(HIViewRef control, CFStringRef text, Boolean draw)
-{
-	OSStatus	err;
-
-	if ((!control) || (!text))
-		return paramErr;
-
-	err = SetControlData(control, 0, kControlStaticTextCFStringTag, sizeof(CFStringRef), (Ptr) &text);
-	if ((err == noErr) && draw)
-		err = UpdateTextControlView(control);
-
-	return err;
-}
-
-OSStatus SetEditTextCFString(HIViewRef control, CFStringRef text, Boolean draw)
-{
-	OSStatus	err;
-
-	if ((!control) || (!text))
-		return paramErr;
-
-	err = SetControlData(control, 0, kControlEditTextCFStringTag, sizeof(CFStringRef), (Ptr) &text);
-	if ((err == noErr) && draw)
-		err = UpdateTextControlView(control);
-
-	return err;
-}
-
-OSStatus CopyEditTextCFString(HIViewRef control, CFStringRef *text)
+OSStatus GetEditTextCStr (HIViewRef control, char *text)
 {
 	OSStatus	err;
 	Size		actualSize;
 
-	if ((!control) || (!text))
-		return paramErr;
+	if (!control || !text)
+		return (paramErr);
 
-	err = GetControlData(control, 0, kControlEditTextCFStringTag, sizeof(CFStringRef), (Ptr) text, &actualSize);
-
-	return err;
-}
-
-OSStatus GetEditTextText(HIViewRef control, Str255 text)
-{
-	OSStatus	err;
-	Size		actualSize;
-
-	if ((!control) || (!text))
-		return paramErr;
-
-	err = GetControlData(control, 0, kControlEditTextTextTag, 255, (Ptr) (text + 1), &actualSize);
+	err = GetControlData(control, 0, kControlEditTextTextTag, 255, text, &actualSize);
 	if (err == noErr)
-		text[0] = (actualSize > 255) ? 255 : actualSize;
+		text[actualSize] = 0;
 
-	return err;
+	return (err);
 }
 
-OSStatus SetEditTextText(HIViewRef control, Str255 text, Boolean draw)
+OSStatus SetEditTextCStr (HIViewRef control, char *text, Boolean draw)
 {
 	OSStatus	err;
 
-	if ((!control) || (!text))
-		return paramErr;
+	if (!control || !text)
+		return (paramErr);
 
-	err = SetControlData(control, 0, kControlEditTextTextTag, text[0], (Ptr) (text + 1));
+	err = SetControlData(control, 0, kControlEditTextTextTag, strlen(text), text);
 	if ((err == noErr) && draw)
 		err = UpdateTextControlView(control);
 
-	return err;
+	return (err);
 }
 
-OSStatus SetEditTextSelection(HIViewRef control, SInt16 selStart, SInt16 selEnd)
+OSStatus CopyEditTextCFString (HIViewRef control, CFStringRef *text)
+{
+	OSStatus	err;
+	Size		actualSize;
+
+	if (!control || !text)
+		return (paramErr);
+
+	err = GetControlData(control, 0, kControlEditTextCFStringTag, sizeof(CFStringRef), text, &actualSize);
+
+	return (err);
+}
+
+OSStatus SetEditTextCFString (HIViewRef control, CFStringRef text, Boolean draw)
+{
+	OSStatus	err;
+
+	if (!control || !text)
+		return (paramErr);
+
+	err = SetControlData(control, 0, kControlEditTextCFStringTag, sizeof(CFStringRef), &text);
+	if ((err == noErr) && draw)
+		err = UpdateTextControlView(control);
+
+	return (err);
+}
+
+OSStatus SetEditTextSelection (HIViewRef control, SInt16 selStart, SInt16 selEnd)
 {
 	OSStatus					err;
 	ControlEditTextSelectionRec	selection;
 
 	if (!control)
-		return paramErr;
+		return (paramErr);
 
 	selection.selStart = selStart;
 	selection.selEnd   = selEnd;
 
-	err = SetControlData(control, 0, kControlEditTextSelectionTag, sizeof(selection), (Ptr) &selection);
+	err = SetControlData(control, 0, kControlEditTextSelectionTag, sizeof(selection), &selection);
 	if (err == noErr)
 		err = UpdateTextControlView(control);
 
-	return err;
+	return (err);
 }
 
-void StartCarbonModalDialog(void)
+void StartCarbonModalDialog (void)
 {
 	HiliteMenu(0);
 	if (gWindow)
 		HideWindow(gWindow);
 }
 
-void FinishCarbonModalDialog(void)
+void FinishCarbonModalDialog (void)
 {
 	if (gWindow)
 		ShowWindow(gWindow);
 }
 
-void MoveWindowPosition(WindowRef window, int which, Boolean resize)
+void MoveWindowPosition (WindowRef window, int which, Boolean resize)
 {
 	if (savewindowpos)
 	{
@@ -386,10 +371,10 @@ void MoveWindowPosition(WindowRef window, int which, Boolean resize)
 		}
 	}
 	else
-		RepositionWindow(window, nil, kWindowAlertPositionOnMainScreen);
+		RepositionWindow(window, NULL, kWindowAlertPositionOnMainScreen);
 }
 
-void SaveWindowPosition(WindowRef window, int which)
+void SaveWindowPosition (WindowRef window, int which)
 {
 	Rect	rct;
 
@@ -400,7 +385,7 @@ void SaveWindowPosition(WindowRef window, int which)
 	windowSize[which].height = (float) (rct.bottom - rct.top );
 }
 
-void AppearanceAlert(AlertType type, int stringID1, int stringID2)
+void AppearanceAlert (AlertType type, int stringID1, int stringID2)
 {
 	OSStatus		err;
 	DialogRef		dialog;
@@ -414,12 +399,13 @@ void AppearanceAlert(AlertType type, int stringID1, int stringID2)
 	key1 = CFStringCreateWithCString(kCFAllocatorDefault, label1, CFStringGetSystemEncoding());
 	key2 = CFStringCreateWithCString(kCFAllocatorDefault, label2, CFStringGetSystemEncoding());
 
-	if (key1) mes1 = CFCopyLocalizedString(key1, "mes1");	else mes1 = nil;
-	if (key2) mes2 = CFCopyLocalizedString(key2, "mes2");	else mes2 = nil;
+	if (key1) mes1 = CFCopyLocalizedString(key1, "mes1");	else mes1 = NULL;
+	if (key2) mes2 = CFCopyLocalizedString(key2, "mes2");	else mes2 = NULL;
 
-	SysBeep(10);
-	err = CreateStandardAlert(type, mes1, mes2, nil, &dialog);
-	err = RunStandardAlert(dialog, nil, &outItemHit);
+	PlayAlertSound();
+
+	err = CreateStandardAlert(type, mes1, mes2, NULL, &dialog);
+	err = RunStandardAlert(dialog, NULL, &outItemHit);
 
 	if (key1) CFRelease(key1);
 	if (key2) CFRelease(key2);
@@ -427,7 +413,7 @@ void AppearanceAlert(AlertType type, int stringID1, int stringID2)
 	if (mes2) CFRelease(mes2);
 }
 
-void AboutDialog(void)
+void AboutDialog (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -444,17 +430,16 @@ void AboutDialog(void)
 			EventHandlerUPP		eventUPP;
 			EventTypeSpec		windowEvents[] = { { kEventClassWindow,  kEventWindowClose         },
 												   { kEventClassCommand, kEventCommandUpdateStatus } };
-			ControlFontStyleRec frec;
+			ControlFontStyleRec	frec;
 			HIViewRef			ctl, root;
 			HIViewID			cid;
 			char				text[32];
-			unsigned char		textP[32];
 
 			err = ChangeWindowAttributes(tWindowRef, kWindowNoAttributes, kWindowInWindowMenuAttribute);
 
 			if (systemVersion >= 0x1040)
 				frec.font = FMGetFontFromATSFontRef(ATSFontFindFromName(CFSTR("Lucida Grande"), kATSOptionFlagsDefault));
-		#ifdef MAC_PANTHER_JAGUAR_SUPPORT
+		#ifdef MAC_PANTHER_SUPPORT
 			else
 				frec.font = kThemeSystemFont;
 		#endif
@@ -466,8 +451,7 @@ void AboutDialog(void)
 			cid.signature = 'VERS';
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(text, "Version %s (%s)", VERSION, MAC_VERSION);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			SetStaticTextCStr(ctl, text, false);
 			frec.flags = kControlUseFontMask | kControlUseSizeMask | kControlUseJustMask;
 			frec.size  = 10;
 			err = SetControlFontStyle(ctl, &frec);
@@ -491,17 +475,15 @@ void AboutDialog(void)
 			err = RemoveEventHandler(eref);
 			DisposeEventHandlerUPP(eventUPP);
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 		}
 
 		DisposeNibReference(nibRef);
 	}
 }
 
-pascal OSStatus DefaultEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+pascal OSStatus DefaultEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) inUserData;
 
@@ -523,7 +505,7 @@ pascal OSStatus DefaultEventHandler(EventHandlerCallRef inHandlerRef, EventRef i
 				case kEventCommandUpdateStatus:
 					HICommand	tHICommand;
 
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -534,10 +516,10 @@ pascal OSStatus DefaultEventHandler(EventHandlerCallRef inHandlerRef, EventRef i
 			break;
 	}
 
-	return result;
+	return (result);
 }
 
-void ConfigureAutofire(void)
+void ConfigureAutofire (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -559,7 +541,6 @@ void ConfigureAutofire(void)
 			ControlActionUPP	actionUPP;
 			HIViewRef			ctl, root;
 			HIViewID			cid;
-			int					player;
 
 			root = HIViewGetRoot(tWindowRef);
 
@@ -576,8 +557,9 @@ void ConfigureAutofire(void)
 
 			actionUPP = NewControlActionUPP(AutofireSliderActionProc);
 
-			for (player = 0; player < 2; player++)
+			for (int player = 0; player < 2; player++)
 			{
+				AutofireSetAllIconImages(player + 1, root);
 				AutofireReadAllSettings(player + 1, root);
 
 				cid.id = player + 1;
@@ -592,7 +574,7 @@ void ConfigureAutofire(void)
 			HideWindow(tWindowRef);
 			SaveWindowPosition(tWindowRef, kWindowAutoFire);
 
-			for (player = 0; player < 2; player++)
+			for (int player = 0; player < 2; player++)
 				AutofireWriteAllSettings(player + 1, root);
 
 			autofire = (autofireRec[0].buttonMask || autofireRec[1].buttonMask) ? true : false;
@@ -605,19 +587,169 @@ void ConfigureAutofire(void)
 
 			DisposeControlActionUPP(actionUPP);
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 		}
 
 		DisposeNibReference(nibRef);
 	}
 }
 
-static void AutofireReadAllSettings(int player, HIViewRef parent)
+static void AutofireSetAllIconImages (int player, HIViewRef parent)
 {
-	HIViewRef		ctl;
-	HIViewID		cid;
-	char			num[10];
-	unsigned char	numP[10];
+	AutofireSetIconImages(player * 1,    parent);
+	AutofireSetIconImages(player * 11,   parent);
+	AutofireSetIconImages(player * 111,  parent);
+	AutofireSetIconImages(player * 1111, parent);
+}
+
+static void AutofireSetIconImages (int sig, HIViewRef parent)
+{
+	OSStatus					err;
+	ControlButtonContentInfo	info;
+	HIViewRef					ctl;
+	HIViewID					cid;
+	int							ofs;
+
+	cid.id = sig;
+	ofs = macPadIconIndex + ((sig % 2) ? 0 : 12);
+
+	if (systemVersion >= 0x1040)
+	{
+		info.contentType = kControlContentCGImageRef;
+
+		cid.signature = 'AChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[7 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'BChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[5 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'XChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[6 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'YChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[4 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'LChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[8 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'RChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[9 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Up  ';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[0 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Down';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[1 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Left';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[2 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Righ';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[3 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Star';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[10 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Sele';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.imageRef = macIconImage[11 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+	}
+#ifdef MAC_PANTHER_SUPPORT
+	else
+	{
+		info.contentType = kControlContentIconRef;
+
+		cid.signature = 'AChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[7 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'BChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[5 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'XChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[6 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'YChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[4 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'LChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[8 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'RChk';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[9 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Up  ';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[0 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Down';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[1 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Left';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[2 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Righ';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[3 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Star';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[10 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+
+		cid.signature = 'Sele';
+		HIViewFindByID(parent, cid, &ctl);
+		info.u.iconRef = macIconRef[11 + ofs];
+		err = SetBevelButtonContentInfo(ctl, &info);
+	}
+#endif
+}
+
+static void AutofireReadAllSettings (int player, HIViewRef parent)
+{
+	HIViewRef	ctl;
+	HIViewID	cid;
+	char		num[10];
 
 	AutofireReadSetting(player * 1,    autofireRec[player - 1].buttonMask, parent);
 	AutofireReadSetting(player * 11,   autofireRec[player - 1].toggleMask, parent);
@@ -627,17 +759,16 @@ static void AutofireReadAllSettings(int player, HIViewRef parent)
 	cid.id = player;
 
 	cid.signature = 'Num_';
-	sprintf(num, "%ld", autofireRec[player - 1].frequency);
-	ConvertCString(num, numP);
 	HIViewFindByID(parent, cid, &ctl);
-	SetStaticTextText(ctl, numP, false);
+	sprintf(num, "%ld", autofireRec[player - 1].frequency);
+	SetStaticTextCStr(ctl, num, false);
 
 	cid.signature = 'Slid';
 	HIViewFindByID(parent, cid, &ctl);
 	SetControl32BitValue(ctl, autofireRec[player - 1].frequency);
 }
 
-static void AutofireReadSetting(int sig, uint16 target, HIViewRef parent)
+static void AutofireReadSetting (int sig, uint16 target, HIViewRef parent)
 {
 	HIViewRef	ctl;
 	HIViewID	cid;
@@ -693,7 +824,7 @@ static void AutofireReadSetting(int sig, uint16 target, HIViewRef parent)
 	SetControl32BitValue(ctl, (target & 0x2000) ? 1 : 0);
 }
 
-static void AutofireWriteAllSettings(int player, HIViewRef parent)
+static void AutofireWriteAllSettings (int player, HIViewRef parent)
 {
 	HIViewRef	ctl;
 	HIViewID	cid;
@@ -709,7 +840,7 @@ static void AutofireWriteAllSettings(int player, HIViewRef parent)
 	autofireRec[player - 1].frequency = GetControl32BitValue(ctl);
 }
 
-static void AutofireWriteSetting(int sig, uint16 *target, HIViewRef parent)
+static void AutofireWriteSetting (int sig, uint16 *target, HIViewRef parent)
 {
 	HIViewRef	ctl;
 	HIViewID	cid;
@@ -778,9 +909,9 @@ static void AutofireWriteSetting(int sig, uint16 *target, HIViewRef parent)
 		(*target) |= 0x2000;
 }
 
-static void AutofireSelectTabPane(HIViewRef tabControl, SInt16 index)
+static void AutofireSelectTabPane (HIViewRef tabControl, SInt16 index)
 {
-	HIViewRef	sup, userPane, selectedPane = nil;
+	HIViewRef	sup, userPane, selectedPane = NULL;
 	HIViewID	cid;
 
 	autofireLastTabIndex = index;
@@ -799,38 +930,37 @@ static void AutofireSelectTabPane(HIViewRef tabControl, SInt16 index)
 			HIViewSetVisible(userPane, false);
 	}
 
-	if (selectedPane != nil)
+	if (selectedPane != NULL)
 		HIViewSetVisible(selectedPane, true);
 
 	HIViewSetNeedsDisplay(tabControl, true);
 }
 
-static pascal OSStatus AutofireTabEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus AutofireTabEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef, inUserData)
-
-	OSStatus	result = eventNotHandledErr;
+	OSStatus	err, result = eventNotHandledErr;
 	HIViewRef	ctl;
 	HIViewID	cid;
 	SInt32		value;
 
-	GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, nil, sizeof(ControlRef), nil, &ctl);
-	GetControlID(ctl, &cid);
-	value = GetControl32BitValue(ctl);
-
-	if ((cid.id == 256) && (value != autofireLastTabIndex))
+	err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &ctl);
+	if (err == noErr)
 	{
-		AutofireSelectTabPane(ctl, value);
-		result = noErr;
+		GetControlID(ctl, &cid);
+		value = GetControl32BitValue(ctl);
+
+		if ((cid.id == 256) && (value != autofireLastTabIndex))
+		{
+			AutofireSelectTabPane(ctl, value);
+			result = noErr;
+		}
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal OSStatus AutofireWindowEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus AutofireWindowEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) inUserData;
 
@@ -852,7 +982,7 @@ static pascal OSStatus AutofireWindowEventHandler(EventHandlerCallRef inHandlerR
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -867,7 +997,7 @@ static pascal OSStatus AutofireWindowEventHandler(EventHandlerCallRef inHandlerR
 
 					root = HIViewGetRoot(tWindowRef);
 
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
@@ -896,28 +1026,24 @@ static pascal OSStatus AutofireWindowEventHandler(EventHandlerCallRef inHandlerR
 			}
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal void AutofireSliderActionProc(HIViewRef slider, HIViewPartCode partCode)
+static pascal void AutofireSliderActionProc (HIViewRef slider, HIViewPartCode partCode)
 {
-	#pragma unused (partCode)
-
-	HIViewRef		ctl;
-	HIViewID		cid;
-	char			num[10];
-	unsigned char	numP[10];
+	HIViewRef	ctl;
+	HIViewID	cid;
+	char		num[10];
 
 	GetControlID(slider, &cid);
 	cid.signature = 'Num_';
 	HIViewFindByID(HIViewGetSuperview(slider), cid, &ctl);
 
 	sprintf(num, "%ld", GetControl32BitValue(slider));
-	ConvertCString(num, numP);
-	SetStaticTextText(ctl, numP, true);
+	SetStaticTextCStr(ctl, num, true);
 }
 
-void RomInfoDialog(void)
+void RomInfoDialog (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -933,16 +1059,15 @@ void RomInfoDialog(void)
 		err = CreateWindowFromNib(nibRef, CFSTR("RomInfo"), &tWindowRef);
 		if (err == noErr)
 		{
-			EventHandlerRef		eref;
-			EventHandlerUPP		eventUPP;
-			EventTypeSpec		windowEvents[] = { { kEventClassWindow,  kEventWindowClose         },
-												   { kEventClassCommand, kEventCommandProcess      },
-												   { kEventClassCommand, kEventCommandUpdateStatus } };
-			CFStringRef			sref;
-			HIViewRef			ctl, root;
-			HIViewID			cid;
-			char				text[256];
-			unsigned char		textP[256];
+			EventHandlerRef	eref;
+			EventHandlerUPP	eventUPP;
+			EventTypeSpec	windowEvents[] = { { kEventClassWindow,  kEventWindowClose         },
+											   { kEventClassCommand, kEventCommandProcess      },
+											   { kEventClassCommand, kEventCommandUpdateStatus } };
+			CFStringRef		sref;
+			HIViewRef		ctl, root;
+			HIViewID		cid;
+			char			text[256];
 
 			eventUPP = NewEventHandlerUPP(RomInfoEventHandler);
 			err = InstallWindowEventHandler(tWindowRef, eventUPP, GetEventTypeCount(windowEvents), windowEvents, (void *) tWindowRef, &eref);
@@ -953,8 +1078,7 @@ void RomInfoDialog(void)
 			cid.signature = 'Name';	// Cart Name
 			HIViewFindByID(root, cid, &ctl);
 
-			sprintf(text, "%s", Memory.RawROMName);
-
+			strcpy(text, Memory.RawROMName);
 			sref = CopyFixNameStrings(text, Memory.ROMRegion);
 			if (!sref)
 				SetStaticTextCFString(ctl, CFSTR("unknown"), false);
@@ -964,95 +1088,85 @@ void RomInfoDialog(void)
 				CFRelease(sref);
 			}
 
-			cid.signature = 'Spee';	// ROM Speed
+			cid.signature = 'Code';	// Game Code
 			HIViewFindByID(root, cid, &ctl);
-			sprintf(text, "0x%02X/%s", Memory.ROMSpeed, ((Memory.ROMSpeed & 0x10) != 0) ? "FastROM" : "SlowROM");
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
-
-			cid.signature = 'Map ';	// ROM Map
-			HIViewFindByID(root, cid, &ctl);
-			sprintf(text, "%s", Memory.MapType());
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
-
-			cid.signature = 'Type';	// ROM Type
-			HIViewFindByID(root, cid, &ctl);
-			sprintf(text, "0x%02X", Memory.ROMType);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			sprintf(text, "%s", Memory.ROMId);
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'Cont';	// Contents
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(text, "%s", Memory.KartContents());
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			SetStaticTextCStr(ctl, text, false);
 
-			cid.signature = 'SizH';	// ROM Size written in info block
+			cid.signature = 'Map ';	// ROM Map
 			HIViewFindByID(root, cid, &ctl);
-			sprintf(text, "%s", Memory.Size());
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			sprintf(text, "%s", Memory.MapType());
+			SetStaticTextCStr(ctl, text, false);
+
+			cid.signature = 'Spee';	// ROM Speed
+			HIViewFindByID(root, cid, &ctl);
+			sprintf(text, "0x%02X (%s)", Memory.ROMSpeed, ((Memory.ROMSpeed & 0x10) != 0) ? "FastROM" : "SlowROM");
+			SetStaticTextCStr(ctl, text, false);
+
+			cid.signature = 'Type';	// ROM Type
+			HIViewFindByID(root, cid, &ctl);
+			sprintf(text, "0x%02X", Memory.ROMType);
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'SizC';	// Actual ROM Size
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(text, "%dMbits", Memory.CalculatedSize / 0x20000);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			SetStaticTextCStr(ctl, text, false);
+
+			cid.signature = 'SizH';	// ROM Size written in info block
+			HIViewFindByID(root, cid, &ctl);
+			sprintf(text, "%s", Memory.Size());
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'SRAM';	// SRAM Size
 			HIViewFindByID(root, cid, &ctl);
-			sprintf(text, "%s%s", Memory.StaticRAMSize(), StaticRAMBitSize());
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			sprintf(text, "%s", Memory.StaticRAMSize());
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'SumC';	// Actual checksum
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(text, "0x%04X", Memory.CalculatedChecksum);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'SumH';	// Checksum written in info block
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(text, "0x%04X", Memory.ROMChecksum);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'ComH';	// Checksum complement written in info block : SumH + ComH = 0xFFFF
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(text, "0x%04X", Memory.ROMComplementChecksum);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			SetStaticTextCStr(ctl, text, false);
 
-			cid.signature = 'CRC ';	// CRC32
-			HIViewFindByID(root, cid, &ctl);
-			sprintf(text, "0x%08X", Memory.ROMCRC32);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
-
-			cid.signature = 'Outp';	// Output (NTSC or PAL)
+			cid.signature = 'Outp';	// Video output (NTSC or PAL)
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(text, "%s", (Memory.ROMRegion > 12 || Memory.ROMRegion < 2) ? "NTSC 60Hz" : "PAL 50Hz");
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'Vers';	// Revision
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(text, "%s", Memory.Revision());
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'Lice';	// Licensee
 			HIViewFindByID(root, cid, &ctl);
-			RomInfoGetLicenseeText(text);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			sprintf(text, "%s", Memory.PublishingCompany());
+			SetStaticTextCStr(ctl, text, false);
 
 			cid.signature = 'Regi';	// Region
 			HIViewFindByID(root, cid, &ctl);
-			RomInfoGetRegionText(text);
-			ConvertCString(text, textP);
-			SetStaticTextText(ctl, textP, false);
+			sprintf(text, "%s", Memory.Country());
+			SetStaticTextCStr(ctl, text, false);
+
+			cid.signature = 'CRC ';	// CRC32
+			HIViewFindByID(root, cid, &ctl);
+			sprintf(text, "0x%08X", Memory.ROMCRC32);
+			SetStaticTextCStr(ctl, text, false);
 
 			MoveWindowPosition(tWindowRef, kWindowRomInfo, false);
 			ShowWindow(tWindowRef);
@@ -1063,426 +1177,61 @@ void RomInfoDialog(void)
 			err = RemoveEventHandler(eref);
 			DisposeEventHandlerUPP(eventUPP);
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 		}
 
 		DisposeNibReference(nibRef);
 	}
 }
 
-static void RomInfoCopyToClipboard(void)
+static void RomInfoCopyToClipboard (void)
 {
-	OSStatus	err;
-	char		text[2048];
+	OSStatus			err;
+	PasteboardRef		clipboard;
+	PasteboardSyncFlags	sync;
+	CFDataRef			cfdata;
+	char				text[1024];
 
 	RomInfoBuildInfoText(text);
 
-	err = ClearCurrentScrap();
+	err = PasteboardCreate(kPasteboardClipboard, &clipboard);
 	if (err == noErr)
 	{
-		ScrapRef	scrap;
-
-		err = GetCurrentScrap(&scrap);
+		err = PasteboardClear(clipboard);
 		if (err == noErr)
-			err = PutScrapFlavor(scrap, kScrapFlavorTypeText, kScrapFlavorMaskNone, strlen(text), text);
+		{
+			sync = PasteboardSynchronize(clipboard);
+			if (!(sync & kPasteboardModified) && (sync & kPasteboardClientIsOwner))
+			{
+				cfdata = CFDataCreate(kCFAllocatorDefault, (UInt8 *) text, (CFIndex) strlen(text));
+				if (cfdata)
+				{
+					err = PasteboardPutItemFlavor(clipboard, (PasteboardItemID) 1, CFSTR("com.apple.traditional-mac-plain-text"), cfdata, 0);
+					CFRelease(cfdata);
+				}
+			}
+		}
+
+		CFRelease(clipboard);
 	}
 }
 
-static void RomInfoBuildInfoText(char *romtext)
+static void RomInfoBuildInfoText (char *romtext)
 {
-	char	temp[256];
+	char	s1[256], s2[1024];
 
-	sprintf(romtext, "Snes9x version: %s\n", VERSION);
-	sprintf(temp,    "Mac port version: %s, OS X\n\n", MAC_VERSION);
-	strcat (romtext, temp);
-
-	sprintf(temp,    "Name: %s\n", Memory.ROMName);
-	strcat (romtext, temp);
-	sprintf(temp,    "Speed: %02X/%s\n", Memory.ROMSpeed, ((Memory.ROMSpeed & 0x10) !=0) ? "FastROM" : "SlowROM");
-	strcat (romtext, temp);
-	sprintf(temp,    "Map: %s\n", Memory.MapType());
-	strcat (romtext, temp);
-	sprintf(temp,    "Type: %02X\n", Memory.ROMType);
-	strcat (romtext, temp);
-	strcat (romtext, "Kart contents: ");
-	strcat (romtext, Memory.KartContents());
-	strcat (romtext, "\nHeader ROM Size: ");
-	strcat (romtext, Memory.Size());
-	sprintf(temp,    "\nCalculated ROM Size: %dMbits", Memory.CalculatedSize / 0x20000);
-	strcat (romtext, temp);
-
-	strcat (romtext, "\nSRAM size: ");
-	strcat (romtext, Memory.StaticRAMSize());
-	strcat (romtext, StaticRAMBitSize());
-	strcat (romtext, "\nActual Checksum: ");
-	sprintf(temp,    "%04X", Memory.CalculatedChecksum);
-	strcat (romtext, temp);
-	strcat (romtext, "\nHeader Checksum: ");
-	sprintf(temp,    "%04X", Memory.ROMChecksum);
-	strcat (romtext, temp);
-	strcat (romtext, "\nHeader Checksum Complement: ");
-	sprintf(temp,    "%04X", Memory.ROMComplementChecksum);
-	strcat (romtext, temp);
-
-	strcat (romtext, "\nOutput: ");
-	if (Memory.ROMRegion > 12 || Memory.ROMRegion < 2)
-		strcat(romtext, "NTSC 60Hz");
-	else
-		strcat(romtext, "PAL 50Hz");
-
-	sprintf(temp,    "\nCRC32: %08X", Memory.ROMCRC32);
-	strcat (romtext, temp);
-
-	strcat (romtext, "\nLicensee: ");
-	RomInfoGetLicenseeText(temp);
-	strcat (romtext, temp);
-
-	strcat (romtext, "\nRevision: ");
-	strcat (romtext, Memory.Revision());
-
-	strcat (romtext, "\nRegion: ");
-	RomInfoGetRegionText(temp);
-	strcat (romtext, temp);
+	sprintf(s1, "Snes9x version: %s\nMac port version: %s, ", VERSION, MAC_VERSION);
+#ifdef __BIG_ENDIAN__
+	strcat(s1, "PowerPC\n\n");
+#else
+	strcat(s1, "Intel\n\n");
+#endif
+	Memory.MakeRomInfoText(s2);
+	sprintf(romtext, "%s%s", s1, s2);
 }
 
-#define NOTKNOWN	"Unknown Company "
-
-static void RomInfoGetLicenseeText(char *text)
+static pascal OSStatus RomInfoEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	int	tmp = -1;
-
-	if (Memory.CompanyId[0] == '0')	tmp = 0;
-	if (Memory.CompanyId[0] == '1')	tmp = 16;
-	if (Memory.CompanyId[0] == '2')	tmp = 32;
-	if (Memory.CompanyId[0] == '3')	tmp = 48;
-	if (Memory.CompanyId[0] == '4')	tmp = 64;
-	if (Memory.CompanyId[0] == '5')	tmp = 80;
-	if (Memory.CompanyId[0] == '6')	tmp = 96;
-	if (Memory.CompanyId[0] == '7')	tmp = 112;
-	if (Memory.CompanyId[0] == '8')	tmp = 128;
-	if (Memory.CompanyId[0] == '9')	tmp = 144;
-	if (Memory.CompanyId[0] == 'A')	tmp = 160;
-	if (Memory.CompanyId[0] == 'B')	tmp = 176;
-	if (Memory.CompanyId[0] == 'C')	tmp = 192;
-	if (Memory.CompanyId[0] == 'D')	tmp = 208;
-	if (Memory.CompanyId[0] == 'E')	tmp = 224;
-	if (Memory.CompanyId[0] == 'F')	tmp = 240;
-
-	if (tmp != -1)
-	{
-			 if (Memory.CompanyId[1] == '0')	tmp += 0;
-		else if (Memory.CompanyId[1] == '1')	tmp += 1;
-		else if (Memory.CompanyId[1] == '2')	tmp += 2;
-		else if (Memory.CompanyId[1] == '3')	tmp += 3;
-		else if (Memory.CompanyId[1] == '4')	tmp += 4;
-		else if (Memory.CompanyId[1] == '5')	tmp += 5;
-		else if (Memory.CompanyId[1] == '6')	tmp += 6;
-		else if (Memory.CompanyId[1] == '7')	tmp += 7;
-		else if (Memory.CompanyId[1] == '8')	tmp += 8;
-		else if (Memory.CompanyId[1] == '9')	tmp += 9;
-		else if (Memory.CompanyId[1] == 'A')	tmp += 10;
-		else if (Memory.CompanyId[1] == 'B')	tmp += 11;
-		else if (Memory.CompanyId[1] == 'C')	tmp += 12;
-		else if (Memory.CompanyId[1] == 'D')	tmp += 13;
-		else if (Memory.CompanyId[1] == 'E')	tmp += 14;
-		else if (Memory.CompanyId[1] == 'F')	tmp += 15;
-		else 									tmp  = 0;
-	}
-	else
-		tmp = 0;
-
-	if (tmp == 0)
-		tmp = ((Memory.ROMSpeed & 0x0F) != 0) ? Memory.ROM[0x0FFDA] : Memory.ROM[0x7FDA];
-
-	switch (tmp)
-	{
-		case 0:		strcpy(text, "INVALID COMPANY");					break;
-		case 1:		strcpy(text, "Nintendo");							break;
-		case 2:		strcpy(text, "Ajinomoto");							break;
-		case 3:		strcpy(text, "Imagineer-Zoom");						break;
-		case 4:		strcpy(text, "Chris Gray Enterprises Inc.");		break;
-		case 5:		strcpy(text, "Zamuse");								break;
-		case 6:		strcpy(text, "Falcom");								break;
-		case 7:		strcpy(text, NOTKNOWN "7");							break;
-		case 8:		strcpy(text, "Capcom");								break;
-		case 9:		strcpy(text, "HOT-B");								break;
-		case 10:	strcpy(text, "Jaleco");								break;
-		case 11:	strcpy(text, "Coconuts");							break;
-		case 12:	strcpy(text, "Rage Software");						break;
-		case 13:	strcpy(text, "Micronet");							break;
-		case 14:	strcpy(text, "Technos");							break;
-		case 15:	strcpy(text, "Mebio Software");						break;
-		case 16:	strcpy(text, "SHOUEi System");						break;
-		case 17:	strcpy(text, "Starfish");							break;
-		case 18:	strcpy(text, "Gremlin Graphics");					break;
-		case 19:	strcpy(text, "Electronic Arts");					break;
-		case 20:	strcpy(text, "NCS / Masaya");						break;
-		case 21:	strcpy(text, "COBRA Team");							break;
-		case 22:	strcpy(text, "Human/Field");						break;
-		case 23:	strcpy(text, "KOEI");								break;
-		case 24:	strcpy(text, "Hudson Soft");						break;
-		case 25:	strcpy(text, "Game Village");						break;
-		case 26:	strcpy(text, "Yanoman");							break;
-		case 27:	strcpy(text, NOTKNOWN "27");						break;
-		case 28:	strcpy(text, "Tecmo");								break;
-		case 29:	strcpy(text, NOTKNOWN "29");						break;
-		case 30:	strcpy(text, "Open System");						break;
-		case 31:	strcpy(text, "Virgin Games");						break;
-		case 32:	strcpy(text, "KSS");								break;
-		case 33:	strcpy(text, "Sunsoft");							break;
-		case 34:	strcpy(text, "POW");								break;
-		case 35:	strcpy(text, "Micro World");						break;
-		case 36:	strcpy(text, NOTKNOWN "36");						break;
-		case 37:	strcpy(text, NOTKNOWN "37");						break;
-		case 38:	strcpy(text, "Enix");								break;
-		case 39:	strcpy(text, "Loriciel/Electro Brain");				break;
-		case 40:	strcpy(text, "Kemco");								break;
-		case 41:	strcpy(text, "Seta Co.,Ltd.");						break;
-		case 42:	strcpy(text, "Culture Brain");						break;
-		case 43:	strcpy(text, "Irem Japan");							break;
-		case 44:	strcpy(text, "Pal Soft");							break;
-		case 45:	strcpy(text, "Visit Co.,Ltd.");						break;
-		case 46:	strcpy(text, "INTEC Inc.");							break;
-		case 47:	strcpy(text, "System Sacom Corp.");					break;
-		case 48:	strcpy(text, "Viacom New Media");					break;
-		case 49:	strcpy(text, "Carrozzeria");						break;
-		case 50:	strcpy(text, "Dynamic");							break;
-		case 51:	strcpy(text, "Nintendo");							break;
-		case 52:	strcpy(text, "Magifact");							break;
-		case 53:	strcpy(text, "Hect");								break;
-		case 54:	strcpy(text, NOTKNOWN "54");						break;
-		case 55:	strcpy(text, NOTKNOWN "55");						break;
-		case 56:	strcpy(text, "Capcom Europe");						break;
-		case 57:	strcpy(text, "Accolade Europe");					break;
-		case 58:	strcpy(text, NOTKNOWN "58");						break;
-		case 59:	strcpy(text, "Arcade Zone");						break;
-		case 60:	strcpy(text, "Empire Software");					break;
-		case 61:	strcpy(text, "Loriciel");							break;
-		case 62:	strcpy(text, "Gremlin Graphics");					break;
-		case 63:	strcpy(text, NOTKNOWN "63");						break;
-		case 64:	strcpy(text, "Seika Corp.");						break;
-		case 65:	strcpy(text, "UBI Soft");							break;
-		case 66:	strcpy(text, NOTKNOWN "66");						break;
-		case 67:	strcpy(text, NOTKNOWN "67");						break;
-		case 68:	strcpy(text, "LifeFitness Exertainment");			break;
-		case 69:	strcpy(text, NOTKNOWN "69");						break;
-		case 70:	strcpy(text, "System 3");							break;
-		case 71:	strcpy(text, "Spectrum Holobyte");					break;
-		case 72:	strcpy(text, NOTKNOWN "72");						break;
-		case 73:	strcpy(text, "Irem");								break;
-		case 74:	strcpy(text, NOTKNOWN "74");						break;
-		case 75:	strcpy(text, "Raya Systems/Sculptured Software");	break;
-		case 76:	strcpy(text, "Renovation Products");				break;
-		case 77:	strcpy(text, "Malibu Games/Black Pearl");			break;
-		case 78:	strcpy(text, NOTKNOWN "78");						break;
-		case 79:	strcpy(text, "U.S. Gold");							break;
-		case 80:	strcpy(text, "Absolute Entertainment");				break;
-		case 81:	strcpy(text, "Acclaim");							break;
-		case 82:	strcpy(text, "Activision");							break;
-		case 83:	strcpy(text, "American Sammy");						break;
-		case 84:	strcpy(text, "GameTek");							break;
-		case 85:	strcpy(text, "Hi Tech Expressions");				break;
-		case 86:	strcpy(text, "LJN Toys");							break;
-		case 87:	strcpy(text, NOTKNOWN "87");						break;
-		case 88:	strcpy(text, NOTKNOWN "88");						break;
-		case 89:	strcpy(text, NOTKNOWN "89");						break;
-		case 90:	strcpy(text, "Mindscape");							break;
-		case 91:	strcpy(text, "Romstar, Inc.");						break;
-		case 92:	strcpy(text, NOTKNOWN "92");						break;
-		case 93:	strcpy(text, "Tradewest");							break;
-		case 94:	strcpy(text, NOTKNOWN "94");						break;
-		case 95:	strcpy(text, "American Softworks Corp.");			break;
-		case 96:	strcpy(text, "Titus");								break;
-		case 97:	strcpy(text, "Virgin Interactive Entertainment");	break;
-		case 98:	strcpy(text, "Maxis");								break;
-		case 99:	strcpy(text, "Origin/FCI/Pony Canyon");				break;
-		case 100:	strcpy(text, NOTKNOWN "100");						break;
-		case 101:	strcpy(text, NOTKNOWN "101");						break;
-		case 102:	strcpy(text, NOTKNOWN "102");						break;
-		case 103:	strcpy(text, "Ocean");								break;
-		case 104:	strcpy(text, NOTKNOWN "104");						break;
-		case 105:	strcpy(text, "Electronic Arts");					break;
-		case 106:	strcpy(text, NOTKNOWN "106");						break;
-		case 107:	strcpy(text, "Laser Beam");							break;
-		case 108:	strcpy(text, NOTKNOWN "108");						break;
-		case 109:	strcpy(text, NOTKNOWN "109");						break;
-		case 110:	strcpy(text, "Elite");								break;
-		case 111:	strcpy(text, "Electro Brain");						break;
-		case 112:	strcpy(text, "Infogrames");							break;
-		case 113:	strcpy(text, "Interplay");							break;
-		case 114:	strcpy(text, "LucasArts");							break;
-		case 115:	strcpy(text, "Parker Brothers");					break;
-		case 116:	strcpy(text, "Konami");								break;
-		case 117:	strcpy(text, "STORM");								break;
-		case 118:	strcpy(text, NOTKNOWN "118");						break;
-		case 119:	strcpy(text, NOTKNOWN "119");						break;
-		case 120:	strcpy(text, "THQ Software");						break;
-		case 121:	strcpy(text, "Accolade Inc.");						break;
-		case 122:	strcpy(text, "Triffix Entertainment");				break;
-		case 123:	strcpy(text, NOTKNOWN "123");						break;
-		case 124:	strcpy(text, "Microprose");							break;
-		case 125:	strcpy(text, NOTKNOWN "125");						break;
-		case 126:	strcpy(text, NOTKNOWN "126");						break;
-		case 127:	strcpy(text, "Kemco");								break;
-		case 128:	strcpy(text, "Misawa");								break;
-		case 129:	strcpy(text, "Teichio");							break;
-		case 130:	strcpy(text, "Namco Ltd.");							break;
-		case 131:	strcpy(text, "Lozc");								break;
-		case 132:	strcpy(text, "Koei");								break;
-		case 133:	strcpy(text, NOTKNOWN "133");						break;
-		case 134:	strcpy(text, "Tokuma Shoten Intermedia");			break;
-		case 135:	strcpy(text, "Tsukuda Original");					break;
-		case 136:	strcpy(text, "DATAM-Polystar");						break;
-		case 137:	strcpy(text, NOTKNOWN "137");						break;
-		case 138:	strcpy(text, NOTKNOWN "138");						break;
-		case 139:	strcpy(text, "Bullet-Proof Software");				break;
-		case 140:	strcpy(text, "Vic Tokai");							break;
-		case 141:	strcpy(text, NOTKNOWN "141");						break;
-		case 142:	strcpy(text, "Character Soft");						break;
-		case 143:	strcpy(text, "I'Max");								break;
-		case 144:	strcpy(text, "Takara");								break;
-		case 145:	strcpy(text, "CHUN Soft");							break;
-		case 146:	strcpy(text, "Video System Co., Ltd.");				break;
-		case 147:	strcpy(text, "BEC");								break;
-		case 148:	strcpy(text, NOTKNOWN "148");						break;
-		case 149:	strcpy(text, "Varie");								break;
-		case 150:	strcpy(text, "Yonezawa / S'Pal Corp.");				break;
-		case 151:	strcpy(text, "Kaneco");								break;
-		case 152:	strcpy(text, NOTKNOWN "152");						break;
-		case 153:	strcpy(text, "Pack in Video");						break;
-		case 154:	strcpy(text, "Nichibutsu");							break;
-		case 155:	strcpy(text, "TECMO");								break;
-		case 156:	strcpy(text, "Imagineer Co.");						break;
-		case 157:	strcpy(text, NOTKNOWN "157");						break;
-		case 158:	strcpy(text, NOTKNOWN "158");						break;
-		case 159:	strcpy(text, NOTKNOWN "159");						break;
-		case 160:	strcpy(text, "Telenet");							break;
-		case 161:	strcpy(text, "Hori");								break;
-		case 162:	strcpy(text, NOTKNOWN "162");						break;
-		case 163:	strcpy(text, NOTKNOWN "163");						break;
-		case 164:	strcpy(text, "Konami");								break;
-		case 165:	strcpy(text, "K.Amusement Leasing Co.");			break;
-		case 166:	strcpy(text, NOTKNOWN "166");						break;
-		case 167:	strcpy(text, "Takara");								break;
-		case 168:	strcpy(text, NOTKNOWN "168");						break;
-		case 169:	strcpy(text, "Technos Jap.");						break;
-		case 170:	strcpy(text, "JVC");								break;
-		case 171:	strcpy(text, NOTKNOWN "171");						break;
-		case 172:	strcpy(text, "Toei Animation");						break;
-		case 173:	strcpy(text, "Toho");								break;
-		case 174:	strcpy(text, NOTKNOWN "174");						break;
-		case 175:	strcpy(text, "Namco Ltd.");							break;
-		case 176:	strcpy(text, "Media Rings Corp.");					break;
-		case 177:	strcpy(text, "ASCII Co. Activison");				break;
-		case 178:	strcpy(text, "Bandai");								break;
-		case 179:	strcpy(text, NOTKNOWN "179");						break;
-		case 180:	strcpy(text, "Enix America");						break;
-		case 181:	strcpy(text, NOTKNOWN "181");						break;
-		case 182:	strcpy(text, "Halken");								break;
-		case 183:	strcpy(text, NOTKNOWN "183");						break;
-		case 184:	strcpy(text, NOTKNOWN "184");						break;
-		case 185:	strcpy(text, NOTKNOWN "185");						break;
-		case 186:	strcpy(text, "Culture Brain");						break;
-		case 187:	strcpy(text, "Sunsoft");							break;
-		case 188:	strcpy(text, "Toshiba EMI");						break;
-		case 189:	strcpy(text, "Sony Imagesoft");						break;
-		case 190:	strcpy(text, NOTKNOWN "190");						break;
-		case 191:	strcpy(text, "Sammy");								break;
-		case 192:	strcpy(text, "Taito");								break;
-		case 193:	strcpy(text, NOTKNOWN "193");						break;
-		case 194:	strcpy(text, "Kemco");								break;
-		case 195:	strcpy(text, "Square");								break;
-		case 196:	strcpy(text, "Tokuma Soft");						break;
-		case 197:	strcpy(text, "Data East");							break;
-		case 198:	strcpy(text, "Tonkin House");						break;
-		case 199:	strcpy(text, NOTKNOWN "199");						break;
-		case 200:	strcpy(text, "KOEI");								break;
-		case 201:	strcpy(text, NOTKNOWN "201");						break;
-		case 202:	strcpy(text, "Konami USA");							break;
-		case 203:	strcpy(text, "NTVIC");								break;
-		case 204:	strcpy(text, NOTKNOWN "204");						break;
-		case 205:	strcpy(text, "Meldac");								break;
-		case 206:	strcpy(text, "Pony Canyon");						break;
-		case 207:	strcpy(text, "Sotsu Agency/Sunrise");				break;
-		case 208:	strcpy(text, "Disco/Taito");						break;
-		case 209:	strcpy(text, "Sofel");								break;
-		case 210:	strcpy(text, "Quest Corp.");						break;
-		case 211:	strcpy(text, "Sigma");								break;
-		case 212:	strcpy(text, "Ask Kodansha Co., Ltd.");				break;
-		case 213:	strcpy(text, NOTKNOWN "213");						break;
-		case 214:	strcpy(text, "Naxat");								break;
-		case 215:	strcpy(text, NOTKNOWN "215");						break;
-		case 216:	strcpy(text, "Capcom Co., Ltd.");					break;
-		case 217:	strcpy(text, "Banpresto");							break;
-		case 218:	strcpy(text, "Tomy");								break;
-		case 219:	strcpy(text, "Acclaim");							break;
-		case 220:	strcpy(text, NOTKNOWN "220");						break;
-		case 221:	strcpy(text, "NCS");								break;
-		case 222:	strcpy(text, "Human Entertainment");				break;
-		case 223:	strcpy(text, "Altron");								break;
-		case 224:	strcpy(text, "Jaleco");								break;
-		case 225:	strcpy(text, NOTKNOWN "225");						break;
-		case 226:	strcpy(text, "Yutaka");								break;
-		case 227:	strcpy(text, NOTKNOWN "227");						break;
-		case 228:	strcpy(text, "T&ESoft");							break;
-		case 229:	strcpy(text, "EPOCH Co.,Ltd.");						break;
-		case 230:	strcpy(text, NOTKNOWN "230");						break;
-		case 231:	strcpy(text, "Athena");								break;
-		case 232:	strcpy(text, "Asmik");								break;
-		case 233:	strcpy(text, "Natsume");							break;
-		case 234:	strcpy(text, "King Records");						break;
-		case 235:	strcpy(text, "Atlus");								break;
-		case 236:	strcpy(text, "Sony Music Entertainment");			break;
-		case 237:	strcpy(text, NOTKNOWN "237");						break;
-		case 238:	strcpy(text, "IGS");								break;
-		case 239:	strcpy(text, NOTKNOWN "239");						break;
-		case 240:	strcpy(text, NOTKNOWN "240");						break;
-		case 241:	strcpy(text, "Motown Software");					break;
-		case 242:	strcpy(text, "Left Field Entertainment");			break;
-		case 243:	strcpy(text, "Beam Software");						break;
-		case 244:	strcpy(text, "Tec Magik");							break;
-		case 245:	strcpy(text, NOTKNOWN "245");						break;
-		case 246:	strcpy(text, NOTKNOWN "246");						break;
-		case 247:	strcpy(text, NOTKNOWN "247");						break;
-		case 248:	strcpy(text, NOTKNOWN "248");						break;
-		case 249:	strcpy(text, "Cybersoft");							break;
-		case 250:	strcpy(text, NOTKNOWN "250");						break;
-		case 251:	strcpy(text, "Psygnosis");							break;
-		case 252:	strcpy(text, NOTKNOWN "252");						break;
-		case 253:	strcpy(text, NOTKNOWN "253");						break;
-		case 254:	strcpy(text, "Davidson");							break;
-		case 255:	strcpy(text, NOTKNOWN "255");						break;
-		default:	strcpy(text, NOTKNOWN);
-	}
-}
-
-static void RomInfoGetRegionText(char *text)
-{
-	switch (Memory.ROMRegion)
-	{
-		case 0:		strcpy(text, "Japan");								break;
-		case 1:		strcpy(text, "USA/Canada");							break;
-		case 2:		strcpy(text, "Oceania, Europe, and Asia");			break;
-		case 3:		strcpy(text, "Sweden");								break;
-		case 4:		strcpy(text, "Finland");							break;
-		case 5:		strcpy(text, "Denmark");							break;
-		case 6:		strcpy(text, "France");								break;
-		case 7:		strcpy(text, "Holland");							break;
-		case 8:		strcpy(text, "Spain");								break;
-		case 9:		strcpy(text, "Germany, Austria, and Switzerland");	break;
-		case 10:	strcpy(text, "Italy");								break;
-		case 11:	strcpy(text, "Hong Kong and China");				break;
-		case 12:	strcpy(text, "Indonesia");							break;
-		case 13:	strcpy(text, "South Korea");						break;
-		case 14:	strcpy(text, "Unknown region 14");					break;
-		default:	strcpy(text, "Unknown region 15");
-	}
-}
-
-static pascal OSStatus RomInfoEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
-{
-	#pragma unused (inHandlerRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) inUserData;
 
@@ -1504,7 +1253,7 @@ static pascal OSStatus RomInfoEventHandler(EventHandlerCallRef inHandlerRef, Eve
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -1514,7 +1263,7 @@ static pascal OSStatus RomInfoEventHandler(EventHandlerCallRef inHandlerRef, Eve
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
@@ -1527,46 +1276,10 @@ static pascal OSStatus RomInfoEventHandler(EventHandlerCallRef inHandlerRef, Eve
 			}
 	}
 
-	return result;
+	return (result);
 }
 
-static char *StaticRAMBitSize(void)
-{
-	static char	tmp[20];
-
-	sprintf(tmp, " (%dKbits)", 8 * (Memory.SRAMMask + 1) / 1024);
-
-	return tmp;
-}
-
-long GetHIToolboxVersion(void)
-{
-	CFBundleRef	bundle;
-	CFStringRef	versStr = nil;
-
-	static unsigned long	version = 0;
-
-	if (version != 0)
-		return version;
-
-	bundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.HIToolbox"));
-	if (bundle)
-		versStr = (CFStringRef) CFBundleGetValueForInfoDictionaryKey(bundle, CFSTR("CFBundleShortVersionString"));
-
-	if (versStr && (CFGetTypeID(versStr) == CFStringGetTypeID()))
-	{
-		int		major = 0, minor = 0, bugfix = 0;
-		char	sz[20];
-
-		CFStringGetCString(versStr, sz, sizeof(sz), kCFStringEncodingUTF8);
-		sscanf(sz, "%d.%d.%d", &major, &minor, &bugfix);
-		version = (major << 8) + (minor << 4) + bugfix;
-	}
-
-	return version;
-}
-
-void RegisterHelpBook(void)
+void RegisterHelpBook (void)
 {
 	OSStatus	err;
 	CFBundleRef	bundleRef;
@@ -1587,7 +1300,7 @@ void RegisterHelpBook(void)
 	}
 }
 
-void SetHIViewID(HIViewID *cid, OSType signature, SInt32 value)
+void SetHIViewID (HIViewID *cid, OSType signature, SInt32 value)
 {
 	// Since HIViewID.id conflicts Objective-C 'id'...
 

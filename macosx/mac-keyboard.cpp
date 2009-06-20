@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -230,7 +228,7 @@
 #define kKeySize		24
 #define KS				kKeySize
 
-UInt8	keyCode[kKeys] =
+uint8	keyCode[kKeys] =
 {
 	kmUpArrowKey,
 	kmDownArrowKey,
@@ -277,9 +275,9 @@ UInt8	keyCode[kKeys] =
 
 typedef struct
 {
-	uint8	keyWidth, keyHeight;
-	uint8	scancode;
-  	char	*keyLabel;
+	int			keyWidth, keyHeight;
+	uint8		scancode;
+  	const char	*keyLabel;
 }	KeyboardLayout;
 
 typedef struct
@@ -290,15 +288,12 @@ typedef struct
 static CGImageRef		iconTableImage;
 static CGImageRef		keyLayoutImage;
 static CGImageRef		iconPlaceImage;
-#ifdef MAC_JAGUAR_SUPPORT
-static GWorldPtr		iconTableWorld;	// for 10.2
-#endif
-static Ptr				iconTableCGWld;	// for 10.3 and higher
+static Ptr				iconTableCGWld;
 static Ptr				keyLayoutWorld;
 static Ptr				iconPlaceWorld;
 
 static CGRect			keyRect[0x80][2];
-static UInt8			defaultKeys[kKeys];
+static uint8			defaultKeys[kKeys];
 
 static HIObjectClassRef	theClass;
 static HIViewRef		customView;
@@ -312,157 +307,159 @@ static volatile Boolean	keyInDrag;
 static const int		kKeyLayoutWidth  = kKeySize * 23 + 1,
 						kKeyLayoutHeight = kKeySize *  7 + 1;
 
-#define	kCustomLayoutViewClassID	CFSTR("com.snes9x.macos.snes9x.keylayout")
-
-static void CreateIconTableImage(void);
-static void ReleaseIconTableImage(void);
-static void CreateKeyLayoutImage(void);
-static void ReleaseKeyLayoutImage(void);
-static void CreateIconPlaceImage(void);
-static void UpdateIconPlaceImage(void);
-static void ReleaseIconPlaceImage(void);
-static void DrawPlacedIcon(CGContextRef, int);
-static void DrawDraggedIcon(CGContextRef, int, CGPoint *);
-static Boolean KeyCodeInUse(int);
-static int FindHitKey(HIPoint, CGRect *, CGPoint *);
-static pascal OSStatus KeyWindowEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus KeyLayoutEventHandler(EventHandlerCallRef, EventRef, void *);
-
 static KeyboardLayout	keys[] =
 {
-	{ KS, 		KS, 	0x35, 	"esc"    },
-	{ KS, 		KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x7a, 	"F1"     },
-	{ KS, 		KS, 	0x78, 	"F2"     },
-	{ KS, 		KS, 	0x63, 	"F3"     },
-	{ KS, 		KS, 	0x76, 	"F4"     },
-	{ KS/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x60, 	"F5"     },
-	{ KS, 		KS, 	0x61, 	"F6"     },
-	{ KS, 		KS, 	0x62, 	"F7"     },
-	{ KS, 		KS, 	0x64, 	"F8"     },
-	{ KS/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x65, 	"F9"     },
-	{ KS, 		KS, 	0x6d, 	"F10"    },
-	{ KS, 		KS, 	0x67, 	"F11"    },
-	{ KS, 		KS, 	0x6f, 	"F12"    },
-	{ KS/2, 	KS, 	0x00,	nil      },
-	{ KS, 		KS, 	0x69, 	"F13"    },
-	{ KS, 		KS, 	0x6b, 	"F14"    },
-	{ KS, 		KS, 	0x71, 	"F15"    },
-	{ 0,  		0,  	0x00, 	nil      },
+	{ KS,         KS,     0x35, "esc"    },
+	{ KS,         KS,     0x00, NULL     },
+	{ KS,         KS,     0x7a, "F1"     },
+	{ KS,         KS,     0x78, "F2"     },
+	{ KS,         KS,     0x63, "F3"     },
+	{ KS,         KS,     0x76, "F4"     },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x60, "F5"     },
+	{ KS,         KS,     0x61, "F6"     },
+	{ KS,         KS,     0x62, "F7"     },
+	{ KS,         KS,     0x64, "F8"     },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x65, "F9"     },
+	{ KS,         KS,     0x6d, "F10"    },
+	{ KS,         KS,     0x67, "F11"    },
+	{ KS,         KS,     0x6f, "F12"    },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x69, "F13"    },
+	{ KS,         KS,     0x6b, "F14"    },
+	{ KS,         KS,     0x71, "F15"    },
+	{ 0,          0,      0x00, NULL     },
 
-	{ 0,  		0,  	0x00, 	nil      },
+	{ 0,          0,      0x00, NULL     },
 
-	{ KS, 		KS, 	0x32, 	"`"      },
-	{ KS, 		KS, 	0x12, 	"1"      },
-	{ KS, 		KS, 	0x13, 	"2"      },
-	{ KS, 		KS, 	0x14, 	"3"      },
-	{ KS, 		KS, 	0x15, 	"4"      },
-	{ KS, 		KS, 	0x17, 	"5"      },
-	{ KS, 		KS, 	0x16, 	"6"      },
-	{ KS, 		KS, 	0x1a, 	"7"      },
-	{ KS, 		KS, 	0x1c, 	"8"      },
-	{ KS, 		KS, 	0x19, 	"9"      },
-	{ KS, 		KS, 	0x1d, 	"0"      },
-	{ KS, 		KS, 	0x1b, 	"-"      },
-	{ KS, 		KS, 	0x18, 	"="      },
-	{ KS*2, 	KS, 	0x33, 	"delete" },
-	{ KS/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x72, 	"ins"    },
-	{ KS, 		KS, 	0x73, 	"hom"    },
-	{ KS, 		KS, 	0x74, 	"pgu"    },
-	{ KS/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x47, 	"clr"    },
-	{ KS, 		KS, 	0x51, 	"="      },
-	{ KS, 		KS, 	0x4b, 	"/"      },
-	{ KS, 		KS, 	0x43, 	"*"      },
-	{ 0,  		0,  	0x00, 	nil      },
+	{ KS,         KS,     0x32, "`"      },
+	{ KS,         KS,     0x12, "1"      },
+	{ KS,         KS,     0x13, "2"      },
+	{ KS,         KS,     0x14, "3"      },
+	{ KS,         KS,     0x15, "4"      },
+	{ KS,         KS,     0x17, "5"      },
+	{ KS,         KS,     0x16, "6"      },
+	{ KS,         KS,     0x1a, "7"      },
+	{ KS,         KS,     0x1c, "8"      },
+	{ KS,         KS,     0x19, "9"      },
+	{ KS,         KS,     0x1d, "0"      },
+	{ KS,         KS,     0x1b, "-"      },
+	{ KS,         KS,     0x18, "="      },
+	{ KS * 2,     KS,     0x33, "delete" },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x72, "ins"    },
+	{ KS,         KS,     0x73, "hom"    },
+	{ KS,         KS,     0x74, "pgu"    },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x47, "clr"    },
+	{ KS,         KS,     0x51, "="      },
+	{ KS,         KS,     0x4b, "/"      },
+	{ KS,         KS,     0x43, "*"      },
+	{ 0,          0,      0x00, NULL     },
 
-	{ KS*3/2, 	KS, 	0x30, 	"tab"    },
-	{ KS, 		KS, 	0x0c, 	"Q"      },
-	{ KS, 		KS, 	0x0d, 	"W"      },
-	{ KS, 		KS, 	0x0e, 	"E"      },
-	{ KS, 		KS, 	0x0f, 	"R"      },
-	{ KS, 		KS, 	0x11, 	"T"      },
-	{ KS, 		KS, 	0x10, 	"Y"      },
-	{ KS, 		KS, 	0x20, 	"U"      },
-	{ KS, 		KS, 	0x22, 	"I"      },
-	{ KS, 		KS, 	0x1f, 	"O"      },
-	{ KS, 		KS, 	0x23, 	"P"      },
-	{ KS, 		KS, 	0x21, 	"["      },
-	{ KS, 		KS, 	0x1e, 	"]"      },
-	{ KS*3/2, 	KS, 	0x2a, 	"\\"     },
-	{ KS/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x75, 	"del"    },
-	{ KS, 		KS, 	0x77, 	"end"    },
-	{ KS, 		KS, 	0x79, 	"pgd"    },
-	{ KS/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x59, 	"7"      },
-	{ KS, 		KS, 	0x5b, 	"8"      },
-	{ KS, 		KS, 	0x5c, 	"9"      },
-	{ KS, 		KS, 	0x4e, 	"-"      },
-	{ 0,  		0,  	0x00, 	nil      },
+	{ KS * 3 / 2, KS,     0x30, "tab"    },
+	{ KS,         KS,     0x0c, "Q"      },
+	{ KS,         KS,     0x0d, "W"      },
+	{ KS,         KS,     0x0e, "E"      },
+	{ KS,         KS,     0x0f, "R"      },
+	{ KS,         KS,     0x11, "T"      },
+	{ KS,         KS,     0x10, "Y"      },
+	{ KS,         KS,     0x20, "U"      },
+	{ KS,         KS,     0x22, "I"      },
+	{ KS,         KS,     0x1f, "O"      },
+	{ KS,         KS,     0x23, "P"      },
+	{ KS,         KS,     0x21, "["      },
+	{ KS,         KS,     0x1e, "]"      },
+	{ KS * 3 / 2, KS,     0x2a, "\\"     },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x75, "del"    },
+	{ KS,         KS,     0x77, "end"    },
+	{ KS,         KS,     0x79, "pgd"    },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x59, "7"      },
+	{ KS,         KS,     0x5b, "8"      },
+	{ KS,         KS,     0x5c, "9"      },
+	{ KS,         KS,     0x4e, "-"      },
+	{ 0,          0,      0x00, NULL     },
 
-	{ KS*2, 	KS, 	0x39, 	"caps"   },
-	{ KS, 		KS, 	0x00, 	"A"      },
-	{ KS, 		KS, 	0x01, 	"S"      },
-	{ KS, 		KS, 	0x02, 	"D"      },
-	{ KS, 		KS, 	0x03, 	"F"      },
-	{ KS, 		KS, 	0x05, 	"G"      },
-	{ KS, 		KS, 	0x04, 	"H"      },
-	{ KS, 		KS, 	0x26, 	"J"      },
-	{ KS, 		KS, 	0x28, 	"K"      },
-	{ KS, 		KS, 	0x25, 	"L"      },
-	{ KS, 		KS, 	0x29, 	";"      },
-	{ KS, 		KS, 	0x27, 	"\xd3"   },
-	{ KS*2, 	KS, 	0x24, 	"return" },
-	{ KS*4, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x56, 	"4"      },
-	{ KS, 		KS, 	0x57, 	"5"      },
-	{ KS, 		KS, 	0x58, 	"6"      },
-	{ KS, 		KS, 	0x45, 	"+"      },
-	{ 0,  		0,  	0x00, 	nil      },
+	{ KS * 2,     KS,     0x39, "caps"   },
+	{ KS,         KS,     0x00, "A"      },
+	{ KS,         KS,     0x01, "S"      },
+	{ KS,         KS,     0x02, "D"      },
+	{ KS,         KS,     0x03, "F"      },
+	{ KS,         KS,     0x05, "G"      },
+	{ KS,         KS,     0x04, "H"      },
+	{ KS,         KS,     0x26, "J"      },
+	{ KS,         KS,     0x28, "K"      },
+	{ KS,         KS,     0x25, "L"      },
+	{ KS,         KS,     0x29, ";"      },
+	{ KS,         KS,     0x27, "\xd3"   },
+	{ KS * 2,     KS,     0x24, "return" },
+	{ KS * 4,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x56, "4"      },
+	{ KS,         KS,     0x57, "5"      },
+	{ KS,         KS,     0x58, "6"      },
+	{ KS,         KS,     0x45, "+"      },
+	{ 0,          0,      0x00, NULL     },
 
-	{ KS*5/2, 	KS, 	0x38, 	"shift"  },
-	{ KS, 		KS, 	0x06, 	"Z"      },
-	{ KS, 		KS, 	0x07,	"X"      },
-	{ KS, 		KS, 	0x08, 	"C"      },
-	{ KS, 		KS, 	0x09, 	"V"      },
-	{ KS, 		KS, 	0x0b, 	"B"      },
-	{ KS, 		KS, 	0x2d, 	"N"      },
-	{ KS, 		KS, 	0x2e, 	"M"      },
-	{ KS, 		KS, 	0x2b, 	","      },
-	{ KS, 		KS, 	0x2f, 	"."      },
-	{ KS, 		KS, 	0x2c, 	"/"      },
-	{ KS*5/2, 	KS, 	0x38, 	"shift"  },
-	{ KS*3/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x7e, 	"up"     },
-	{ KS*3/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x53, 	"1"      },
-	{ KS, 		KS, 	0x54, 	"2"      },
-	{ KS, 		KS, 	0x55, 	"3"      },
-	{ KS, 		KS*2, 	0x4c, 	"ent"    },
-	{ 0,  		0,  	0x00, 	nil      },
+	{ KS * 5 / 2, KS,     0x38, "shift"  },
+	{ KS,         KS,     0x06, "Z"      },
+	{ KS,         KS,     0x07, "X"      },
+	{ KS,         KS,     0x08, "C"      },
+	{ KS,         KS,     0x09, "V"      },
+	{ KS,         KS,     0x0b, "B"      },
+	{ KS,         KS,     0x2d, "N"      },
+	{ KS,         KS,     0x2e, "M"      },
+	{ KS,         KS,     0x2b, ","      },
+	{ KS,         KS,     0x2f, "."      },
+	{ KS,         KS,     0x2c, "/"      },
+	{ KS * 5 / 2, KS,     0x38, "shift"  },
+	{ KS * 3 / 2, KS,     0x00, NULL     },
+	{ KS,         KS,     0x7e, "up"     },
+	{ KS * 3 / 2, KS,     0x00, NULL     },
+	{ KS,         KS,     0x53, "1"      },
+	{ KS,         KS,     0x54, "2"      },
+	{ KS,         KS,     0x55, "3"      },
+	{ KS,         KS * 2, 0x4c, "ent"    },
+	{ 0,          0,      0x00, NULL     },
 
-	{ KS*3/2, 	KS, 	0x3b, 	"ctrl"   },
-	{ KS*3/2, 	KS, 	0x3a, 	"opt"    },
-	{ KS*3/2, 	KS, 	0x37, 	"cmd"    },
-	{ KS*6, 	KS, 	0x31, 	"   "    },
-	{ KS*3/2, 	KS, 	0x37, 	"cmd"    },
-	{ KS*3/2, 	KS, 	0x3a, 	"opt"    },
-	{ KS*3/2, 	KS, 	0x3b, 	"ctrl"   },
-	{ KS/2, 	KS, 	0x00, 	nil      },
-	{ KS, 		KS, 	0x7b, 	"lt"     },
-	{ KS, 		KS, 	0x7d, 	"dn"     },
-	{ KS, 		KS, 	0x7c, 	"rt"     },
-	{ KS/2, 	KS, 	0x00, 	nil      },
-	{ KS*2, 	KS, 	0x52, 	"0"      },
-	{ KS, 		KS, 	0x41, 	"."      },
-	{ 0,  		0,  	0x00, 	nil      },
+	{ KS * 3 / 2, KS,     0x3b, "ctrl"   },
+	{ KS * 3 / 2, KS,     0x3a, "opt"    },
+	{ KS * 3 / 2, KS,     0x37, "cmd"    },
+	{ KS * 6,     KS,     0x31, "   "    },
+	{ KS * 3 / 2, KS,     0x37, "cmd"    },
+	{ KS * 3 / 2, KS,     0x3a, "opt"    },
+	{ KS * 3 / 2, KS,     0x3b, "ctrl"   },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS,         KS,     0x7b, "lt"     },
+	{ KS,         KS,     0x7d, "dn"     },
+	{ KS,         KS,     0x7c, "rt"     },
+	{ KS / 2,     KS,     0x00, NULL     },
+	{ KS * 2,     KS,     0x52, "0"      },
+	{ KS,         KS,     0x41, "."      },
+	{ 0,          0,      0x00, NULL     }
 };
 
-void ConfigureKeyboard(void)
+static void CreateIconTableImage (void);
+static void ReleaseIconTableImage (void);
+static void CreateKeyLayoutImage (void);
+static void ReleaseKeyLayoutImage (void);
+static void CreateIconPlaceImage (void);
+static void UpdateIconPlaceImage (void);
+static void ReleaseIconPlaceImage (void);
+static void DrawPlacedIcon (CGContextRef, int);
+static void DrawDraggedIcon (CGContextRef, int, CGPoint *);
+static Boolean KeyCodeInUse (int);
+static int FindHitKey (HIPoint, CGRect *, CGPoint *);
+static pascal OSStatus KeyWindowEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus KeyLegendEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus KeyLayoutEventHandler (EventHandlerCallRef, EventRef, void *);
+
+#define	kCustomLayoutViewClassID	CFSTR("com.snes9x.macos.snes9x.keylayout")
+
+
+void ConfigureKeyboard (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -475,8 +472,8 @@ void ConfigureKeyboard(void)
 		err = CreateWindowFromNib(nibRef, CFSTR("Keyboard"), &tWindowRef);
 		if (err == noErr)
 		{
-			EventHandlerRef	wref;
-			EventHandlerUPP	wUPP;
+			EventHandlerRef	wref, iref1, iref2;
+			EventHandlerUPP	wUPP, iUPP;
 			EventTypeSpec	wEvents[] = { { kEventClassWindow,   kEventWindowClose         },
 										  { kEventClassCommand,  kEventCommandProcess      },
 										  { kEventClassCommand,  kEventCommandUpdateStatus } },
@@ -485,9 +482,11 @@ void ConfigureKeyboard(void)
 										  { kEventClassHIObject, kEventHIObjectInitialize  },
 										  { kEventClassControl,  kEventControlDraw         },
 										  { kEventClassControl,  kEventControlHitTest      },
-										  { kEventClassControl,  kEventControlTrack        } };
+										  { kEventClassControl,  kEventControlTrack        } },
+							iEvents[] = { { kEventClassControl,  kEventControlDraw         } };
 			HIObjectRef		hiObject;
-			HIViewRef		contentView;
+			HIViewRef		contentView, image1, image2;
+			HIViewID		cid;
 			HIRect			frame;
 			Rect			winBounds;
 
@@ -500,12 +499,12 @@ void ConfigureKeyboard(void)
 			mousePos = CGPointMake(0.0, 0.0);
 
 			err = noErr;
-			if (theClass == nil)
-				err = HIObjectRegisterSubclass(kCustomLayoutViewClassID, kHIViewClassID, 0, KeyLayoutEventHandler, GetEventTypeCount(cEvents), cEvents, nil, &theClass);
+			if (theClass == NULL)
+				err = HIObjectRegisterSubclass(kCustomLayoutViewClassID, kHIViewClassID, 0, KeyLayoutEventHandler, GetEventTypeCount(cEvents), cEvents, NULL, &theClass);
 
 			if (err == noErr)
 			{
-				err = HIObjectCreate(kCustomLayoutViewClassID, nil, &hiObject);
+				err = HIObjectCreate(kCustomLayoutViewClassID, NULL, &hiObject);
 				if (err == noErr)
 				{
 					GetWindowBounds(tWindowRef, kWindowContentRgn, &winBounds);
@@ -525,6 +524,15 @@ void ConfigureKeyboard(void)
 					HIViewSetFrame(customView, &frame);
 					HIViewSetVisible(customView, true);
 
+					cid.signature = 'Lgnd';
+					cid.id = 0;
+					HIViewFindByID(contentView, cid, &image1);
+					cid.id = 1;
+					HIViewFindByID(contentView, cid, &image2);
+					iUPP = NewEventHandlerUPP(KeyLegendEventHandler);
+					err = InstallControlEventHandler(image1, iUPP, GetEventTypeCount(iEvents), iEvents, (void *) image1, &iref1);
+					err = InstallControlEventHandler(image2, iUPP, GetEventTypeCount(iEvents), iEvents, (void *) image2, &iref2);
+
 					wUPP = NewEventHandlerUPP(KeyWindowEventHandler);
 					err = InstallWindowEventHandler(tWindowRef, wUPP, GetEventTypeCount(wEvents), wEvents, (void *) tWindowRef, &wref);
 
@@ -534,131 +542,102 @@ void ConfigureKeyboard(void)
 					HideWindow(tWindowRef);
 					SaveWindowPosition(tWindowRef, kWindowKeyConfig);
 
+					err = RemoveEventHandler(iref2);
+					err = RemoveEventHandler(iref1);
+					DisposeEventHandlerUPP(iUPP);
+
 					err = RemoveEventHandler(wref);
 					DisposeEventHandlerUPP(wUPP);
 				}
 			}
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 		}
 
 		DisposeNibReference(nibRef);
 	}
 }
 
-static void CreateIconTableImage(void)
+static void CreateIconTableImage (void)
 {
-	if (systemVersion >= 0x1030)
+	CGContextRef		ctx;
+	CGDataProviderRef	prov;
+	CGColorSpaceRef		color;
+	CGRect				rct;
+
+	rct = CGRectMake(0.0, 0.0, (float) kIconSize, (float) kIconSize);
+
+	iconTableCGWld = (Ptr) malloc(kIconSize * kKeys * (kIconSize + 1) * 4);
+	if (!iconTableCGWld)
+		QuitWithFatalError(0, "keyboard 08");
+
+	ctx = NULL;
+
+	color = CGColorSpaceCreateDeviceRGB();
+	if (color)
 	{
-		OSStatus			err;
-		CGContextRef		ctx;
-		CGDataProviderRef	prov;
-		CGColorSpaceRef		color;
-		CGRect				rct;
+		ctx = CGBitmapContextCreate(iconTableCGWld, kIconSize * kKeys, kIconSize, 8, kIconSize * kKeys * 4, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0));
+		CGColorSpaceRelease(color);
+	}
 
-		rct = CGRectMake(0.0, 0.0, (float) kIconSize, (float) kIconSize);
+	if (!ctx)
+		QuitWithFatalError(0, "keyboard 09");
 
-		iconTableCGWld = (Ptr) malloc(kIconSize * kKeys * (kIconSize + 1) * 4);
-		if (!iconTableCGWld)
-			QuitWithFatalError(0, "keyboard 08");
+	CGContextTranslateCTM(ctx, 0.0, (float) kIconSize);
+	CGContextScaleCTM(ctx, 1.0, -1.0);
 
-		ctx = nil;
+	// SNES pads
+	for (int i = macPadIconIndex; i < macPadIconIndex + 12 * 2; i++)
+	{
+		if (systemVersion >= 0x1040)
+			CGContextDrawImage(ctx, rct, macIconImage[i]);
+	#ifdef MAC_PANTHER_SUPPORT
+		else
+			PlotIconRefInContext(ctx, &rct, kAlignNone, kTransformNone, NULL, kPlotIconRefNormalFlags, macIconRef[i]);
+	#endif
+		rct = CGRectOffset(rct, kIconSize, 0);
+	}
 
+	// Function buttons
+	for (int i = macFunctionIconIndex; i < macFunctionIconIndex + 17; i++)
+	{
+		if (systemVersion >= 0x1040)
+			CGContextDrawImage(ctx, rct, macIconImage[i]);
+	#ifdef MAC_PANTHER_SUPPORT
+		else
+			PlotIconRefInContext(ctx, &rct, kAlignNone, kTransformNone, NULL, kPlotIconRefNormalFlags, macIconRef[i]);
+	#endif
+		rct = CGRectOffset(rct, kIconSize, 0);
+	}
+
+	CGContextRelease(ctx);
+
+	iconTableImage = NULL;
+
+	prov = CGDataProviderCreateWithData(NULL, iconTableCGWld, kIconSize * kKeys * kIconSize * 4, NULL);
+	if (prov)
+	{
 		color = CGColorSpaceCreateDeviceRGB();
 		if (color)
 		{
-			ctx = CGBitmapContextCreate(iconTableCGWld, kIconSize * kKeys, kIconSize, 8, kIconSize * kKeys * 4, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0));
+			iconTableImage = CGImageCreate(kIconSize * kKeys, kIconSize, 8, 32, kIconSize * kKeys * 4, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0), prov, NULL, 0, kCGRenderingIntentDefault);
 			CGColorSpaceRelease(color);
 		}
 
-		if (!ctx)
-			QuitWithFatalError(0, "keyboard 09");
-
-		CGContextTranslateCTM(ctx, 0.0, (float) kIconSize);
-		CGContextScaleCTM(ctx, 1.0, -1.0);
-
-		for (int i = 0; i < kKeys; i++)
-		{
-			IconSuiteRef		iSuite;
-			IconFamilyHandle	iFamily;
-			IconRef				iRef;
-
-			err = GetIconSuite(&iSuite, 800 + i, kSelectorSmall8Bit | kSelectorSmall1Bit);
-			err = IconSuiteToIconFamily(iSuite, kSelectorSmall8Bit | kSelectorSmall1Bit, &iFamily);
-			HLock((Handle) iFamily);
-			err = GetIconRefFromIconFamilyPtr(*iFamily, GetHandleSize((Handle) iFamily), &iRef);
-			HUnlock((Handle) iFamily);
-			err = PlotIconRefInContext(ctx, &rct, kAlignAbsoluteCenter, kTransformNone, nil, kPlotIconRefNormalFlags, iRef);
-			err = ReleaseIconRef(iRef);
-			DisposeHandle((Handle) iFamily);
-			DisposeIconSuite(iSuite, true);
-
-			rct = CGRectOffset(rct, kIconSize, 0);
-		}
-
-		CGContextRelease(ctx);
-
-		iconTableImage = nil;
-
-		prov = CGDataProviderCreateWithData(nil, iconTableCGWld, kIconSize * kKeys * kIconSize * 4, nil);
-		if (prov)
-		{
-			color = CGColorSpaceCreateDeviceRGB();
-			if (color)
-			{
-				iconTableImage = CGImageCreate(kIconSize * kKeys, kIconSize, 8, 32, kIconSize * kKeys * 4, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0), prov, nil, 0, kCGRenderingIntentDefault);
-				CGColorSpaceRelease(color);
-			}
-
-			CGDataProviderRelease(prov);
-		}
-
-		if (!iconTableImage)
-			QuitWithFatalError(0, "keyboard 10");
+		CGDataProviderRelease(prov);
 	}
-#ifdef MAC_JAGUAR_SUPPORT
-	else
-	{
-		Rect	bounds, icnrct;
 
-		SetRect(&icnrct, 0, 0, kIconSize, kIconSize);
-		SetRect(&bounds, 0, 0, kIconSize * kKeys, kIconSize + 1);
-
-		InitGWorld(&iconTableWorld, &bounds, 32);
-		PrepareForGDrawing(iconTableWorld);
-
-		for (int i = 0; i < kKeys; i++)
-		{
-			IconSuiteRef	icon;
-
-			GetIconSuite(&icon, 800 + i, kSelectorSmall8Bit | kSelectorSmall1Bit);
-			PlotIconSuite(&icnrct, kAlignAbsoluteCenter, kTransformNone, icon);
-			DisposeIconSuite(icon, true);
-
-			OffsetRect(&icnrct, kIconSize, 0);
-		}
-
-		FinishGDrawing(iconTableWorld);
-
-		iconTableImage = CreateCGImageFromGWorld(iconTableWorld);
-		if (!iconTableImage)
-			QuitWithFatalError(0, "keyboard 01");
-	}
-#endif
+	if (!iconTableImage)
+		QuitWithFatalError(0, "keyboard 10");
 }
 
-static void ReleaseIconTableImage(void)
+static void ReleaseIconTableImage (void)
 {
 	CGImageRelease(iconTableImage);
-	if (systemVersion >= 0x1030)
-		free(iconTableCGWld);
-#ifdef MAC_JAGUAR_SUPPORT
-	else
-		DisposeGWorld(iconTableWorld);
-#endif
+	free(iconTableCGWld);
 }
 
-static void CreateKeyLayoutImage(void)
+static void CreateKeyLayoutImage (void)
 {
 	CGContextRef		ctx;
 	CGDataProviderRef	prov;
@@ -675,7 +654,7 @@ static void CreateKeyLayoutImage(void)
 	if (!keyLayoutWorld)
 		QuitWithFatalError(0, "keyboard 02");
 
-	ctx = nil;
+	ctx = NULL;
 
 	color = CGColorSpaceCreateDeviceRGB();
 	if (color)
@@ -726,11 +705,11 @@ static void CreateKeyLayoutImage(void)
 				CGContextSetRGBStrokeColor(ctx, 0.1, 0.1, 0.1, 1.0);
 				CGContextStrokeRect(ctx, r);
 
-				float	h, f, p;
+				float	h, p;
 
 				CGRectInset(r, 2.0, 2.0);
 				h = r.size.height;
-				for (f = h; f >= 1.0; f -= 1.0)
+				for (float f = h; f >= 1.0; f -= 1.0)
 				{
 					p = (155.0 + (h - f)) / 180.0;
 					CGContextSetRGBFillColor(ctx, p, p, p, 1.0);
@@ -753,15 +732,15 @@ static void CreateKeyLayoutImage(void)
 
 	CGContextRelease(ctx);
 
-	keyLayoutImage = nil;
+	keyLayoutImage = NULL;
 
-	prov = CGDataProviderCreateWithData(nil, keyLayoutWorld, kKeyLayoutWidth * kKeyLayoutHeight * 4, nil);
+	prov = CGDataProviderCreateWithData(NULL, keyLayoutWorld, kKeyLayoutWidth * kKeyLayoutHeight * 4, NULL);
 	if (prov)
 	{
 		color = CGColorSpaceCreateDeviceRGB();
 		if (color)
 		{
-			keyLayoutImage = CGImageCreate(kKeyLayoutWidth, kKeyLayoutHeight, 8, 32, kKeyLayoutWidth * 4, color, kCGImageAlphaPremultipliedFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0), prov, nil, 0, kCGRenderingIntentDefault);
+			keyLayoutImage = CGImageCreate(kKeyLayoutWidth, kKeyLayoutHeight, 8, 32, kKeyLayoutWidth * 4, color, kCGImageAlphaPremultipliedFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0), prov, NULL, 0, kCGRenderingIntentDefault);
 			CGColorSpaceRelease(color);
 		}
 
@@ -772,24 +751,24 @@ static void CreateKeyLayoutImage(void)
 		QuitWithFatalError(0, "keyboard 05");
 }
 
-static void ReleaseKeyLayoutImage(void)
+static void ReleaseKeyLayoutImage (void)
 {
 	CGImageRelease(keyLayoutImage);
 	free(keyLayoutWorld);
 }
 
-static void CreateIconPlaceImage(void)
+static void CreateIconPlaceImage (void)
 {
 	iconPlaceWorld = (Ptr) malloc(kKeyLayoutWidth * (kKeyLayoutHeight + 1) * 4);
 	if (!iconPlaceWorld)
 		QuitWithFatalError(0, "keyboard 06");
 
-	iconPlaceImage = nil;
+	iconPlaceImage = NULL;
 
 	UpdateIconPlaceImage();
 }
 
-static void UpdateIconPlaceImage(void)
+static void UpdateIconPlaceImage (void)
 {
 	CGContextRef		ctx;
 	CGDataProviderRef	prov;
@@ -799,7 +778,7 @@ static void UpdateIconPlaceImage(void)
 	if (iconPlaceImage)
 		CGImageRelease(iconPlaceImage);
 
-	iconPlaceImage = nil;
+	iconPlaceImage = NULL;
 
 	color = CGColorSpaceCreateDeviceRGB();
 	if (color)
@@ -816,10 +795,10 @@ static void UpdateIconPlaceImage(void)
 			CGContextRelease(ctx);
 		}
 
-		prov = CGDataProviderCreateWithData(nil, iconPlaceWorld, kKeyLayoutWidth * kKeyLayoutHeight * 4, nil);
+		prov = CGDataProviderCreateWithData(NULL, iconPlaceWorld, kKeyLayoutWidth * kKeyLayoutHeight * 4, NULL);
 		if (prov)
 		{
-			iconPlaceImage = CGImageCreate(kKeyLayoutWidth, kKeyLayoutHeight, 8, 32, kKeyLayoutWidth * 4, color, kCGImageAlphaPremultipliedFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0), prov, nil, 0, kCGRenderingIntentDefault);
+			iconPlaceImage = CGImageCreate(kKeyLayoutWidth, kKeyLayoutHeight, 8, 32, kKeyLayoutWidth * 4, color, kCGImageAlphaPremultipliedFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0), prov, NULL, 0, kCGRenderingIntentDefault);
 			CGDataProviderRelease(prov);
 		}
 
@@ -830,15 +809,15 @@ static void UpdateIconPlaceImage(void)
 		QuitWithFatalError(0, "keyboard 07");
 }
 
-static void ReleaseIconPlaceImage(void)
+static void ReleaseIconPlaceImage (void)
 {
 	CGImageRelease(iconPlaceImage);
 	free(iconPlaceWorld);
 }
 
-void InitKeyboard(void)
+void InitKeyboard (void)
 {
-	theClass = nil;
+	theClass = NULL;
 
 	memcpy(defaultKeys, keyCode, sizeof(keyCode));
 
@@ -847,14 +826,14 @@ void InitKeyboard(void)
 	CreateIconPlaceImage();
 }
 
-void DeinitKeyboard(void)
+void DeinitKeyboard (void)
 {
 	ReleaseIconPlaceImage();
 	ReleaseKeyLayoutImage();
 	ReleaseIconTableImage();
 }
 
-static void DrawPlacedIcon(CGContextRef ctx, int which)
+static void DrawPlacedIcon (CGContextRef ctx, int which)
 {
 	CGRect	keyBounds, srcRect, dstRect;
 
@@ -897,7 +876,7 @@ static void DrawPlacedIcon(CGContextRef ctx, int which)
 	CGContextRestoreGState(ctx);
 }
 
-static void DrawDraggedIcon(CGContextRef ctx, int which, CGPoint *offset)
+static void DrawDraggedIcon (CGContextRef ctx, int which, CGPoint *offset)
 {
 	CGRect	srcRect, dstRect;
 
@@ -919,16 +898,16 @@ static void DrawDraggedIcon(CGContextRef ctx, int which, CGPoint *offset)
 	CGContextRestoreGState(ctx);
 }
 
-static Boolean KeyCodeInUse(int code)
+static Boolean KeyCodeInUse (int code)
 {
 	for (int i = 0; i < kKeys; i++)
 		if (keyCode[i] == code)
-			return true;
+			return (true);
 
-	return false;
+	return (false);
 }
 
-static int FindHitKey(HIPoint where, CGRect *keybounds, CGPoint *offset)
+static int FindHitKey (HIPoint where, CGRect *keybounds, CGPoint *offset)
 {
 	int	hit;
 
@@ -951,13 +930,11 @@ static int FindHitKey(HIPoint where, CGRect *keybounds, CGPoint *offset)
 		}
 	}
 
-	return hit;
+	return (hit);
 }
 
-static pascal OSStatus KeyWindowEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus KeyWindowEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) inUserData;
 
@@ -979,7 +956,7 @@ static pascal OSStatus KeyWindowEventHandler(EventHandlerCallRef inHandlerRef, E
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -989,7 +966,7 @@ static pascal OSStatus KeyWindowEventHandler(EventHandlerCallRef inHandlerRef, E
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						if (tHICommand.commandID == 'DFLT')
@@ -1003,10 +980,43 @@ static pascal OSStatus KeyWindowEventHandler(EventHandlerCallRef inHandlerRef, E
 			}
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal OSStatus KeyLayoutEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus KeyLegendEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+{
+    OSStatus	err, result = eventNotHandledErr;
+	HIViewRef	view = (HIViewRef) inUserData;
+
+	switch (GetEventClass(inEvent))
+	{
+		case kEventClassControl:
+			switch (GetEventKind(inEvent))
+			{
+				case kEventControlDraw:
+					CGContextRef	ctx;
+
+					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, NULL, sizeof(CGContextRef), NULL, &ctx);
+					if (err == noErr)
+					{
+						HIViewID	cid;
+						HIRect		bounds;
+
+						GetControlID(view, &cid);
+						HIViewGetBounds(view, &bounds);
+						CGContextTranslateCTM(ctx, 0, bounds.size.height);
+						CGContextScaleCTM(ctx, 1.0, -1.0);
+						CGContextDrawImage(ctx, CGRectMake(0, 0, kIconSize, kIconSize), macIconImage[macLegendIconIndex + cid.id]);
+
+						result = noErr;
+					}
+			}
+	}
+
+	return (result);
+}
+
+static pascal OSStatus KeyLayoutEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
 	OSStatus		err, result = eventNotHandledErr;
 	CustomViewData	*data = (CustomViewData *) inUserData;
@@ -1022,7 +1032,7 @@ static pascal OSStatus KeyLayoutEventHandler(EventHandlerCallRef inHandlerRef, E
 					{
 						HIViewRef	epView;
 
-						err = GetEventParameter(inEvent, kEventParamHIObjectInstance, typeHIObjectRef, nil, sizeof(epView), nil, &epView);
+						err = GetEventParameter(inEvent, kEventParamHIObjectInstance, typeHIObjectRef, NULL, sizeof(epView), NULL, &epView);
 						if (err == noErr)
 						{
 							data->view = epView;
@@ -1051,7 +1061,7 @@ static pascal OSStatus KeyLayoutEventHandler(EventHandlerCallRef inHandlerRef, E
 				case kEventControlDraw:
 					CGContextRef	ctx;
 
-					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, nil, sizeof(ctx), nil, &ctx);
+					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, NULL, sizeof(ctx), NULL, &ctx);
 					if (err == noErr)
 					{
 						HIRect	bounds, srcRect, dstRect;
@@ -1083,11 +1093,8 @@ static pascal OSStatus KeyLayoutEventHandler(EventHandlerCallRef inHandlerRef, E
       			case kEventControlTrack:
                     MouseTrackingResult	trackResult;
 					WindowRef			window;
-					CGrafPtr			oldPort;
 					HIViewRef			contentView;
 					HIPoint				hipt;
-					Point				qdpt;
-					Boolean				portChanged;
 
  					dragKey = -1;
 					dragKeyOfs = CGPointMake(0.0, 0.0);
@@ -1098,9 +1105,16 @@ static pascal OSStatus KeyLayoutEventHandler(EventHandlerCallRef inHandlerRef, E
 					window = GetControlOwner(customView);
 					HIViewFindByID(HIViewGetRoot(window), kHIViewWindowContentID, &contentView);
 
-					portChanged = QDSwapPort(GetWindowPort(window), &oldPort);
+				#ifdef MAC_TIGER_PANTHER_SUPPORT
+					CGrafPtr	oldPort;
+					Point		qdpt;
+					Boolean		portChanged = false;
 
-					err = GetEventParameter(inEvent, kEventParamMouseLocation, typeHIPoint, nil, sizeof(hipt), nil, &hipt);
+					if (systemVersion < 0x1050)
+						portChanged = QDSwapPort(GetWindowPort(window), &oldPort);
+				#endif
+
+					err = GetEventParameter(inEvent, kEventParamMouseLocation, typeHIPoint, NULL, sizeof(hipt), NULL, &hipt);
 					if (err == noErr)
 					{
 						hipt.x -= ofsx;
@@ -1112,18 +1126,28 @@ static pascal OSStatus KeyLayoutEventHandler(EventHandlerCallRef inHandlerRef, E
 							keyInDrag = true;
 
 							while (trackResult != kMouseTrackingMouseUp)
-	                        {
-	                            if (CGPointEqualToPoint(mousePos, hipt) == 0)
+							{
+								if (CGPointEqualToPoint(mousePos, hipt) == 0)
 								{
 									mousePos = hipt;
 									HIViewSetNeedsDisplay(customView, true);
-	                            }
+								}
 
-								TrackMouseLocation(nil, &qdpt, &trackResult);
-
-								hipt.x = qdpt.h - ofsx;
-								hipt.y = qdpt.v - ofsy;
-	        					HIViewConvertPoint(&hipt, contentView, customView);
+								if (systemVersion >= 0x1050)
+								{
+									err = HIViewTrackMouseLocation(customView, 0, kEventDurationForever, 0, NULL, &hipt, NULL, NULL, &trackResult);
+									hipt.x -= ofsx;
+									hipt.y -= ofsy;
+								}
+							#ifdef MAC_TIGER_PANTHER_SUPPORT
+								else
+								{
+									TrackMouseLocation(NULL, &qdpt, &trackResult);
+									hipt.x = qdpt.h - ofsx;
+									hipt.y = qdpt.v - ofsy;
+									HIViewConvertPoint(&hipt, contentView, customView);
+								}
+							#endif
 							}
 
 							keyInDrag = false;
@@ -1147,12 +1171,17 @@ static pascal OSStatus KeyLayoutEventHandler(EventHandlerCallRef inHandlerRef, E
 						}
 					}
 
-					if (portChanged)
-						QDSwapPort(oldPort, nil);
+				#ifdef MAC_TIGER_PANTHER_SUPPORT
+					if (systemVersion < 0x1050)
+					{
+						if (portChanged)
+							QDSwapPort(oldPort, NULL);
+					}
+				#endif
 
 					result = noErr;
 			}
 	}
 
-	return result;
+	return (result);
 }

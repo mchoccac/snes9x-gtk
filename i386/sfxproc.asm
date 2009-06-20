@@ -15,7 +15,7 @@
 ;along with this program; if not, write to the Free Software
 ;Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-%include "i386/macros.mac"
+%include "macros.mac"
 
 EXTSYM NumberOfOpcodes,SfxB,SfxBRAMR,SfxCBR,SfxCFGR,SfxCLSR,SfxCPB,SfxCROM
 EXTSYM SfxCarry,SfxMemTable,SfxOverflow,SfxPBR,SfxPIPE,SfxR0,SfxR1,SfxR10
@@ -27,8 +27,8 @@ EXTSYM sfx128lineloc,sfx160lineloc,sfx192lineloc,sfxobjlineloc
 
 NEWSYM SfxProcAsmStart
 
-%include "i386/regs.mac"
-%include "i386/regsw.mac"
+%include "regs.mac"
+%include "regsw.mac"
 
 
 

@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,135 +171,22 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "gfx.h"
-#include "spc7110.h"
 
+#include <OpenGL/OpenGL.h>
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
 #include "mac-prefix.h"
 #include "mac-audio.h"
+#include "mac-coreimage.h"
 #include "mac-dialog.h"
 #include "mac-keyboard.h"
 #include "mac-os.h"
 #include "mac-snes9x.h"
 #include "mac-stringtools.h"
 #include "mac-prefs.h"
-
-#ifdef MAC_COREIMAGE_SUPPORT
-#include <OpenGL/OpenGL.h>
-#include "mac-coreimage.h"
-#endif
-
-static void SelectTabPane(HIViewRef, SInt16);
-static pascal void LittleArrowsActionProc(HIViewRef, HIViewPartCode);
-static pascal OSStatus TabEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef, EventRef, void *);
-
-static int	lastTabIndex = 1;
-static int	tabList[]    = { 5, 129, 130, 131, 132, 133 };
-
-struct PrefList
-{
-	long	itemName;
-	void	*itemPointer;
-	short	size;
-};
-
-static PrefList	prefList[] =
-{
-	{ 'flsc', &fullscreen,									sizeof(bool8      ) },
-	{ 'reso', &autoRes,										sizeof(bool8      ) },
-	{ 'dfps', &Settings.DisplayFrameRate,					sizeof(bool8      ) },
-	{ 'tran', &Settings.Transparency,						sizeof(bool8      ) },
-	{ 'gl32', &gl32bit,										sizeof(bool8      ) },
-	{ 'glst', &glstretch,									sizeof(bool8      ) },
-	{ 'draw', &drawingMethod,								sizeof(long       ) },
-	{ '2xgr', &doubleSize,									sizeof(bool8      ) },
-	{ 't.v.', &tvMode,										sizeof(bool8      ) },
-	{ 'fltr', &smoothMode,									sizeof(bool8      ) },
-	{ 'eagl', &eagleMode,									sizeof(bool8      ) },
-	{ 'sai ', &saiMode,										sizeof(bool8      ) },
-	{ 'sSai', &supsaiMode,									sizeof(bool8      ) },
-	{ 'epx_', &epxMode,										sizeof(bool8      ) },
-	{ 'hq2x', &hq2xMode,									sizeof(bool8      ) },
-	{ 'hq3x', &hq3xMode,									sizeof(bool8      ) },
-	{ 'hq4x', &hq4xMode,									sizeof(bool8      ) },
-	{ 'MPmt', &multiprocessor,								sizeof(bool8      ) },
-	{ 'VSNC', &vsync,										sizeof(bool8      ) },
-	{ 'H239', &drawoverscan,								sizeof(bool8      ) },
-	{ 'SCur', &screencurvature,								sizeof(bool8      ) },
-	{ 'SCuW', &macCurvatureWarp,							sizeof(int        ) },
-	{ 'ASPe', &macAspectRatio,								sizeof(int        ) },
-	{ 'CIFl', &ciFilterEnable,							    sizeof(bool8      ) },
-
-	{ 'audi', &Settings.APUEnabled,							sizeof(bool8      ) },
-	{ 'so16', &Settings.SixteenBitSound,					sizeof(bool8      ) },
-	{ 'ster', &Settings.Stereo,								sizeof(bool8      ) },
-	{ 'rbst', &Settings.ReverseStereo,						sizeof(bool8      ) },
-	{ 'sint', &Settings.InterpolatedSound,					sizeof(bool8      ) },
-	{ 'ehgt', &Settings.SoundEnvelopeHeightReading,			sizeof(bool8      ) },
-	{ 'echo', &Settings.DisableSoundEcho,					sizeof(bool8      ) },
-	{ 'mstv', &Settings.DisableMasterVolume,				sizeof(bool8      ) },
-	{ 'srat', &Settings.SoundPlaybackRate,					sizeof(uint32     ) },
-	{ 'deco', &Settings.AltSampleDecode,					sizeof(uint8      ) },
-	{ 'pich', &macSoundPitch,								sizeof(float      ) },
-	{ 'Volm', &macSoundVolume,								sizeof(SInt32     ) },
-	{ 'TMiv', &macSoundInterval,							sizeof(int        ) },
-	{ 'AUef', &aueffect,									sizeof(uint16     ) },
-	{ 'AUce', &cureffect,									sizeof(int        ) },
-
-	{ 'romf', &saveInROMFolder,								sizeof(uint8      ) },
-	{ 'atsv', &Settings.AutoSaveDelay,						sizeof(int32      ) },
-	{ '7110', &mac7110Load,									sizeof(int        ) },
-	{ '711M', &mac7110Megs,									sizeof(int        ) },
-	{ 'SD1P', &macSDD1Pack,									sizeof(int        ) },
-	{ 'RFlg', &macRecordFlag,								sizeof(uint16     ) },
-	{ 'PFlg', &macPlayFlag,									sizeof(uint16     ) },
-	{ 'QTfg', &macQTMovFlag,								sizeof(uint16     ) },
-
-	{ 'HHck', &Settings.HDMATimingHack,					    sizeof(int32      ) },
-	{ 'stdm', &Settings.ShutdownMaster,						sizeof(bool8      ) },
-	{ 'TbRt', &macFastForwardRate,							sizeof(int        ) },
-	{ 'FSkp', &macFrameSkip,							    sizeof(int        ) },
-	{ 'IvVR', &Settings.BlockInvalidVRAMAccess,             sizeof(bool8      ) },
-
-	{ 'StOp', &startopendlog,								sizeof(bool8      ) },
-	{ 'STiF', &showtimeinfrz,								sizeof(bool8      ) },
-	{ 'Togl', &enabletoggle,								sizeof(bool8      ) },
-	{ 'SvWp', &savewindowpos,								sizeof(bool8      ) },
-	{ 'OnSc', &onscreeninfo,								sizeof(bool8      ) },
-	{ 'NIPS', &Settings.NoPatch,							sizeof(bool8      ) },
-	{ 'BSX_', &Settings.BSXBootup,							sizeof(bool8      ) },
-	{ 'MzCP', &minimizecpu,									sizeof(bool8      ) },
-	{ 'MbxM', &musicboxmode,								sizeof(int        ) },
-	{ 'InAc', &inactiveMode,								sizeof(int        ) },
-
-	{ 'tab ', &lastTabIndex,								sizeof(int        ) },
-	{ 'Ftab', &autofireLastTabIndex,						sizeof(int        ) },
-	{ 'keyb', keyCode,										sizeof(keyCode    ) },
-	{ 'pset', &padSetting,									sizeof(int        ) },
-	{ 'dset', &deviceSetting,								sizeof(int        ) },
-	{ 'chea', &applycheat,									sizeof(bool8      ) },
-
-	{ 'ARec', autofireRec,									sizeof(autofireRec) },
-	{ 'WPos', windowPos,									sizeof(windowPos  ) },
-	{ 'WSiz', windowSize,									sizeof(windowSize ) },
-	{ 'WExt', (void *) &windowExtend,						sizeof(bool8      ) },
-
-	{ 'NPIP', npServerIP,									sizeof(npServerIP ) },
-	{ 'NPNM', npName,										sizeof(npName     ) },
-
-	{ 'L239', &lastoverscan,								sizeof(bool8      ) },
-
-	{ 'ExT1', &(extraOptions.benchmark),					sizeof(bool8      ) },
-	{ 'ExT2', &(extraOptions.glForceNoTextureRectangle),	sizeof(bool8      ) },
-	{ 'ExT3', &(extraOptions.glUseClientStrageApple),		sizeof(bool8      ) },
-	{ 'ExT4', &(extraOptions.glUseTexturePriority),			sizeof(bool8      ) },
-	{ 'ExT5', &(extraOptions.glStorageHint),				sizeof(int        ) }
-};
-
-#define	kPrefListSize	(sizeof(prefList) / sizeof(prefList[0]))
 
 enum
 {
@@ -331,22 +216,22 @@ enum
 	iNibSHeightReading,
 	iNibSEcho,
 	iNibSReserved1,	// unused
-	iNibSMasterVolume,
+	iNibSReserved4, // unused
 	iNibSPlaybackRate,
-	iNibSSampleDecoder,
+	iNibSReserved5, // unused
 	iNibSReserved2,	// unused
 	iNibSReserved3,	// unused
 	iNibSPitch,
 	iNibSVolume,
-	iNibSMixInterval,
+	iNibSReserved6,	// unused
 
 	iNibOSaveFolder = 401,
 	iNibOReserved1,	// unused
 	iNibOReserved2,	// unused
 	iNibOAutoSaveInterval,
-	iNibOSPC7110Pack,
-	iNibOSPC7110Megs,
-	iNibOSDD1Pack,
+	iNibOReserved3,	// unused
+	iNibOReserved4,	// unused
+	iNibOReserved5,	// unused
 
 	iNibMCPUCycles = 601,
 	iNibMShutdownMaster,
@@ -363,20 +248,14 @@ enum
 	iNibXSaveWindowPos,
 	iNibXUseIPSPatch,
 	iNibXOnScreenInfo,
-	iNibXMinimizeCPUUsage,
+	iNibXReserved2,	// unused
 	iNibXInactiveMode,
-	iNibXBSXBootup,
+	iNibXBSXBootup
+};
 
-	iDirectSmall = 1,
-	iDirectBlocky,
-	iDirectTVMode,
-	iDirectSmoothMode,
-	iDirectEAGLEMode,
-	iDirect2xSAIMode,
-	iDirectSuper2xSAIMode,
-	iDirectEPXMode,
-	iDirectHQ2xMode,
-	iOpenGLBlocky = 11,
+enum
+{
+	iOpenGLBlocky = 1,
 	iOpenGLTVMode,
 	iOpenGLSmoothMode,
 	iOpenGLEagleMode,
@@ -385,11 +264,97 @@ enum
 	iOpenGLEPXMode,
 	iOpenGLHQ2xMode,
 	iOpenGLHQ3xMode,
-	iOpenGLHQ4xMode,
-
-	iBufferSmall = 1,
-	iBufferLarge = 2
+	iOpenGLHQ4xMode
 };
+
+static int	lastTabIndex = 1;
+static int	tabList[]    = { 5, 129, 130, 131, 132, 133 };
+
+struct PrefList
+{
+	OSType	itemName;
+	void	*itemPointer;
+	int		size;
+};
+
+static PrefList	prefList[] =
+{
+	{ 'flsc', &fullscreen,									sizeof(bool8      ) },
+	{ 'reso', &autoRes,										sizeof(bool8      ) },
+	{ 'dfps', &Settings.DisplayFrameRate,					sizeof(bool8      ) },
+	{ 'tran', &Settings.Transparency,						sizeof(bool8      ) },
+	{ 'gl32', &gl32bit,										sizeof(bool8      ) },
+	{ 'glst', &glstretch,									sizeof(bool8      ) },
+	{ 'draw', &drawingMethod,								sizeof(long       ) },
+	{ 'vmod', &videoMode,									sizeof(int        ) },
+	{ 'MPmt', &multiprocessor,								sizeof(bool8      ) },
+	{ 'VSNC', &vsync,										sizeof(bool8      ) },
+	{ 'H239', &drawoverscan,								sizeof(bool8      ) },
+	{ 'SCur', &screencurvature,								sizeof(bool8      ) },
+	{ 'SCuW', &macCurvatureWarp,							sizeof(int        ) },
+	{ 'ASPe', &macAspectRatio,								sizeof(int        ) },
+	{ 'CIFl', &ciFilterEnable,							    sizeof(bool8      ) },
+
+	{ 'audi', &Settings.APUEnabled,							sizeof(bool8      ) },
+	{ 'so16', &Settings.SixteenBitSound,					sizeof(bool8      ) },
+	{ 'ster', &Settings.Stereo,								sizeof(bool8      ) },
+	{ 'rbst', &Settings.ReverseStereo,						sizeof(bool8      ) },
+	{ 'sint', &Settings.InterpolatedSound,					sizeof(bool8      ) },
+	{ 'ehgt', &Settings.SoundEnvelopeHeightReading,			sizeof(bool8      ) },
+	{ 'echo', &Settings.DisableSoundEcho,					sizeof(bool8      ) },
+	{ 'srat', &Settings.SoundPlaybackRate,					sizeof(uint32     ) },
+	{ 'pich', &macSoundPitch,								sizeof(float      ) },
+	{ 'Volm', &macSoundVolume,								sizeof(SInt32     ) },
+	{ 'AUef', &aueffect,									sizeof(uint16     ) },
+	{ 'AUce', &cureffect,									sizeof(int        ) },
+
+	{ 'romf', &saveInROMFolder,								sizeof(uint8      ) },
+	{ 'atsv', &Settings.AutoSaveDelay,						sizeof(int32      ) },
+	{ 'RFlg', &macRecordFlag,								sizeof(uint16     ) },
+	{ 'PFlg', &macPlayFlag,									sizeof(uint16     ) },
+	{ 'QTfg', &macQTMovFlag,								sizeof(uint16     ) },
+
+	{ 'HHck', &Settings.HDMATimingHack,					    sizeof(int32      ) },
+	{ 'stdm', &Settings.ShutdownMaster,						sizeof(bool8      ) },
+	{ 'TbRt', &macFastForwardRate,							sizeof(int        ) },
+	{ 'FSkp', &macFrameSkip,							    sizeof(int        ) },
+	{ 'IvVR', &Settings.BlockInvalidVRAMAccess,             sizeof(bool8      ) },
+
+	{ 'StOp', &startopendlog,								sizeof(bool8      ) },
+	{ 'STiF', &showtimeinfrz,								sizeof(bool8      ) },
+	{ 'Togl', &enabletoggle,								sizeof(bool8      ) },
+	{ 'SvWp', &savewindowpos,								sizeof(bool8      ) },
+	{ 'OnSc', &onscreeninfo,								sizeof(bool8      ) },
+	{ 'NIPS', &Settings.NoPatch,							sizeof(bool8      ) },
+	{ 'BSX_', &Settings.BSXBootup,							sizeof(bool8      ) },
+	{ 'MbxM', &musicboxmode,								sizeof(int        ) },
+	{ 'InAc', &inactiveMode,								sizeof(int        ) },
+
+	{ 'tab ', &lastTabIndex,								sizeof(int        ) },
+	{ 'Ftab', &autofireLastTabIndex,						sizeof(int        ) },
+	{ 'keyb', keyCode,										sizeof(keyCode    ) },
+	{ 'pset', &padSetting,									sizeof(int        ) },
+	{ 'dset', &deviceSetting,								sizeof(int        ) },
+	{ 'chea', &applycheat,									sizeof(bool8      ) },
+
+	{ 'ARec', autofireRec,									sizeof(autofireRec) },
+	{ 'WPos', windowPos,									sizeof(windowPos  ) },
+	{ 'WSiz', windowSize,									sizeof(windowSize ) },
+	{ 'WExt', (void *) &windowExtend,						sizeof(bool8      ) },
+
+	{ 'NPIP', npServerIP,									sizeof(npServerIP ) },
+	{ 'NPNM', npName,										sizeof(npName     ) },
+
+	{ 'L239', &lastoverscan,								sizeof(bool8      ) },
+
+	{ 'ExT1', &(extraOptions.benchmark),					sizeof(bool8      ) },
+	{ 'ExT2', &(extraOptions.glForceNoTextureRectangle),	sizeof(bool8      ) },
+	{ 'ExT3', &(extraOptions.glUseClientStrageApple),		sizeof(bool8      ) },
+	{ 'ExT4', &(extraOptions.glUseTexturePriority),			sizeof(bool8      ) },
+	{ 'ExT5', &(extraOptions.glStorageHint),				sizeof(int        ) }
+};
+
+#define	kPrefListSize	(sizeof(prefList) / sizeof(prefList[0]))
 
 static int	grouplist1[] =
 {
@@ -398,27 +363,30 @@ static int	grouplist1[] =
 	iNibSInterpolation,
 	iNibSHeightReading,
 	iNibSEcho,
-	iNibSMasterVolume,
 	iNibSPlaybackRate,
-	iNibSSampleDecoder,
-	iNibSPitch,
-	iNibSMixInterval
+	iNibSPitch
 };
 
-#define	kGroupListSize1 ((int) (sizeof(grouplist1) / sizeof(grouplist1[0])))
+#define	kGroupListSize1	(sizeof(grouplist1) / sizeof(grouplist1[0]))
 
-void SavePrefs(void)
+static void SelectTabPane (HIViewRef, SInt16);
+static pascal void LittleArrowsActionProc (HIViewRef, HIViewPartCode);
+static pascal OSStatus TabEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus PreferencesEventHandler (EventHandlerCallRef, EventRef, void *);
+
+
+void SavePrefs (void)
 {
 	CFMutableStringRef	mref;
 	CFStringRef			sref;
 	CFDataRef			data;
 
-	for (unsigned int i = 0; i < kPrefListSize; i++)
+	for (int i = 0; i < kPrefListSize; i++)
 	{
 		mref = CFStringCreateMutableCopy(kCFAllocatorDefault, 0, CFSTR("Preferences_"));
 		if (mref)
 		{
-			sref = CFStringCreateWithBytes(kCFAllocatorDefault, (UInt8 *) &(prefList[i].itemName), sizeof(long), kCFStringEncodingMacRoman, false);
+			sref = CFStringCreateWithBytes(kCFAllocatorDefault, (UInt8 *) &(prefList[i].itemName), sizeof(OSType), kCFStringEncodingMacRoman, false);
 			if (sref)
 			{
 				CFStringAppend(mref, sref);
@@ -440,18 +408,18 @@ void SavePrefs(void)
 	CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
 }
 
-void LoadPrefs(void)
+void LoadPrefs (void)
 {
 	CFMutableStringRef	mref;
 	CFStringRef			sref;
 	CFDataRef			data;
 
-	for (unsigned int i = 0; i < kPrefListSize; i++)
+	for (int i = 0; i < kPrefListSize; i++)
 	{
 		mref = CFStringCreateMutableCopy(kCFAllocatorDefault, 0, CFSTR("Preferences_"));
 		if (mref)
 		{
-			sref = CFStringCreateWithBytes(kCFAllocatorDefault, (UInt8 *) &(prefList[i].itemName), sizeof(long), kCFStringEncodingMacRoman, false);
+			sref = CFStringCreateWithBytes(kCFAllocatorDefault, (UInt8 *) &(prefList[i].itemName), sizeof(OSType), kCFStringEncodingMacRoman, false);
 			if (sref)
 			{
 				CFStringAppend(mref, sref);
@@ -472,7 +440,7 @@ void LoadPrefs(void)
 	}
 }
 
-void ConfigurePreferences(void)
+void ConfigurePreferences (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -481,16 +449,15 @@ void ConfigurePreferences(void)
 	if (err == noErr)
 	{
 		WindowRef	tWindowRef;
-		uint32 		oldPlaybackRate;
-		bool8		oldEnableSound, old16BitPlayback, oldStereo, oldFullscreen;
-		int			oldMixInterval;
 		SInt32		oldVolume;
+		uint32		oldPlaybackRate;
+		bool8		oldEnableSound, oldStereo, old16BitPlayback, oldDisableEcho, oldFullscreen;
 
 		oldEnableSound   = Settings.APUEnabled;
-		old16BitPlayback = Settings.SixteenBitSound;
 		oldStereo        = Settings.Stereo;
+		old16BitPlayback = Settings.SixteenBitSound;
+		oldDisableEcho   = Settings.DisableSoundEcho;
 		oldPlaybackRate  = Settings.SoundPlaybackRate;
-		oldMixInterval   = macSoundInterval;
 		oldVolume        = macSoundVolume;
 		oldFullscreen    = fullscreen;
 
@@ -502,34 +469,32 @@ void ConfigurePreferences(void)
 		err = CreateWindowFromNib(nibRef, CFSTR("Preferences"), &tWindowRef);
 		if (err == noErr)
 		{
+			EventHandlerUPP		tUPP, pUPP;
+			EventHandlerRef		tRef, pRef;
+			EventTypeSpec		tEvents[] = { { kEventClassControl, kEventControlHit          } },
+								pEvents[] = { { kEventClassWindow,  kEventWindowClose         },
+											  { kEventClassCommand, kEventCommandProcess      },
+											  { kEventClassCommand, kEventCommandUpdateStatus } };
+			ControlActionUPP	actionUPP;
 			HIViewRef			ctl, root;
 			HIViewID			cid;
-			ControlActionUPP	actionUPP;
-			EventHandlerUPP		tabEventProc, prefEventProc;
-			EventHandlerRef		tabHandlerRef, prefHandlerRef;
-			EventTypeSpec		tabControlSpec[]  = { { kEventClassControl, kEventControlHit          } },
-								prefControlSpec[] = { { kEventClassWindow,  kEventWindowClose         },
-													  { kEventClassCommand, kEventCommandProcess      },
-													  { kEventClassCommand, kEventCommandUpdateStatus } };
 			MenuRef				menu;
 			char				num[16];
-			unsigned char		numP[16];
-			int					i;
 
 			root = HIViewGetRoot(tWindowRef);
-
-			actionUPP = NewControlActionUPP(LittleArrowsActionProc);
 
 			cid.signature = 'tabs';
 			cid.id = 128;
 			HIViewFindByID(root, cid, &ctl);
 			SetControl32BitValue(ctl, lastTabIndex);
 			SelectTabPane(ctl, lastTabIndex);
-			tabEventProc = NewEventHandlerUPP(TabEventHandler);
-			err = InstallControlEventHandler(ctl, tabEventProc, GetEventTypeCount(tabControlSpec), tabControlSpec, 0, &tabHandlerRef);
+			tUPP = NewEventHandlerUPP(TabEventHandler);
+			err = InstallControlEventHandler(ctl, tUPP, GetEventTypeCount(tEvents), tEvents, 0, &tRef);
 
-			prefEventProc = NewEventHandlerUPP(PreferencesEventHandler);
-			err = InstallWindowEventHandler(tWindowRef, prefEventProc, GetEventTypeCount(prefControlSpec), prefControlSpec, (void *) tWindowRef, &prefHandlerRef);
+			pUPP = NewEventHandlerUPP(PreferencesEventHandler);
+			err = InstallWindowEventHandler(tWindowRef, pUPP, GetEventTypeCount(pEvents), pEvents, (void *) tWindowRef, &pRef);
+
+			actionUPP = NewControlActionUPP(LittleArrowsActionProc);
 
 			cid.signature = 'grap';
 
@@ -559,132 +524,60 @@ void ConfigurePreferences(void)
 
 			cid.id = iNibGVideoMode;
 			HIViewFindByID(root, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
-#ifndef MAC_ENABLE_DIRECT_MODE
-			for (i = 1; i <= 9; i++)
-				DisableMenuItem(menu, i);
-#endif
-			switch (drawingMethod)
+			switch (videoMode)
 			{
-				case kDrawingDirect:
-					if (smoothMode)
-					{
-						CheckMenuItem(menu, iDirectSmoothMode, true);
-						SetControl32BitValue(ctl, iDirectSmoothMode);
-					}
-					else
-					if (eagleMode)
-					{
-						CheckMenuItem(menu, iDirectEAGLEMode, true);
-						SetControl32BitValue(ctl, iDirectEAGLEMode);
-					}
-					else
-					if (supsaiMode)
-					{
-						CheckMenuItem(menu, iDirectSuper2xSAIMode, true);
-						SetControl32BitValue(ctl, iDirectSuper2xSAIMode);
-					}
-					else
-					if (saiMode)
-					{
-						CheckMenuItem(menu, iDirect2xSAIMode, true);
-						SetControl32BitValue(ctl, iDirect2xSAIMode);
-					}
-					else
-					if (epxMode)
-					{
-						CheckMenuItem(menu, iDirectEPXMode, true);
-						SetControl32BitValue(ctl, iDirectEPXMode);
-					}
-					else
-					if (hq2xMode)
-					{
-						CheckMenuItem(menu, iDirectHQ2xMode, true);
-						SetControl32BitValue(ctl, iDirectHQ2xMode);
-					}
-					else
-					if (tvMode)
-					{
-						CheckMenuItem(menu, iDirectTVMode, true);
-						SetControl32BitValue(ctl, iDirectTVMode);
-					}
-					else
-					if (doubleSize)
-					{
-						CheckMenuItem(menu, iDirectBlocky, true);
-						SetControl32BitValue(ctl, iDirectBlocky);
-					}
-					else
-					{
-						CheckMenuItem(menu, iDirectSmall, true);
-						SetControl32BitValue(ctl, iDirectSmall);
-					}
-
+				case VIDEOMODE_BLOCKY:
+					CheckMenuItem(menu, iOpenGLBlocky, true);
+					SetControl32BitValue(ctl, iOpenGLBlocky);
 					break;
 
-				case kDrawingOpenGL:
-					if (smoothMode)
-					{
-						CheckMenuItem(menu, iOpenGLSmoothMode, true);
-						SetControl32BitValue(ctl, iOpenGLSmoothMode);
-					}
-					else
-					{
-						CheckMenuItem(menu, iOpenGLBlocky, true);
-						SetControl32BitValue(ctl, iOpenGLBlocky);
-					}
-
+				case VIDEOMODE_TV:
+					CheckMenuItem(menu, iOpenGLTVMode, true);
+					SetControl32BitValue(ctl, iOpenGLTVMode);
 					break;
 
-				case kDrawingBlitGL:
-					if (eagleMode)
-					{
-						CheckMenuItem(menu, iOpenGLEagleMode, true);
-						SetControl32BitValue(ctl, iOpenGLEagleMode);
-					}
-					else
-					if (supsaiMode)
-					{
-						CheckMenuItem(menu, iOpenGLSuper2xSAIMode, true);
-						SetControl32BitValue(ctl, iOpenGLSuper2xSAIMode);
-					}
-					else
-					if (saiMode)
-					{
-						CheckMenuItem(menu, iOpenGL2xSAIMode, true);
-						SetControl32BitValue(ctl, iOpenGL2xSAIMode);
-					}
-					else
-					if (epxMode)
-					{
-						CheckMenuItem(menu, iOpenGLEPXMode, true);
-						SetControl32BitValue(ctl, iOpenGLEPXMode);
-					}
-					else
-					if (hq2xMode)
-					{
-						CheckMenuItem(menu, iOpenGLHQ2xMode, true);
-						SetControl32BitValue(ctl, iOpenGLHQ2xMode);
-					}
-					else
-					if (hq3xMode)
-					{
-						CheckMenuItem(menu, iOpenGLHQ3xMode, true);
-						SetControl32BitValue(ctl, iOpenGLHQ3xMode);
-					}
-					else
-					if (hq4xMode)
-					{
-						CheckMenuItem(menu, iOpenGLHQ4xMode, true);
-						SetControl32BitValue(ctl, iOpenGLHQ4xMode);
-					}
-					else
-					{
-						CheckMenuItem(menu, iOpenGLTVMode, true);
-						SetControl32BitValue(ctl, iOpenGLTVMode);
-					}
+				case VIDEOMODE_SMOOTH:
+					CheckMenuItem(menu, iOpenGLSmoothMode, true);
+					SetControl32BitValue(ctl, iOpenGLSmoothMode);
+					break;
+
+				case VIDEOMODE_SUPEREAGLE:
+					CheckMenuItem(menu, iOpenGLEagleMode, true);
+					SetControl32BitValue(ctl, iOpenGLEagleMode);
+					break;
+
+				case VIDEOMODE_2XSAI:
+					CheckMenuItem(menu, iOpenGL2xSAIMode, true);
+					SetControl32BitValue(ctl, iOpenGL2xSAIMode);
+					break;
+
+				case VIDEOMODE_SUPER2XSAI:
+					CheckMenuItem(menu, iOpenGLSuper2xSAIMode, true);
+					SetControl32BitValue(ctl, iOpenGLSuper2xSAIMode);
+					break;
+
+				case VIDEOMODE_EPX:
+					CheckMenuItem(menu, iOpenGLEPXMode, true);
+					SetControl32BitValue(ctl, iOpenGLEPXMode);
+					break;
+
+				case VIDEOMODE_HQ2X:
+					CheckMenuItem(menu, iOpenGLHQ2xMode, true);
+					SetControl32BitValue(ctl, iOpenGLHQ2xMode);
+					break;
+
+				case VIDEOMODE_HQ3X:
+					CheckMenuItem(menu, iOpenGLHQ3xMode, true);
+					SetControl32BitValue(ctl, iOpenGLHQ3xMode);
+					break;
+
+				case VIDEOMODE_HQ4X:
+					CheckMenuItem(menu, iOpenGLHQ4xMode, true);
+					SetControl32BitValue(ctl, iOpenGLHQ4xMode);
+					break;
 			}
 
 			cid.id = iNibGDirectMP;
@@ -760,14 +653,10 @@ void ConfigurePreferences(void)
 			HIViewFindByID(root, cid, &ctl);
 			SetControl32BitValue(ctl, !Settings.DisableSoundEcho);
 
-			cid.id = iNibSMasterVolume;
-			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, !Settings.DisableMasterVolume);
-
 			cid.id = iNibSPlaybackRate;
 			HIViewFindByID(root, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			switch (Settings.SoundPlaybackRate)
 			{
@@ -814,48 +703,19 @@ void ConfigurePreferences(void)
 				case 8000:
 					CheckMenuItem(menu, 9, true);
 					SetControl32BitValue(ctl, 9);
-			}
-
-			cid.id = iNibSSampleDecoder;
-			HIViewFindByID(root, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
-				CheckMenuItem(menu, i, false);
-			switch (Settings.AltSampleDecode)
-			{
-				case 0:
-					CheckMenuItem(menu, 1, true);
-					SetControl32BitValue(ctl, 1);
 					break;
-
-				case 1:
-				case 2:
-					CheckMenuItem(menu, 2, true);
-					SetControl32BitValue(ctl, 2);
-					break;
-
-				case 3:
-					CheckMenuItem(menu, 3, true);
-					SetControl32BitValue(ctl, 3);
 			}
-
-			cid.id = iNibSMixInterval;
-			HIViewFindByID(root, cid, &ctl);
-			sprintf(num, "%d", macSoundInterval);
-			ConvertCString(num, numP);
-			SetEditTextText(ctl, numP, false);
 
 			cid.id = iNibSPitch;
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(num, "%2.4f", macSoundPitch);
-			ConvertCString(num, numP);
-			SetEditTextText(ctl, numP, false);
+			SetEditTextCStr(ctl, num, false);
 
 			cid.id = iNibSVolume;
 			HIViewFindByID(root, cid, &ctl);
 			SetControl32BitValue(ctl, macSoundVolume);
 
-			for (i = 0; i < kGroupListSize1; i++)
+			for (int i = 0; i < kGroupListSize1; i++)
 			{
 				cid.id = grouplist1[i];
 				HIViewFindByID(root, cid, &ctl);
@@ -867,8 +727,8 @@ void ConfigurePreferences(void)
 
 			cid.id = iNibOSaveFolder;
 			HIViewFindByID(root, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			if (saveInROMFolder == 1)
 			{
@@ -889,31 +749,15 @@ void ConfigurePreferences(void)
 
 			cid.id = iNibOAutoSaveInterval;
 			HIViewFindByID(root, cid, &ctl);
-			sprintf(num, "%ld", (long) Settings.AutoSaveDelay);
-			ConvertCString(num, numP);
-			SetEditTextText(ctl, numP, false);
-
-			cid.id = iNibOSPC7110Pack;
-			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, mac7110Load);
-
-			cid.id = iNibOSPC7110Megs;
-			HIViewFindByID(root, cid, &ctl);
-			sprintf(num, "%d", mac7110Megs);
-			ConvertCString(num, numP);
-			SetEditTextText(ctl, numP, false);
-
-			cid.id = iNibOSDD1Pack;
-			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, macSDD1Pack);
+			sprintf(num, "%d", Settings.AutoSaveDelay);
+			SetEditTextCStr(ctl, num, false);
 
 			cid.signature = 'msc2';
 
 			cid.id = iNibMCPUCycles;
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(num, "%" PRIi32, Settings.HDMATimingHack);
-			ConvertCString(num, numP);
-			SetEditTextText(ctl, numP, false);
+			SetEditTextCStr(ctl, num, false);
 
 			cid.id = iNibMShutdownMaster;
 			HIViewFindByID(root, cid, &ctl);
@@ -927,13 +771,12 @@ void ConfigurePreferences(void)
 			cid.id = iNibMTurboSkipText;
 			HIViewFindByID(root, cid, &ctl);
 			sprintf(num, "%d", macFastForwardRate);
-			ConvertCString(num, numP);
-			SetStaticTextText(ctl, numP, false);
+			SetStaticTextCStr(ctl, num, false);
 
 			cid.id = iNibMFrameSkip;
 			HIViewFindByID(root, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
-			for (i = 1; i <= CountMenuItems(menu); i++)
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			CheckMenuItem(menu, macFrameSkip + 2, true);
 			SetControl32BitValue(ctl, macFrameSkip + 2);
@@ -971,10 +814,6 @@ void ConfigurePreferences(void)
 			cid.id = iNibXOnScreenInfo;
 			HIViewFindByID(root, cid, &ctl);
 			SetControl32BitValue(ctl, onscreeninfo);
-
-			cid.id = iNibXMinimizeCPUUsage;
-			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, minimizecpu);
 
 			cid.id = iNibXInactiveMode;
 			HIViewFindByID(root, cid, &ctl);
@@ -1020,270 +859,54 @@ void ConfigurePreferences(void)
 			HIViewFindByID(root, cid, &ctl);
 			switch (GetControl32BitValue(ctl))
 			{
-				case iDirectSmall:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = false;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iDirectBlocky:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iDirectTVMode:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = true;
-					tvMode        = true;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iDirectSmoothMode:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = true;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iDirectEAGLEMode:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = true;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iDirect2xSAIMode:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = true;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iDirectSuper2xSAIMode:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = true;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iDirectEPXMode:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = true;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iDirectHQ2xMode:
-					drawingMethod = kDrawingDirect;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = true;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
 				case iOpenGLBlocky:
 					drawingMethod = kDrawingOpenGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
-					break;
-
-				case iOpenGLSmoothMode:
-					drawingMethod = kDrawingOpenGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = true;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
+					videoMode = VIDEOMODE_BLOCKY;
 					break;
 
 				case iOpenGLTVMode:
 					drawingMethod = kDrawingBlitGL;
-					doubleSize    = true;
-					tvMode        = true;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
+					videoMode = VIDEOMODE_TV;
+					break;
+
+				case iOpenGLSmoothMode:
+					drawingMethod = kDrawingOpenGL;
+					videoMode = VIDEOMODE_SMOOTH;
 					break;
 
 				case iOpenGLEagleMode:
 					drawingMethod = kDrawingBlitGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = true;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
+					videoMode = VIDEOMODE_SUPEREAGLE;
 					break;
 
 				case iOpenGL2xSAIMode:
 					drawingMethod = kDrawingBlitGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = true;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
+					videoMode = VIDEOMODE_2XSAI;
 					break;
 
 				case iOpenGLSuper2xSAIMode:
 					drawingMethod = kDrawingBlitGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = true;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
+					videoMode = VIDEOMODE_SUPER2XSAI;
 					break;
 
 				case iOpenGLEPXMode:
 					drawingMethod = kDrawingBlitGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = true;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
+					videoMode = VIDEOMODE_EPX;
 					break;
 
 				case iOpenGLHQ2xMode:
 					drawingMethod = kDrawingBlitGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = true;
-					hq3xMode	  = false;
-					hq4xMode	  = false;
+					videoMode = VIDEOMODE_HQ2X;
 					break;
 
 				case iOpenGLHQ3xMode:
 					drawingMethod = kDrawingBlitGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = true;
-					hq4xMode	  = false;
+					videoMode = VIDEOMODE_HQ3X;
 					break;
 
 				case iOpenGLHQ4xMode:
 					drawingMethod = kDrawingBlitGL;
-					doubleSize    = true;
-					tvMode        = false;
-					smoothMode    = false;
-					eagleMode     = false;
-					saiMode       = false;
-					supsaiMode    = false;
-					epxMode       = false;
-					hq2xMode	  = false;
-					hq3xMode	  = false;
-					hq4xMode	  = true;
+					videoMode = VIDEOMODE_HQ4X;
 					break;
 			}
 
@@ -1345,10 +968,6 @@ void ConfigurePreferences(void)
 			HIViewFindByID(root, cid, &ctl);
 			Settings.DisableSoundEcho = GetControl32BitValue(ctl) ? false : true;
 
-			cid.id = iNibSMasterVolume;
-			HIViewFindByID(root, cid, &ctl);
-			Settings.DisableMasterVolume = GetControl32BitValue(ctl) ? false : true;
-
 			cid.id = iNibSPlaybackRate;
 			HIViewFindByID(root, cid, &ctl);
 			switch (GetControl32BitValue(ctl))
@@ -1387,38 +1006,12 @@ void ConfigurePreferences(void)
 
 				case 9:
 					Settings.SoundPlaybackRate = 8000;
-			}
-
-			cid.id = iNibSSampleDecoder;
-			HIViewFindByID(root, cid, &ctl);
-			switch (GetControl32BitValue(ctl))
-			{
-				case 1:
-					Settings.AltSampleDecode = 0;
 					break;
-
-				case 2:
-					Settings.AltSampleDecode = 1;
-					break;
-
-				case 3:
-					Settings.AltSampleDecode = 3;
 			}
-
-			cid.id = iNibSMixInterval;
-			HIViewFindByID(root, cid, &ctl);
-			GetEditTextText(ctl, numP);
-			ConvertPString(numP, num);
-			macSoundInterval = atoi(num);
-			if (macSoundInterval < 0)
-				macSoundInterval = 0;
-			if (macSoundInterval > 30)
-				macSoundInterval = 30;
 
 			cid.id = iNibSPitch;
 			HIViewFindByID(root, cid, &ctl);
-			GetEditTextText(ctl, numP);
-			ConvertPString(numP, num);
+			GetEditTextCStr(ctl, num);
 			macSoundPitch = (float) atof(num);
 
 			cid.id = iNibSVolume;
@@ -1440,32 +1033,14 @@ void ConfigurePreferences(void)
 
 			cid.id = iNibOAutoSaveInterval;
 			HIViewFindByID(root, cid, &ctl);
-			GetEditTextText(ctl, numP);
-			ConvertPString(numP, num);
+			GetEditTextCStr(ctl, num);
 			Settings.AutoSaveDelay = atoi(num);
-
-			cid.id = iNibOSPC7110Pack;
-			HIViewFindByID(root, cid, &ctl);
-			mac7110Load = GetControl32BitValue(ctl);
-
-			cid.id = iNibOSPC7110Megs;
-			HIViewFindByID(root, cid, &ctl);
-			GetEditTextText(ctl, numP);
-			ConvertPString(numP, num);
-			mac7110Megs = atoi(num);
-			if (mac7110Megs < 1)
-				mac7110Megs = 1;
-
-			cid.id = iNibOSDD1Pack;
-			HIViewFindByID(root, cid, &ctl);
-			macSDD1Pack = GetControl32BitValue(ctl);
 
 			cid.signature = 'msc2';
 
 			cid.id = iNibMCPUCycles;
 			HIViewFindByID(root, cid, &ctl);
-			GetEditTextText(ctl, numP);
-			ConvertPString(numP, num);
+			GetEditTextCStr(ctl, num);
 			Settings.HDMATimingHack = atoi(num);
 			if ((Settings.HDMATimingHack <= 0) || (Settings.HDMATimingHack >= 200))
 				Settings.HDMATimingHack = 100;
@@ -1516,10 +1091,6 @@ void ConfigurePreferences(void)
 			HIViewFindByID(root, cid, &ctl);
 			onscreeninfo = GetControl32BitValue(ctl) ? true : false;
 
-			cid.id = iNibXMinimizeCPUUsage;
-			HIViewFindByID(root, cid, &ctl);
-			minimizecpu = GetControl32BitValue(ctl) ? true : false;
-
 			cid.id = iNibXInactiveMode;
 			HIViewFindByID(root, cid, &ctl);
 			inactiveMode = GetControl32BitValue(ctl);
@@ -1528,15 +1099,15 @@ void ConfigurePreferences(void)
 			HIViewFindByID(root, cid, &ctl);
 			Settings.BSXBootup = GetControl32BitValue(ctl) ? true : false;
 
-			err = RemoveEventHandler(prefHandlerRef);
-			DisposeEventHandlerUPP(prefEventProc);
+			err = RemoveEventHandler(pRef);
+			DisposeEventHandlerUPP(pUPP);
 
-			err = RemoveEventHandler(tabHandlerRef);
-			DisposeEventHandlerUPP(tabEventProc);
+			err = RemoveEventHandler(tRef);
+			DisposeEventHandlerUPP(tUPP);
 
 			DisposeControlActionUPP(actionUPP);
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 		}
 
 		DisposeNibReference(nibRef);
@@ -1545,26 +1116,10 @@ void ConfigurePreferences(void)
 
 		SetSoundPitch();
 
-		switch (mac7110Load)
-		{
-			case 1:
-				LoadUp7110 = &SPC7110Load;
-				break;
-
-			case 2:
-				LoadUp7110 = &SPC7110Grab;
-				break;
-
-			case 3:
-				LoadUp7110 = &SPC7110Open;
-		}
-
-		cacheMegs = mac7110Megs;
-
-		if (((old16BitPlayback != Settings.SixteenBitSound  ) ||
-			 (oldStereo        != Settings.Stereo           ) ||
+		if (((oldStereo        != Settings.Stereo           ) ||
+		     (old16BitPlayback != Settings.SixteenBitSound  ) ||
+		     (oldDisableEcho   != Settings.DisableSoundEcho ) ||
 		     (oldPlaybackRate  != Settings.SoundPlaybackRate) ||
-			 (oldMixInterval   != macSoundInterval          ) ||
 			 (oldVolume        != macSoundVolume            )) && cartOpen)
 			SNES9X_InitSound();
 
@@ -1579,9 +1134,9 @@ void ConfigurePreferences(void)
 	}
 }
 
-static void SelectTabPane(HIViewRef tabControl, SInt16 index)
+static void SelectTabPane (HIViewRef tabControl, SInt16 index)
 {
-	HIViewRef	sup, userPane, selectedPane = nil;
+	HIViewRef	sup, userPane, selectedPane = NULL;
 	HIViewID	cid;
 
 	lastTabIndex = index;
@@ -1600,19 +1155,17 @@ static void SelectTabPane(HIViewRef tabControl, SInt16 index)
 			HIViewSetVisible(userPane, false);
 	}
 
-	if (selectedPane != nil)
+	if (selectedPane != NULL)
 		HIViewSetVisible(selectedPane, true);
 
 	HIViewSetNeedsDisplay(tabControl, true);
 }
 
-static pascal void LittleArrowsActionProc(HIViewRef arrows, HIViewPartCode partCode)
+static pascal void LittleArrowsActionProc (HIViewRef arrows, HIViewPartCode partCode)
 {
-	HIViewRef		ctl;
-	char			num[8];
-	unsigned char	numP[8];
-
-	const HIViewID	cid = { 'msc2', iNibMTurboSkipText };
+	HIViewRef	ctl;
+	HIViewID	cid = { 'msc2', iNibMTurboSkipText };
+	char		num[8];
 
 	if (partCode == kControlUpButtonPart)
 		SetControl32BitValue(arrows, GetControl32BitValue(arrows) + 1);
@@ -1622,36 +1175,34 @@ static pascal void LittleArrowsActionProc(HIViewRef arrows, HIViewPartCode partC
 
 	HIViewFindByID(HIViewGetSuperview(arrows), cid, &ctl);
 	sprintf(num, "%ld", GetControl32BitValue(arrows));
-	ConvertCString(num, numP);
-	SetStaticTextText(ctl, numP, true);
+	SetStaticTextCStr(ctl, num, true);
 }
 
-static pascal OSStatus TabEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus TabEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef, inUserData)
-
-	OSStatus	result = eventNotHandledErr;
+	OSStatus	err, result = eventNotHandledErr;
 	HIViewRef	ctl;
 	HIViewID	cid;
 	SInt32		value;
 
-	GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, nil, sizeof(ControlRef), nil, &ctl);
-	GetControlID(ctl, &cid);
-	value = GetControl32BitValue(ctl);
-
-	if ((cid.id == 128) && (value != lastTabIndex))
+	err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &ctl);
+	if (err == noErr)
 	{
-		SelectTabPane(ctl, value);
-		result = noErr;
+		GetControlID(ctl, &cid);
+		value = GetControl32BitValue(ctl);
+
+		if ((cid.id == 128) && (value != lastTabIndex))
+		{
+			SelectTabPane(ctl, value);
+			result = noErr;
+		}
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus PreferencesEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) inUserData;
 
@@ -1663,6 +1214,7 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 				case kEventWindowClose:
 					QuitAppModalLoopForWindow(tWindowRef);
 					result = noErr;
+					break;
 			}
 
 			break;
@@ -1673,7 +1225,7 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -1689,7 +1241,7 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 
 					root = HIViewGetRoot(tWindowRef);
 
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
@@ -1702,7 +1254,6 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 								result = noErr;
 								break;
 
-						#ifdef MAC_COREIMAGE_SUPPORT
 							case 'G_FL':
 								if (systemVersion >= 0x1040)
 								{
@@ -1713,15 +1264,14 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 
 								result = noErr;
 								break;
-						#endif
 
 							case 'G__7':
 								cid.signature = 'grap';
-								cid.id        = iNibGGLStretch;
+								cid.id = iNibGGLStretch;
 								HIViewFindByID(root, cid, &ctl);
 								value = GetControl32BitValue(ctl);
 
-								cid.id        = iNibGAspectRatio;
+								cid.id = iNibGAspectRatio;
 								HIViewFindByID(root, cid, &ctl);
 								if (value)
 									ActivateControl(ctl);
@@ -1733,11 +1283,11 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 
 							case 'G_13':
 								cid.signature = 'grap';
-								cid.id        = iNibGScreenCurvature;
+								cid.id = iNibGScreenCurvature;
 								HIViewFindByID(root, cid, &ctl);
 								value = GetControl32BitValue(ctl);
 
-								cid.id        = iNibGCurvatureWarp;
+								cid.id = iNibGCurvatureWarp;
 								HIViewFindByID(root, cid, &ctl);
 								if (value)
 									ActivateControl(ctl);
@@ -1749,11 +1299,11 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 
 							case 'S__3':
 								cid.signature = 'snd_';
-								cid.id        = iNibSStereo;
+								cid.id = iNibSStereo;
 								HIViewFindByID(root, cid, &ctl);
 								value = GetControl32BitValue(ctl);
 
-								cid.id        = iNibSReverseStereo;
+								cid.id = iNibSReverseStereo;
 								HIViewFindByID(root, cid, &ctl);
 								if (value)
 									ActivateControl(ctl);
@@ -1765,7 +1315,7 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 
 							case 'S__1':
 								cid.signature = 'snd_';
-								cid.id        = iNibSEnableSound;
+								cid.id = iNibSEnableSound;
 								HIViewFindByID(root, cid, &ctl);
 								value = GetControl32BitValue(ctl);
 
@@ -1791,15 +1341,20 @@ static pascal OSStatus PreferencesEventHandler(EventHandlerCallRef inHandlerRef,
 									DeactivateControl(ctl);
 
 								result = noErr;
+								break;
 						}
 					}
+
+					break;
 			}
+
+			break;
 	}
 
-	return result;
+	return (result);
 }
 
-void ConfigureExtraOptions(void)
+void ConfigureExtraOptions (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -1812,13 +1367,13 @@ void ConfigureExtraOptions(void)
 		err = CreateWindowFromNib(nibRef, CFSTR("ExtraOptions"), &tWindowRef);
 		if (err == noErr)
 		{
-			EventHandlerRef		eref;
-			EventHandlerUPP		eventUPP;
-			EventTypeSpec		windowEvents[] = { { kEventClassWindow,  kEventWindowClose         },
-												   { kEventClassCommand, kEventCommandUpdateStatus } };
-			HIViewRef			ctl, root;
-			HIViewID			cid;
-			MenuRef				menu;
+			EventHandlerRef	eref;
+			EventHandlerUPP	eventUPP;
+			EventTypeSpec	windowEvents[] = { { kEventClassWindow,  kEventWindowClose         },
+											   { kEventClassCommand, kEventCommandUpdateStatus } };
+			HIViewRef		ctl, root;
+			HIViewID		cid;
+			MenuRef			menu;
 
 			root = HIViewGetRoot(tWindowRef);
 			cid.id = 0;
@@ -1841,7 +1396,7 @@ void ConfigureExtraOptions(void)
 
 			cid.signature = 'Hint';
 			HIViewFindByID(root, cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
+			menu = HIMenuViewGetMenu(ctl);
 			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			CheckMenuItem(menu, extraOptions.glStorageHint, true);
@@ -1879,7 +1434,7 @@ void ConfigureExtraOptions(void)
 			err = RemoveEventHandler(eref);
 			DisposeEventHandlerUPP(eventUPP);
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 		}
 
 		DisposeNibReference(nibRef);

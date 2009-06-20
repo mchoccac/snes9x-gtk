@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,12 +171,12 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
-#include "memmap.h"
+#include "snes9x.h"
 #include "soundux.h"
 
 #include <CoreAudio/CoreAudio.h>
-#include <AudioUnit/AudioUnit.h>
 #include <AudioToolbox/AudioToolbox.h>
+#include <AudioUnit/AudioUnitCarbonView.h>
 
 #include "mac-prefix.h"
 #include "mac-dialog.h"
@@ -192,519 +190,194 @@
 
 int	cureffect = kAUReverb;
 
-static void FreeSoundBuffers(void);
-static void ConnectAudioUnits(void);
-static void DisconnectAudioUnits(void);
-static void SaveEffectPresets(void);
-static void LoadEffectPresets(Boolean);
-static void SetAudioUnitSoundFormatAndVolume(void);
-static void ChangeAudioDeviceBufferFrameSize(UInt32, UInt32 *);
-static void ReplaceAudioUnitCarbonView(void);
-static void ResizeSoundEffectsDialog(ControlRef);
-static OSStatus MacAURenderCallBack(void *, AudioUnitRenderActionFlags *, const AudioTimeStamp *, UInt32, UInt32, AudioBufferList *);
-static pascal OSStatus SoundEffectsEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus SoundEffectsCarbonViewEventHandler(EventHandlerCallRef, EventRef, void *);
-
-static AudioUnit			target;		// the AudioUnit that Snes9x connects to
-static AudioUnit			output;		// Default Output
-static AudioUnit			converter;	// Sound Format Converter
-static AudioUnit			reverb;		// Matrix Reverb
-static AudioUnit			grapheq;	// Graphic Equalizer
-static UInt32				defaultFrames;
-static char					*monoBuffer;
-static int					samplesPerSlice;
-static int					_buffernos, _blocksize, _samplecount, _maxsamplecount;
-static bool8				soundstarted       = false;
-static bool8				aueffectAvailable  = true;
-static AudioUnitCarbonView	carbonView         = nil;
-static EventHandlerUPP		carbonViewEventUPP = nil;
-static EventHandlerRef		carbonViewEventRef = nil;
+static AUGraph				agraph;
+static AUNode				outNode, cnvNode, revNode, eqlNode;
+static AudioUnit			outAU, cnvAU, revAU, eqlAU;
+static AudioUnitCarbonView	carbonView         = NULL;
+static EventHandlerUPP		carbonViewEventUPP = NULL;
+static EventHandlerRef		carbonViewEventRef = NULL;
 static WindowRef			effectWRef;
-static CGSize				effectWSize;
+static HISize				effectWSize;
 
-void InitMacSound(void)
+static void ConnectAudioUnits (void);
+static void DisconnectAudioUnits (void);
+static void SaveEffectPresets (void);
+static void LoadEffectPresets (void);
+static void SetAudioUnitSoundFormat (void);
+static void SetAudioUnitVolume (void);
+static void ReplaceAudioUnitCarbonView (void);
+static void ResizeSoundEffectsDialog (HIViewRef);
+static OSStatus MacAURenderCallBack (void *, AudioUnitRenderActionFlags *, const AudioTimeStamp *, UInt32, UInt32, AudioBufferList *);
+static pascal OSStatus SoundEffectsEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus SoundEffectsCarbonViewEventHandler (EventHandlerCallRef, EventRef, void *);
+
+
+void InitMacSound (void)
 {
 	OSStatus				err;
-	Component				cmp;
-	ComponentDescription	desc;
+	ComponentDescription	outdesc, cnvdesc, revdesc, eqldesc;
 
-	monoBuffer = nil;
+	err = NewAUGraph(&agraph);
 
-	target     = nil;
-	output     = nil;
-	converter  = nil;
-	reverb     = nil;
-	grapheq    = nil;
+	outdesc.componentType         = kAudioUnitType_Output;
+	outdesc.componentSubType      = kAudioUnitSubType_DefaultOutput;
+	outdesc.componentManufacturer = 0;
+	outdesc.componentFlags        = 0;
+	outdesc.componentFlagsMask    = 0;
 
-	so.playback_rate = Settings.SoundPlaybackRate;
-	so.stereo        = Settings.Stereo;
-	so.sixteen_bit   = Settings.SixteenBitSound;
-	so.encoded       = false;
+	cnvdesc.componentType         = kAudioUnitType_FormatConverter;
+	cnvdesc.componentSubType      = kAudioUnitSubType_AUConverter;
+	cnvdesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+	cnvdesc.componentFlags        = 0;
+	cnvdesc.componentFlagsMask    = 0;
 
-	desc.componentFlags     = 0;
-	desc.componentFlagsMask = 0;
+	revdesc.componentType         = kAudioUnitType_Effect;
+	revdesc.componentSubType      = kAudioUnitSubType_MatrixReverb;
+	revdesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+	revdesc.componentFlags        = 0;
+	revdesc.componentFlagsMask    = 0;
 
-	// Find and open DefaultOutput
+	eqldesc.componentType         = kAudioUnitType_Effect;
+	eqldesc.componentSubType      = kAudioUnitSubType_GraphicEQ;
+	eqldesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+	eqldesc.componentFlags        = 0;
+	eqldesc.componentFlagsMask    = 0;
 
-	desc.componentType         = kAudioUnitType_Output;
-	desc.componentSubType      = kAudioUnitSubType_DefaultOutput;
-	desc.componentManufacturer = 0;
-
-	cmp = FindNextComponent(nil, &desc);
-    if (!cmp)
-		QuitWithFatalError(0, "audio 01");
-
-	err = OpenAComponent(cmp, &output);
-	if (err)
-		QuitWithFatalError(err, "audio 02");
-
-	// Find and open Apple's AUConverter
-
-	desc.componentType         = kAudioUnitType_FormatConverter;
-	desc.componentSubType      = kAudioUnitSubType_AUConverter;
-	desc.componentManufacturer = kAudioUnitManufacturer_Apple;
-
-	cmp = FindNextComponent(nil, &desc);
-	if (!cmp)
-		converter = nil;
+	if (systemVersion >= 0x1050)
+	{
+		err = AUGraphAddNode(agraph, &outdesc, &outNode);
+		err = AUGraphAddNode(agraph, &cnvdesc, &cnvNode);
+		err = AUGraphAddNode(agraph, &revdesc, &revNode);
+		err = AUGraphAddNode(agraph, &eqldesc, &eqlNode);
+	}
+#ifdef MAC_TIGER_PANTHER_SUPPORT
 	else
 	{
-		err = OpenAComponent(cmp, &converter);
-		if (err)
-			converter = nil;
+		err = AUGraphNewNode(agraph, &outdesc, 0, NULL, &outNode);
+		err = AUGraphNewNode(agraph, &cnvdesc, 0, NULL, &cnvNode);
+		err = AUGraphNewNode(agraph, &revdesc, 0, NULL, &revNode);
+		err = AUGraphNewNode(agraph, &eqldesc, 0, NULL, &eqlNode);
 	}
+#endif
 
-	// Find and open Apple's AUMatrixReverb
+	err = AUGraphOpen(agraph);
 
-	desc.componentType         = kAudioUnitType_Effect;
-	desc.componentSubType      = kAudioUnitSubType_MatrixReverb;
-	desc.componentManufacturer = kAudioUnitManufacturer_Apple;
-
-	cmp = FindNextComponent(nil, &desc);
-	if (!cmp)
-		reverb = nil;
+	if (systemVersion >= 0x1050)
+	{
+		err = AUGraphNodeInfo(agraph, outNode, NULL, &outAU);
+		err = AUGraphNodeInfo(agraph, cnvNode, NULL, &cnvAU);
+		err = AUGraphNodeInfo(agraph, revNode, NULL, &revAU);
+		err = AUGraphNodeInfo(agraph, eqlNode, NULL, &eqlAU);
+	}
+#ifdef MAC_TIGER_PANTHER_SUPPORT
 	else
 	{
-		err = OpenAComponent(cmp, &reverb);
-		if (err)
-			reverb = nil;
+		err = AUGraphGetNodeInfo(agraph, outNode, NULL, NULL, NULL, &outAU);
+		err = AUGraphGetNodeInfo(agraph, cnvNode, NULL, NULL, NULL, &cnvAU);
+		err = AUGraphGetNodeInfo(agraph, revNode, NULL, NULL, NULL, &revAU);
+		err = AUGraphGetNodeInfo(agraph, eqlNode, NULL, NULL, NULL, &eqlAU);
 	}
+#endif
 
-	// Find and open Apple's AUGraphicEQ
+	SetAudioUnitSoundFormat();
+	SetAudioUnitVolume();
 
-	desc.componentType         = kAudioUnitType_Effect;
-	desc.componentSubType      = kAudioUnitSubType_GraphicEQ;
-	desc.componentManufacturer = kAudioUnitManufacturer_Apple;
-
-	cmp = FindNextComponent(nil, &desc);
-	if (!cmp)
-		grapheq = nil;
-	else
-	{
-		err = OpenAComponent(cmp, &grapheq);
-		if (err)
-			grapheq = nil;
-	}
-
-	// Are Effects available ?
-
-	aueffectAvailable = (converter && reverb && grapheq) ? true : false;
-
-	// Initialize all AudioUnits (it is necessary to load presets correctly)
-
-	err = AudioUnitInitialize(output);
-	if (aueffectAvailable)
-	{
-		err = AudioUnitInitialize(converter);
-		err = AudioUnitInitialize(reverb);
-		err = AudioUnitInitialize(grapheq);
-	}
-
-	// Restore presets from plist
-
-	LoadEffectPresets(false);
-
-	// Connect AudioUnits each other
+	err = AUGraphInitialize(agraph);
 
 	ConnectAudioUnits();
+	LoadEffectPresets();
 }
 
-void DeinitMacSound(void)
+void DeinitMacSound (void)
 {
 	OSStatus	err;
-
-	// Free monoBuffer
-
-	FreeSoundBuffers();
-
-	// Disconnect AudioUnits
-
-	DisconnectAudioUnits();
-
-	// Save presets into plist
 
 	SaveEffectPresets();
-
-	// Uninitialize all AudioUnits
-
-	err = AudioUnitUninitialize(output);
-	if (aueffectAvailable)
-	{
-		err = AudioUnitUninitialize(converter);
-		err = AudioUnitUninitialize(reverb);
-		err = AudioUnitUninitialize(grapheq);
-	}
-
-	// Close all AudioUnits
-
-	err = CloseComponent(output);
-	if (aueffectAvailable)
-	{
-		err = CloseComponent(converter);
-		err = CloseComponent(reverb);
-		err = CloseComponent(grapheq);
-	}
+	DisconnectAudioUnits();
+	err = AUGraphUninitialize(agraph);
+	err = AUGraphClose(agraph);
+	err = DisposeAUGraph(agraph);
 }
 
-static void ConnectAudioUnits(void)
-{
-	// Note: Using AUGraph may be easier.
-
-	OSStatus	err;
-
-	// Decide Snes9x's target AudioUnit
-
-	if (!aueffectAvailable)
-	{
-		aueffect = 0;
-		target = output;
-	}
-	else
-	if (aueffect == 0)
-		target = output;
-	else
-		target = converter;
-
-	// Set render callback to target AudioUnit
-
-	//err = AudioUnitUninitialize(target);
-
-	AURenderCallbackStruct	v2callback;
-
-	v2callback.inputProc       = MacAURenderCallBack;
-	v2callback.inputProcRefCon = nil;
-	err = AudioUnitSetProperty(target, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &v2callback, sizeof(v2callback));
-
-	//err = AudioUnitInitialize(target);
-
-	// Connect AudioUnits
-
-	if (aueffect)
-	{
-		AudioUnitConnection	connection;
-		UInt32				size;
-
-		size = sizeof(connection);
-		connection.sourceOutputNumber = 0;
-		connection.destInputNumber    = 0;
-
-		/*
-		err = AudioUnitUninitialize(grapheq);
-		err = AudioUnitUninitialize(reverb);
-		err = AudioUnitUninitialize(output);
-		*/
-
-		if ((aueffect & kAUReverb) && (aueffect & kAUGraphEQ))
-		{
-			connection.sourceAudioUnit = target;
-			err = AudioUnitSetProperty(grapheq, kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-
-			connection.sourceAudioUnit = grapheq;
-			err = AudioUnitSetProperty(reverb,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-
-			connection.sourceAudioUnit = reverb;
-			err = AudioUnitSetProperty(output,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-
-			printf("AudioUnit Connection: Output <- Reverb <- GraphEQ <- Converter <- Snes9x\n");
-		}
-		else
-		if (aueffect & kAUReverb)
-		{
-			connection.sourceAudioUnit = target;
-			err = AudioUnitSetProperty(reverb,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-
-			connection.sourceAudioUnit = reverb;
-			err = AudioUnitSetProperty(output,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-
-			printf("AudioUnit Connection: Output <- Reverb <- Converter <- Snes9x\n");
-		}
-		else
-		if (aueffect & kAUGraphEQ)
-		{
-			connection.sourceAudioUnit = target;
-			err = AudioUnitSetProperty(grapheq, kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-
-			connection.sourceAudioUnit = grapheq;
-			err = AudioUnitSetProperty(output,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-
-			printf("AudioUnit Connection: Output <- GraphEQ <- Converter <- Snes9x\n");
-		}
-
-		/*
-		err = AudioUnitInitialize(grapheq);
-		err = AudioUnitInitialize(reverb);
-		err = AudioUnitInitialize(output);
-		*/
-	}
-	else
-		printf("AudioUnit Connection: Output <- Snes9x\n");
-
-	// Tell Snes9x's format to target AudioUnit
-
-	SetAudioUnitSoundFormatAndVolume();
-
-	//printf("Connected AudioUnits\n");
-}
-
-static void DisconnectAudioUnits(void)
-{
-	// Should be called before aueffect has changed
-	// FIXME: Are these ways correct ?
-
-	OSStatus	err;
-
-	// Remove render callback (?)
-
-	//err = AudioUnitUninitialize(target);
-
-	AURenderCallbackStruct	v2callback;
-
-	v2callback.inputProc       = nil;
-	v2callback.inputProcRefCon = nil;
-	err = AudioUnitSetProperty(target, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &v2callback, sizeof(v2callback));
-
-	//err = AudioUnitInitialize(target);
-
-	// Disconnect AudioUnits (?)
-
-	if (aueffect)
-	{
-		AudioStreamBasicDescription	format;
-		AudioUnitConnection			connection;
-		UInt32						size;
-
-		size = sizeof(connection);
-		connection.sourceOutputNumber = 0;
-		connection.destInputNumber    = 0;
-		connection.sourceAudioUnit    = nil;
-
-		/*
-		err = AudioUnitUninitialize(grapheq);
-		err = AudioUnitUninitialize(reverb);
-		err = AudioUnitUninitialize(output);
-		*/
-
-		if ((aueffect & kAUReverb) && (aueffect & kAUGraphEQ))
-		{
-			err = AudioUnitSetProperty(grapheq, kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-			err = AudioUnitSetProperty(reverb,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-			err = AudioUnitSetProperty(output,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-		}
-		else
-		if (aueffect & kAUReverb)
-		{
-			err = AudioUnitSetProperty(reverb,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-			err = AudioUnitSetProperty(output,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-		}
-		else
-		if (aueffect & kAUGraphEQ)
-		{
-			err = AudioUnitSetProperty(grapheq, kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-			err = AudioUnitSetProperty(output,  kAudioUnitProperty_MakeConnection, kAudioUnitScope_Input, 0, &connection, size);
-		}
-
-		// Get back default input format (unnecessary ?)
-
-		size = sizeof(format);
-		err = AudioUnitGetProperty(output, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &format, &size);
-		err = AudioUnitSetProperty(output, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input,  0, &format,  size);
-
-		/*
-		err = AudioUnitInitialize(grapheq);
-		err = AudioUnitInitialize(reverb);
-		err = AudioUnitInitialize(output);
-		*/
-	}
-
-	target = output;
-
-	//printf("Disconnected AudioUnits\n");
-}
-
-void MacStartSound(void)
-{
-	OSStatus	err;
-
-	if (macQTRecord)
-		return;
-
-	if (!soundstarted)
-	{
-		ChangeAudioDeviceBufferFrameSize(samplesPerSlice, &defaultFrames);
-
-		err = AudioOutputUnitStart(output);
-		soundstarted = true;
-
-		printf("AudioUnit output started.\n");
-	}
-}
-
-void MacStopSound(void)
-{
-	OSStatus	err;
-
-	if (macQTRecord)
-		return;
-
-	if (soundstarted)
-	{
-		err = AudioOutputUnitStop(output);
-		soundstarted = false;
-
-		ChangeAudioDeviceBufferFrameSize(defaultFrames, nil);
-
-		printf("AudioUnit output stopped.\n");
-	}
-}
-
-static void FreeSoundBuffers(void)
-{
-	if (monoBuffer)
-	{
-		free(monoBuffer);
-		monoBuffer = nil;
-	}
-}
-
-static void SetAudioUnitSoundFormatAndVolume(void)
+static void SetAudioUnitSoundFormat (void)
 {
 	OSStatus					err;
 	AudioStreamBasicDescription	format;
-	UInt32						size;
 
-	bzero(&format, sizeof(format));
+#ifdef __BIG_ENDIAN__
+	UInt32	endian = kLinearPCMFormatFlagIsBigEndian;
+#else
+	UInt32	endian = 0;
+#endif
 
-	// Always stereo even if Snes9x outputs mono
+	memset(&format, 0, sizeof(format));
 
 	format.mSampleRate	     = (Float64) so.playback_rate;
 	format.mFormatID	     = kAudioFormatLinearPCM;
-#ifdef __BIG_ENDIAN__
-	format.mFormatFlags	     = kLinearPCMFormatFlagIsBigEndian | (so.sixteen_bit ? kLinearPCMFormatFlagIsSignedInteger : 0);
-#else
-	format.mFormatFlags      = (so.sixteen_bit ? kLinearPCMFormatFlagIsSignedInteger : 0);
-#endif
+	format.mFormatFlags	     = endian | (so.sixteen_bit ? kLinearPCMFormatFlagIsSignedInteger : 0);
 	format.mBytesPerPacket   = 2 * (so.sixteen_bit ? 2 : 1);
 	format.mFramesPerPacket  = 1;
 	format.mBytesPerFrame    = 2 * (so.sixteen_bit ? 2 : 1);
 	format.mChannelsPerFrame = 2;
 	format.mBitsPerChannel   = so.sixteen_bit ? 16 : 8;
 
-	/*
-	if (target == output)
-		printf("target == output\n");
+	err = AudioUnitSetProperty(aueffect ? cnvAU : outAU, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &format, sizeof(format));
+}
+
+static void SetAudioUnitVolume (void)
+{
+	OSStatus	err;
+
+	err = AudioUnitSetParameter(outAU, kAudioUnitParameterUnit_LinearGain, kAudioUnitScope_Output, 0, (float) macSoundVolume / 100.0, 0);
+}
+
+static void ConnectAudioUnits (void)
+{
+	OSStatus				err;
+	AURenderCallbackStruct	callback;
+
+	callback.inputProc       = MacAURenderCallBack;
+	callback.inputProcRefCon = NULL;
+
+	if (systemVersion >= 0x1050)
+		err = AUGraphSetNodeInputCallback(agraph, aueffect ? cnvNode : outNode, 0, &callback);
+#ifdef MAC_TIGER_PANTHER_SUPPORT
 	else
-		printf("target == converter\n");
-	*/
+		err = AudioUnitSetProperty(aueffect ? cnvAU : outAU, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &callback, sizeof(callback));
+#endif
 
-	/*
-	err = AudioUnitUninitialize(target);
-	if (aueffect)
-		err = AudioUnitUninitialize(output);
-	*/
-
-	// Tell Snes9x's format to target AudioUnit
-
-	size = sizeof(format);
-	err = AudioUnitSetProperty(target, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &format, size);
-
-	// Set volume of output AudioUnit
-
-	err = AudioUnitSetParameter(output, kAudioUnitParameterUnit_LinearGain, kAudioUnitScope_Output, 0, (float) macSoundVolume / 100.0, 0);
-
-	/*
-	err = AudioUnitInitialize(target);
-	if (aueffect)
-		err = AudioUnitInitialize(output);
-	*/
-
-	//printf("Set format and volume \n");
+	if ((aueffect & kAUReverb) && (aueffect & kAUGraphEQ))
+	{
+		err = AUGraphConnectNodeInput(agraph, cnvNode, 0, revNode, 0);
+		err = AUGraphConnectNodeInput(agraph, revNode, 0, eqlNode, 0);
+		err = AUGraphConnectNodeInput(agraph, eqlNode, 0, outNode, 0);
+	}
+	else
+	if (aueffect & kAUReverb)
+	{
+		err = AUGraphConnectNodeInput(agraph, cnvNode, 0, revNode, 0);
+		err = AUGraphConnectNodeInput(agraph, revNode, 0, outNode, 0);
+	}
+	else
+	if (aueffect & kAUGraphEQ)
+	{
+		err = AUGraphConnectNodeInput(agraph, cnvNode, 0, eqlNode, 0);
+		err = AUGraphConnectNodeInput(agraph, eqlNode, 0, outNode, 0);
+	}
 }
 
-static void ChangeAudioDeviceBufferFrameSize(UInt32 newvalue, UInt32 *old)
+static void DisconnectAudioUnits (void)
 {
-	OSStatus		err;
-	AudioDeviceID	device;
-	AudioTimeStamp	ts;
-	UInt32			bufferSizeInFrames, value, size;
+	OSStatus	err;
 
-	if (macSoundInterval == 0)
-	{
-		printf("Using default output buffer size.\n");
-		return;
-	}
-
-	// Get current AudioDevice
-
-	size = sizeof(device);
-	err = AudioUnitGetProperty(output, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &device, &size);
-	if (err)
-		QuitWithFatalError(err, "audio 03");
-
-	if (old)
-	{
-		// Remember default value
-
-		size = sizeof(value);
-		err = AudioDeviceGetProperty(device, 0, false, kAudioDevicePropertyBufferFrameSize, &size, &value);
-		if (err)
-			QuitWithFatalError(err, "audio 04");
-		*old = value;
-	}
-
-	bufferSizeInFrames = newvalue;
-
-	// Set new bufferSizeInFrames to AudioDevice
-
-	ts.mFlags = 0;
-	size = sizeof(bufferSizeInFrames);
-	err = AudioDeviceSetProperty(device, &ts, 0, false, kAudioDevicePropertyBufferFrameSize,  size, &bufferSizeInFrames);
-	if (err)
-		QuitWithFatalError(err, "audio 05");
-
-	// Confirm it
-
-	err = AudioDeviceGetProperty(device,      0, false, kAudioDevicePropertyBufferFrameSize, &size, &bufferSizeInFrames);
-	if (err)
-		QuitWithFatalError(err, "audio 06");
-
-	err = AudioUnitUninitialize(output);	// necessary ?
-
-	// Tell the new bufferSizeInFrames to output AudioUnit
-	// V1 DefaultOutput doesn't support MaximumFramesPerSlice ? Ignore error
-
-	size = sizeof(bufferSizeInFrames);
-	err = AudioUnitSetProperty(output, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &bufferSizeInFrames,  size);
-
-	err = AudioUnitInitialize(output);		// necessary ?
+	err = AUGraphClearConnections(agraph);
 }
 
-static OSStatus MacAURenderCallBack(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumFrames, AudioBufferList *ioData)
+static OSStatus MacAURenderCallBack (void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumFrames, AudioBufferList *ioData)
 {
-	#pragma unused (inRefCon, inTimeStamp, inBusNumber, inNumFrames)
-
 	if (so.mute_sound || !Settings.APUEnabled)
 	{
-		bzero(ioData->mBuffers[0].mData, ioData->mBuffers[0].mDataByteSize);
+		memset(ioData->mBuffers[0].mData, 0, ioData->mBuffers[0].mDataByteSize);
 		*ioActionFlags |= kAudioUnitRenderAction_OutputIsSilence;
 	}
 	else
@@ -720,43 +393,119 @@ static OSStatus MacAURenderCallBack(void *inRefCon, AudioUnitRenderActionFlags *
 	}
 	else	// Manually map L to R
 	{
-		unsigned int	monosize, i;
+		unsigned int	monosmp;
 
-		monosize = so.buffer_size;
-		if (monosize > (ioData->mBuffers[0].mDataByteSize >> 1))
-			monosize = (ioData->mBuffers[0].mDataByteSize >> 1);
+		monosmp = ioData->mBuffers[0].mDataByteSize >> 1;
 		if (so.sixteen_bit)
-			monosize >>= 1;
+			monosmp >>= 1;
 
-		S9xMixSamples((uint8 *) monoBuffer, monosize);
+		S9xMixSamples((uint8 *) ioData->mBuffers[0].mData, monosmp);
 
 		if (so.sixteen_bit)
 		{
-			for (i = 0; i < monosize; i++)
-			{
-				((short *) ioData->mBuffers[0].mData)[i * 2    ] = ((short *) monoBuffer)[i];
-				((short *) ioData->mBuffers[0].mData)[i * 2 + 1] = ((short *) monoBuffer)[i];
-			}
+			for (int i = monosmp - 1; i >= 0; i--)
+				((int16 *) ioData->mBuffers[0].mData)[i * 2 + 1] = ((int16 *) ioData->mBuffers[0].mData)[i * 2] = ((int16 *) ioData->mBuffers[0].mData)[i];
 		}
 		else
 		{
-			for (i = 0; i < monosize; i++)
-			{
-				((char  *) ioData->mBuffers[0].mData)[i * 2    ] = monoBuffer[i];
-				((char  *) ioData->mBuffers[0].mData)[i * 2 + 1] = monoBuffer[i];
-			}
+			for (int i = monosmp - 1; i >= 0; i--)
+				((int8  *) ioData->mBuffers[0].mData)[i * 2 + 1] = ((int8  *) ioData->mBuffers[0].mData)[i * 2] = ((int8  *) ioData->mBuffers[0].mData)[i];
 		}
 	}
 
-	#ifdef MK_APU
-	if (SoundData.sample_cycles < 0)
-		SoundData.sample_cycles = 0;
-	#endif
-
-	return noErr;
+	return (noErr);
 }
 
-void SetSoundPitch(void)
+static void SaveEffectPresets (void)
+{
+	OSStatus			err;
+	AUPreset			preset;
+	CFPropertyListRef	classData;
+	UInt32				size;
+
+	preset.presetNumber = -1;	// User Preset
+	preset.presetName   = CFSTR("SNES9X Preset");
+
+	err = AudioUnitSetProperty(revAU, kAudioUnitProperty_CurrentPreset, kAudioUnitScope_Global, 0, &preset, sizeof(preset));
+	if (err == noErr)
+	{
+		size = sizeof(classData);
+		err = AudioUnitGetProperty(revAU, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classData, &size);
+		if (err == noErr)
+		{
+			CFPreferencesSetAppValue(CFSTR("Effect_Preset_Reverb"),  classData, kCFPreferencesCurrentApplication);
+			CFRelease(classData);
+		}
+	}
+
+	err = AudioUnitSetProperty(eqlAU, kAudioUnitProperty_CurrentPreset, kAudioUnitScope_Global, 0, &preset, sizeof(preset));
+	if (err == noErr)
+	{
+		size = sizeof(classData);
+		err = AudioUnitGetProperty(eqlAU, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classData, &size);
+		if (err == noErr)
+		{
+			CFPreferencesSetAppValue(CFSTR("Effect_Preset_GraphEQ"), classData, kCFPreferencesCurrentApplication);
+			CFRelease(classData);
+		}
+	}
+
+	CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
+}
+
+static void LoadEffectPresets (void)
+{
+	OSStatus			err;
+	CFPropertyListRef	classData;
+
+	classData = CFPreferencesCopyAppValue(CFSTR("Effect_Preset_Reverb"),  kCFPreferencesCurrentApplication);
+	if (classData)
+	{
+		err = AudioUnitSetProperty(revAU, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classData, sizeof(classData));
+		CFRelease(classData);
+	}
+
+	classData = CFPreferencesCopyAppValue(CFSTR("Effect_Preset_GraphEQ"), kCFPreferencesCurrentApplication);
+	if (classData)
+	{
+		err = AudioUnitSetProperty(eqlAU, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classData, sizeof(classData));
+		CFRelease(classData);
+	}
+}
+
+void MacStartSound (void)
+{
+	OSStatus	err;
+	Boolean		r = false;
+
+	if (macQTRecord)
+		return;
+
+	err = AUGraphIsRunning(agraph, &r);
+	if (err == noErr && r == false)
+	{
+		err = AUGraphStart(agraph);
+		printf("AUGraph started.\n");
+	}
+}
+
+void MacStopSound (void)
+{
+	OSStatus	err;
+	Boolean		r = false;
+
+	if (macQTRecord)
+		return;
+
+	err = AUGraphIsRunning(agraph, &r);
+	if (err == noErr && r == true)
+	{
+		err = AUGraphStop(agraph);
+		printf("AUGraph stopped.\n");
+	}
+}
+
+void SetSoundPitch (void)
 {
 	if ((int) (macSoundPitch * 100000) != 100000)
 	{
@@ -770,132 +519,77 @@ void SetSoundPitch(void)
 	}
 }
 
-bool8 S9xOpenSoundDevice(int mode, bool8 stereo, int buffer_size)
+bool8 S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
 {
-	#pragma unused (mode, stereo, buffer_size)
+	OSStatus	err;
 
-	int	bytesPerBlock;
-
-	so.mute_sound = true;
-
-	FreeSoundBuffers();
-
-	so.playback_rate = Settings.SoundPlaybackRate;
 	so.stereo        = Settings.Stereo;
 	so.sixteen_bit   = Settings.SixteenBitSound;
-	so.encoded       = false;
+	so.disable_echo  = Settings.DisableSoundEcho;
+	so.playback_rate = Settings.SoundPlaybackRate;
 
-	/*************************/
+	err = AUGraphUninitialize(agraph);
 
-	// v43 -> v43.1
-	// Thanks to '2' testers !
+	SetAudioUnitSoundFormat();
+	SetAudioUnitVolume();
 
-	// Base value
-	samplesPerSlice = (int) ((float) so.playback_rate * ((float) macSoundInterval / 1000.0));
-
-	//printf("Calculated samplesPerSlice:%d\n", samplesPerSlice);
-
-	// A : align 16 samples ?
-	//samplesPerSlice = (samplesPerSlice + 0xF) & 0xFFFFFFF0;
-
-	// B : align power of 2 ?
-	int	temp = 1;
-	while (temp < samplesPerSlice)
-		temp <<= 1;
-	samplesPerSlice = temp;
-
-	//printf("Aligned samplesPerSlice:%d\n", samplesPerSlice);
-
-	/*************************/
-
-	_maxsamplecount = SOUND_BUFFER_SIZE;
-	if (so.sixteen_bit)
-		_maxsamplecount >>= 1;
-	if (so.stereo)
-		_maxsamplecount >>= 1;
-
-	if (samplesPerSlice > _maxsamplecount)
-		samplesPerSlice = _maxsamplecount;
-
-	_blocksize = samplesPerSlice;
-	if (so.sixteen_bit)
-		_blocksize <<= 1;
-	if (so.stereo)
-		_blocksize <<= 1;
-
-	bytesPerBlock = 16;
-	while (bytesPerBlock < _blocksize)
-		bytesPerBlock <<= 1;
-
-	so.buffer_size = _blocksize;
-
-	_buffernos = 1;
-
-	_samplecount = so.sixteen_bit ? (_blocksize >> 1) : _blocksize;
-
-	so.samples_mixed_so_far = 0;
-
-	if (so.stereo == false)
-	{
-		monoBuffer = (char *) calloc(bytesPerBlock, 1);
-		if (monoBuffer == nil)
-			QuitWithFatalError(0, "audio 07");
-	}
-
-	SetAudioUnitSoundFormatAndVolume();
+	err = AUGraphInitialize(agraph);
 
 	SetSoundPitch();
 
 	S9xSetPlaybackRate(so.playback_rate);
 
-	so.mute_sound = false;
-
-	return true;
+	return (true);
 }
 
-extern "C" void S9xGenerateSound(void)
+void PlayAlertSound (void)
 {
-	// If rapid sound generation is needed, I'll implement it later.
+	if (systemVersion >= 0x1050)
+		AudioServicesPlayAlertSound(kUserPreferredAlert);
+#ifdef MAC_TIGER_PANTHER_SUPPORT
+	else
+		SysBeep(10);
+#endif
+}
 
+void S9xGenerateSound (void)
+{
 	return;
 }
 
-static void ReplaceAudioUnitCarbonView(void)
+static void ReplaceAudioUnitCarbonView (void)
 {
 	OSStatus				err;
 	AudioUnit				editau;
 	Component				cmp;
 	ComponentDescription	desc;
-	ControlRef				viewPane, root, ctl;
-	ControlID				cid;
+	HIViewRef				pane, contentview, ctl;
+	HIViewID				cid;
 	Float32Point			location, size;
 	Rect					rct;
 	UInt32					psize;
-
-	// Release previous AudioUnitCarbonView
 
 	if (carbonView)
 	{
 		err = RemoveEventHandler(carbonViewEventRef);
 		DisposeEventHandlerUPP(carbonViewEventUPP);
-		carbonViewEventRef = nil;
-		carbonViewEventUPP = nil;
+		carbonViewEventRef = NULL;
+		carbonViewEventUPP = NULL;
 
 		CloseComponent(carbonView);
-		carbonView = nil;
+		carbonView = NULL;
 	}
-
-	// Decide AudioUnit to configure
 
 	switch (cureffect)
 	{
 		case kAUGraphEQ:
-			editau = grapheq;
+			editau = eqlAU;
 			break;
 
 		case kAUReverb:
 		default:
-			editau = reverb;
+			editau = revAU;
+			break;
 	}
 
 	desc.componentType         = kAudioUnitCarbonViewComponentType;
@@ -904,9 +598,7 @@ static void ReplaceAudioUnitCarbonView(void)
 	desc.componentFlags        = 0;
 	desc.componentFlagsMask    = 0;
 
-	// Find the first UI of editau
-
-	err = AudioUnitGetPropertyInfo(editau, kAudioUnitProperty_GetUIComponentList, kAudioUnitScope_Global, 0, &psize, nil);
+	err = AudioUnitGetPropertyInfo(editau, kAudioUnitProperty_GetUIComponentList, kAudioUnitScope_Global, 0, &psize, NULL);
 	if (err == noErr)
 	{
 		ComponentDescription	*editors;
@@ -914,7 +606,7 @@ static void ReplaceAudioUnitCarbonView(void)
 
 		nEditors = psize / sizeof(ComponentDescription);
 
-		editors = new ComponentDescription [nEditors];
+		editors = new ComponentDescription[nEditors];
 
 		err = AudioUnitGetProperty(editau, kAudioUnitProperty_GetUIComponentList, kAudioUnitScope_Global, 0, editors, &psize);
 		if (err == noErr)
@@ -923,93 +615,93 @@ static void ReplaceAudioUnitCarbonView(void)
 		delete [] editors;
 	}
 
-	// Open AudioUnitCarbonView
+	HIViewFindByID(HIViewGetRoot(effectWRef), kHIViewWindowContentID, &contentview);
 
-	cmp = FindNextComponent(nil, &desc);
+	cmp = FindNextComponent(NULL, &desc);
 	if (cmp)
 	{
 		err = OpenAComponent(cmp, &carbonView);
 		if (err == noErr)
 		{
-			// Create AudioUnitCarbonView, resize and move window
+			EventTypeSpec	event[] = { { kEventClassControl, kEventControlBoundsChanged } };
 
-			GetRootControl(effectWRef, &root);
 			GetWindowBounds(effectWRef, kWindowContentRgn, &rct);
-
 			location.x = 20;
-			location.y = 94;
+			location.y = 96;
 			size.x     = rct.right  - rct.left;
 			size.y     = rct.bottom - rct.top;
 
-			err = AudioUnitCarbonViewCreate(carbonView, editau, effectWRef, root, &location, &size, &viewPane);
-
-			EventTypeSpec	event[] = { { kEventClassControl, kEventControlBoundsChanged } };
+			err = AudioUnitCarbonViewCreate(carbonView, editau, effectWRef, contentview, &location, &size, &pane);
 
 			carbonViewEventUPP = NewEventHandlerUPP(SoundEffectsCarbonViewEventHandler);
-			err = InstallControlEventHandler(viewPane, carbonViewEventUPP, GetEventTypeCount(event), event, (void *) effectWRef, &carbonViewEventRef);
+			err = InstallControlEventHandler(pane, carbonViewEventUPP, GetEventTypeCount(event), event, (void *) effectWRef, &carbonViewEventRef);
 
-			ResizeSoundEffectsDialog(viewPane);
+			ResizeSoundEffectsDialog(pane);
 		}
 		else
-			carbonView = nil;
+			carbonView = NULL;
 	}
 	else
-		carbonView = nil;
-
-	// Set CheckBox
+		carbonView = NULL;
 
 	cid.id = 0;
 	cid.signature = 'Enab';
-	GetControlByID(effectWRef, &cid, &ctl);
+	HIViewFindByID(contentview, cid, &ctl);
 	SetControl32BitValue(ctl, (aueffect & cureffect) ? 1 : 0);
 }
 
-static void ResizeSoundEffectsDialog(ControlRef view)
+static void ResizeSoundEffectsDialog (HIViewRef view)
 {
 	OSStatus	err;
-	ControlRef	ctl;
-	ControlID	cid;
+	HIViewRef	ctl, root;
+	HIViewID	cid;
+	HIRect		bounds;
 	Rect		rv;
 	int			w, h;
 
+	root = HIViewGetRoot(effectWRef);
+
 	cid.id = 0;
 	cid.signature = 'Enab';
-	GetControlByID(effectWRef, &cid, &ctl);
-	err = SetControlVisibility(ctl,  false, true);
-	err = SetControlVisibility(view, false, true);
+	HIViewFindByID(root, cid, &ctl);
 
-	GetControlBounds(view, &rv);
-	w = (rv.right - rv.left + 30 > (int) effectWSize.width) ? (rv.right - rv.left + 30) : (int) effectWSize.width;
-	h = rv.bottom - rv.top + 120;
-#ifdef MAC_PANTHER_JAGUAR_SUPPORT
+	err = HIViewSetVisible(ctl,  false);
+	err = HIViewSetVisible(view, false);
+
+	HIViewGetBounds(view, &bounds);
+	w = ((int) bounds.size.width + 30 > (int) effectWSize.width) ? ((int) bounds.size.width + 30) : (int) effectWSize.width;
+	h = (int) bounds.size.height + 122;
+#ifdef MAC_PANTHER_SUPPORT
 	if (systemVersion < 0x1040)
 		h += 16;
 #endif
-
 	GetWindowBounds(effectWRef, kWindowStructureRgn, &rv);
 	rv.right  = rv.left + w;
 	rv.bottom = rv.top  + h;
 	err = TransitionWindow(effectWRef, kWindowSlideTransitionEffect, kWindowResizeTransitionAction, &rv);
 
-	err = SetControlVisibility(ctl,  true, true);
-	err = SetControlVisibility(view, true, true);
+	err = HIViewSetVisible(ctl,  true);
+	err = HIViewSetVisible(view, true);
 
-#ifdef MAC_PANTHER_JAGUAR_SUPPORT
+#ifdef MAC_PANTHER_SUPPORT
 	if (systemVersion < 0x1040)
 	{
+		HIRect	bounds;
 		Rect	rct;
 
 		GetWindowBounds(effectWRef, kWindowContentRgn, &rv);
 
 		cid.signature = 'SfUI';
-		GetControlByID(effectWRef, &cid, &ctl);
-		GetControlBounds(ctl, &rct);
-		SizeControl(ctl, rv.right - rv.left, rct.bottom - rct.top);
+		HIViewFindByID(root, cid, &ctl);
+		HIViewGetFrame(ctl, &bounds);
+		bounds.size.width = (float) (rv.right - rv.left);
+		HIViewSetFrame(ctl, &bounds);
 
 		cid.signature = 'LINE';
-		GetControlByID(effectWRef, &cid, &ctl);
-		GetControlBounds(ctl, &rct);
-		SizeControl(ctl, rv.right - rv.left - 24, rct.bottom - rct.top);
+		HIViewFindByID(root, cid, &ctl);
+		HIViewGetFrame(ctl, &bounds);
+		bounds.size.width = (float) (rv.right - rv.left - 24);
+		HIViewSetFrame(ctl, &bounds);
 
 		rct.top    = 0;
 		rct.left   = 0;
@@ -1020,7 +712,7 @@ static void ResizeSoundEffectsDialog(ControlRef view)
 #endif
 }
 
-void ConfigureSoundEffects(void)
+void ConfigureSoundEffects (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -1039,15 +731,15 @@ void ConfigureSoundEffects(void)
 											{ kEventClassCommand, kEventCommandProcess      },
 											{ kEventClassCommand, kEventCommandUpdateStatus } };
 			MenuRef				menu;
-			ControlRef			ctl, userpane, contentview;
-			ControlID			cid;
+			HIViewRef			ctl, userpane, contentview;
+			HIViewID			cid;
 			CFStringRef			str;
 			Rect				rct;
 			WindowAttributes	metal = 0;
 
 			cid.id = 0;
 			cid.signature = 'SfUI';
-			GetControlByID(uiparts, &cid, &userpane);
+			HIViewFindByID(HIViewGetRoot(uiparts), cid, &userpane);
 			GetWindowBounds(uiparts, kWindowContentRgn, &rct);
 
 			if (systemVersion >= 0x1040)	// AUs support compositing
@@ -1069,7 +761,7 @@ void ConfigureSoundEffects(void)
 				err = HIViewAddSubview(contentview, userpane);
 				err = HIViewSetFrame(userpane, &frame);
 			}
-		#ifdef MAC_PANTHER_JAGUAR_SUPPORT
+		#ifdef MAC_PANTHER_SUPPORT
 			else
 			{
 				err = CreateNewWindow(kDocumentWindowClass, kWindowCloseBoxAttribute | kWindowCollapseBoxAttribute | kWindowStandardHandlerAttribute, &rct, &effectWRef);
@@ -1079,7 +771,7 @@ void ConfigureSoundEffects(void)
 			}
 		#endif
 
-			ReleaseWindow(uiparts);
+			CFRelease(uiparts);
 
 			if (!metal)
 				err = SetThemeWindowBackground(effectWRef, kThemeBrushDialogBackgroundActive, false);
@@ -1133,14 +825,12 @@ void ConfigureSoundEffects(void)
 			effectWSize.width  = (float) (rct.right  - rct.left);
 			effectWSize.height = (float) (rct.bottom - rct.top );
 
-			carbonView = nil;
+			carbonView = NULL;
 			ReplaceAudioUnitCarbonView();
 
-			LoadEffectPresets(true);
-
 			cid.signature = 'Epop';
-			GetControlByID(effectWRef, &cid, &ctl);
-			menu = GetControlPopupMenuHandle(ctl);
+			HIViewFindByID(userpane, cid, &ctl);
+			menu = HIMenuViewGetMenu(ctl);
 			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
 			switch (cureffect)
@@ -1153,6 +843,7 @@ void ConfigureSoundEffects(void)
 				case kAUGraphEQ:
 					CheckMenuItem(menu, 2, true);
 					SetControl32BitValue(ctl, 2);
+					break;
 			}
 
 			MoveWindowPosition(effectWRef, kWindowSoundEffect, false);
@@ -1161,36 +852,32 @@ void ConfigureSoundEffects(void)
 			HideWindow(effectWRef);
 			SaveWindowPosition(effectWRef, kWindowSoundEffect);
 
-			SaveEffectPresets();
-
 			if (carbonView)
 			{
 				err = RemoveEventHandler(carbonViewEventRef);
 				DisposeEventHandlerUPP(carbonViewEventUPP);
-				carbonViewEventRef = nil;
-				carbonViewEventUPP = nil;
+				carbonViewEventRef = NULL;
+				carbonViewEventUPP = NULL;
 
 				CloseComponent(carbonView);
-				carbonView = nil;
+				carbonView = NULL;
 			}
 
 			err = RemoveEventHandler(eventHandler);
 			DisposeEventHandlerUPP(eventUPP);
 
-			ReleaseWindow(effectWRef);
+			CFRelease(effectWRef);
 		}
 
 		DisposeNibReference(nibRef);
 	}
 }
 
-static pascal OSStatus SoundEffectsCarbonViewEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus SoundEffectsCarbonViewEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef)
-
 	OSStatus	err, result = eventNotHandledErr;
-	ControlRef	ctl;
-	Rect		bounds;
+	HIViewRef	ctl;
+	HIRect		bounds;
 
 	switch (GetEventClass(inEvent))
 	{
@@ -1198,28 +885,29 @@ static pascal OSStatus SoundEffectsCarbonViewEventHandler(EventHandlerCallRef in
 			switch (GetEventKind(inEvent))
 			{
 				case kEventControlBoundsChanged:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, nil, sizeof(ControlRef), nil, &ctl);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &ctl);
 					if (err == noErr)
 					{
-						err = GetEventParameter(inEvent, kEventParamCurrentBounds, typeQDRectangle, nil, sizeof(Rect), nil, &bounds);
+						err = GetEventParameter(inEvent, kEventParamCurrentBounds, typeHIRect, NULL, sizeof(HIRect), NULL, &bounds);
 						if (err == noErr)
 						{
-							if ((bounds.right - bounds.left > 0) && (bounds.bottom - bounds.top > 0))
+							if ((bounds.size.width > 0) && (bounds.size.height > 0))
 								ResizeSoundEffectsDialog(ctl);
 						}
 					}
 
 					result = noErr;
+					break;
 			}
+
+			break;
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal OSStatus SoundEffectsEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus SoundEffectsEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) inUserData;
 
@@ -1231,6 +919,7 @@ static pascal OSStatus SoundEffectsEventHandler(EventHandlerCallRef inHandlerRef
 				case kEventWindowClose:
 					QuitAppModalLoopForWindow(tWindowRef);
 					result = noErr;
+					break;
 			}
 
 			break;
@@ -1241,7 +930,7 @@ static pascal OSStatus SoundEffectsEventHandler(EventHandlerCallRef inHandlerRef
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -1251,143 +940,57 @@ static pascal OSStatus SoundEffectsEventHandler(EventHandlerCallRef inHandlerRef
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
 						{
 							case 'Enab':
+							{
+								Boolean	r = false;
+
 								mboxPause = true;
-								err = AudioOutputUnitStop(output);
+								
+								err = AUGraphIsRunning(agraph, &r);
+								if (err == noErr && r)
+									err = AUGraphStop(agraph);
+
 								DisconnectAudioUnits();
+								err = AUGraphUninitialize(agraph);
+
 								aueffect ^= cureffect;
+
+								SetAudioUnitSoundFormat();
+
+								err = AUGraphInitialize(agraph);
 								ConnectAudioUnits();
-								err = AudioOutputUnitStart(output);
+
+								if (r)
+									err = AUGraphStart(agraph);
+
 								mboxPause = false;
 
 								result = noErr;
 								break;
+							}
 
 							case 'Revb':
 								cureffect = kAUReverb;
 								ReplaceAudioUnitCarbonView();
-
 								break;
 
 							case 'GrEQ':
 								cureffect = kAUGraphEQ;
 								ReplaceAudioUnitCarbonView();
+								break;
 						}
 					}
+
+					break;
 			}
+
+			break;
 	}
 
-	return result;
-}
-
-static void SaveEffectPresets(void)
-{
-	if (aueffectAvailable)
-	{
-		OSStatus			err;
-		AUPreset			preset;
-		CFPropertyListRef	classData;
-		UInt32				size;
-
-		preset.presetNumber = -1;	// User Preset
-		preset.presetName   = CFSTR("SNES9X Preset");
-
-		err = AudioUnitSetProperty(reverb,  kAudioUnitProperty_CurrentPreset, kAudioUnitScope_Global, 0, &preset, sizeof(preset));
-		if (err == noErr)
-		{
-			size = sizeof(classData);
-			err = AudioUnitGetProperty(reverb,  kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classData, &size);
-			if (err == noErr)
-			{
-				CFPreferencesSetAppValue(CFSTR("Effect_Preset_Reverb"),  classData, kCFPreferencesCurrentApplication);
-				CFRelease(classData);
-			}
-		}
-
-		err = AudioUnitSetProperty(grapheq, kAudioUnitProperty_CurrentPreset, kAudioUnitScope_Global, 0, &preset, sizeof(preset));
-		if (err == noErr)
-		{
-			size = sizeof(classData);
-			err = AudioUnitGetProperty(grapheq, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classData, &size);
-			if (err == noErr)
-			{
-				CFPreferencesSetAppValue(CFSTR("Effect_Preset_GraphEQ"), classData, kCFPreferencesCurrentApplication);
-				CFRelease(classData);
-			}
-		}
-
-		CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
-	}
-}
-
-static void LoadEffectPresets(Boolean notify)
-{
-	if (aueffectAvailable)
-	{
-		OSStatus				err;
-		AudioUnitParameter		changedUnit;
-		ComponentDescription	cd;
-		CFPropertyListRef		classData;
-		CFDictionaryRef 		dict;
-		CFNumberRef				cfnum;
-
-		classData = CFPreferencesCopyAppValue(CFSTR("Effect_Preset_Reverb"),  kCFPreferencesCurrentApplication);
-		if (classData)
-		{
-			dict = (CFDictionaryRef) classData;
-
-			cfnum = reinterpret_cast <CFNumberRef> (CFDictionaryGetValue(dict, CFSTR("type")));
-			CFNumberGetValue(cfnum, kCFNumberSInt32Type, &cd.componentType);
-			cfnum = reinterpret_cast <CFNumberRef> (CFDictionaryGetValue(dict, CFSTR("subtype")));
-			CFNumberGetValue(cfnum, kCFNumberSInt32Type, &cd.componentSubType);
-			cfnum = reinterpret_cast <CFNumberRef> (CFDictionaryGetValue(dict, CFSTR("manufacturer")));
-			CFNumberGetValue(cfnum, kCFNumberSInt32Type, &cd.componentManufacturer);
-
-			if ((cd.componentType         == kAudioUnitType_Effect         ) &&
-				(cd.componentSubType      == kAudioUnitSubType_MatrixReverb) &&
-				(cd.componentManufacturer == kAudioUnitManufacturer_Apple  ))
-				err = AudioUnitSetProperty(reverb,  kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classData, sizeof(classData));
-
-			if (notify)
-			{
-				changedUnit.mAudioUnit   = reverb;
-				changedUnit.mParameterID = kAUParameterListener_AnyParameter;
-				err = AUParameterListenerNotify(nil, nil, &changedUnit);
-			}
-
-			CFRelease(classData);
-		}
-
-		classData = CFPreferencesCopyAppValue(CFSTR("Effect_Preset_GraphEQ"), kCFPreferencesCurrentApplication);
-		if (classData)
-		{
-			dict = (CFDictionaryRef) classData;
-
-			cfnum = reinterpret_cast <CFNumberRef> (CFDictionaryGetValue(dict, CFSTR("type")));
-			CFNumberGetValue(cfnum, kCFNumberSInt32Type, &cd.componentType);
-			cfnum = reinterpret_cast <CFNumberRef> (CFDictionaryGetValue(dict, CFSTR("subtype")));
-			CFNumberGetValue(cfnum, kCFNumberSInt32Type, &cd.componentSubType);
-			cfnum = reinterpret_cast <CFNumberRef> (CFDictionaryGetValue(dict, CFSTR("manufacturer")));
-			CFNumberGetValue(cfnum, kCFNumberSInt32Type, &cd.componentManufacturer);
-
-			if ((cd.componentType         == kAudioUnitType_Effect       ) &&
-				(cd.componentSubType      == kAudioUnitSubType_GraphicEQ ) &&
-				(cd.componentManufacturer == kAudioUnitManufacturer_Apple))
-				err = AudioUnitSetProperty(grapheq, kAudioUnitProperty_ClassInfo, kAudioUnitScope_Global, 0, &classData, sizeof(classData));
-
-			if (notify)
-			{
-				changedUnit.mAudioUnit   = grapheq;
-				changedUnit.mParameterID = kAUParameterListener_AnyParameter;
-				err = AUParameterListenerNotify(nil, nil, &changedUnit);
-			}
-
-			CFRelease(classData);
-		}
-	}
+	return (result);
 }

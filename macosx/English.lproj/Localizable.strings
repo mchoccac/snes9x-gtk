@@ -48,5 +48,4 @@
 "ResetCIFilter"   = "Reset All Parameters";
 
 "SoundEffectDlg"  = "Sound Effect";
-"CheatEntryDlg"   = "Cheat Entry";
 "CreateMetalDlg"  = "NO";	// "YES" to metalize above dialogs

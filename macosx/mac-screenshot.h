@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,10 +174,10 @@
 #ifndef _mac_scheenshot_h_
 #define _mac_scheenshot_h_
 
-void WriteThumbnailToResourceFork(FSRef *, int, int);
-void DrawThumbnailResource(FSRef *, CGContextRef, CGRect);
-PicHandle GetScreenAsPicHandle(int, int, int, int);
-CGImageRef CreateGameScreenCGImage(void);
-CGImageRef CreateBlitScreenCGImage(int, int, int, uint8 *);
+void WriteThumbnailToResourceFork (FSRef *, int, int);
+void DrawThumbnailResource (FSRef *, CGContextRef, CGRect);
+PicHandle GetScreenAsPicHandle (int, int, int, int);
+CGImageRef CreateGameScreenCGImage (void);
+CGImageRef CreateBlitScreenCGImage (int, int, int, uint8 *);
 
 #endif

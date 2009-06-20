@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -180,24 +178,23 @@
 #include "mac-snes9x.h"
 #include "mac-appleevent.h"
 
-static pascal OSErr AEoapp(const AppleEvent *, AppleEvent *, long);
-static pascal OSErr AErapp(const AppleEvent *, AppleEvent *, long);
-static pascal OSErr AEpdoc(const AppleEvent *, AppleEvent *, long);
-static pascal OSErr AEquit(const AppleEvent *, AppleEvent *, long);
-static pascal OSErr AEodoc(const AppleEvent *, AppleEvent *, long);
+static AEEventHandlerUPP	oappUPP, rappUPP, pdocUPP, quitUPP, odocUPP;
 
-static AEEventHandlerUPP oappUPP, rappUPP, pdocUPP, quitUPP, odocUPP;
+static pascal OSErr AEoapp (const AppleEvent *, AppleEvent *, long);
+static pascal OSErr AErapp (const AppleEvent *, AppleEvent *, long);
+static pascal OSErr AEpdoc (const AppleEvent *, AppleEvent *, long);
+static pascal OSErr AEquit (const AppleEvent *, AppleEvent *, long);
+static pascal OSErr AEodoc (const AppleEvent *, AppleEvent *, long);
 
-static pascal OSErr AEoapp(const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
+
+static pascal OSErr AEoapp (const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
 {
-	#pragma unused (theEvent, theReply, refCon)
-
 	if (running)
-		return noErr;
+		return (noErr);
 
 	if (startopendlog)
 	{
-		if (SNES9X_OpenCart(nil))
+		if (SNES9X_OpenCart(NULL))
 		{
 			SNES9X_Go();
 			QuitApplicationEventLoop();
@@ -206,21 +203,19 @@ static pascal OSErr AEoapp(const AppleEvent *theEvent, AppleEvent *theReply, lon
 			AdjustMenus();
 	}
 
-	return noErr;
+	return (noErr);
 }
 
-static pascal OSErr AErapp(const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
+static pascal OSErr AErapp (const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
 {
-	#pragma unused (theEvent, theReply, refCon)
-
 	if (running)
-		return noErr;
+		return (noErr);
 
 	if (!cartOpen)
 	{
 		if (startopendlog)
 		{
-			if (SNES9X_OpenCart(nil))
+			if (SNES9X_OpenCart(NULL))
 			{
 				SNES9X_Go();
 				QuitApplicationEventLoop();
@@ -235,30 +230,26 @@ static pascal OSErr AErapp(const AppleEvent *theEvent, AppleEvent *theReply, lon
 		QuitApplicationEventLoop();
 	}
 
-	return noErr;
+	return (noErr);
 }
 
-static pascal OSErr AEpdoc(const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
+static pascal OSErr AEpdoc (const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
 {
-	#pragma unused (theEvent, theReply, refCon)
-
-	return errAEEventNotHandled;
+	return (errAEEventNotHandled);
 }
 
-static pascal OSErr AEquit(const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
+static pascal OSErr AEquit (const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
 {
-	#pragma unused (theEvent, theReply, refCon)
-
 	if (running)
-		return noErr;
+		return (noErr);
 
 	SNES9X_Quit();
 	QuitApplicationEventLoop();
 
-	return noErr;
+	return (noErr);
 }
 
-static pascal OSErr AEodoc(const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
+static pascal OSErr AEodoc (const AppleEvent *theEvent, AppleEvent *theReply, long refCon)
 {
 	OSErr 		err;
 	FSRef		ref;
@@ -268,20 +259,18 @@ static pascal OSErr AEodoc(const AppleEvent *theEvent, AppleEvent *theReply, lon
 	Size		acsize;
 	long		count;
 
-	#pragma unused (theReply, refCon)
-
 	if (running)
-		return noErr;
+		return (noErr);
 
 	err = AEGetParamDesc(theEvent, keyDirectObject, typeAEList, &docList);
 	if (err)
-		return noErr;
+		return (noErr);
 
 	err = AECountItems(&docList, &count);
 	if (err || (count != 1))
 	{
 		err = AEDisposeDesc(&docList);
-		return noErr;
+		return (noErr);
 	}
 
 	err = AEGetNthPtr(&docList, 1, typeFSRef, &keywd, &rtype, &ref, sizeof(FSRef), &acsize);
@@ -298,10 +287,10 @@ static pascal OSErr AEodoc(const AppleEvent *theEvent, AppleEvent *theReply, lon
 
 	err = AEDisposeDesc(&docList);
 
-	return noErr;
+	return (noErr);
 }
 
-void InitAppleEvents(void)
+void InitAppleEvents (void)
 {
 	OSErr	err;
 
@@ -321,7 +310,7 @@ void InitAppleEvents(void)
 	err = AEInstallEventHandler(kCoreEventClass, kAEReopenApplication, rappUPP, 0L, false);
 }
 
-void DeinitAppleEvents(void)
+void DeinitAppleEvents (void)
 {
 	DisposeAEEventHandlerUPP(oappUPP);
 	DisposeAEEventHandlerUPP(odocUPP);

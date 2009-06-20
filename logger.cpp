@@ -159,65 +159,25 @@
 **********************************************************************************/
 
 
-
-#include <stdio.h>
-#include <stdlib.h>
 #include "snes9x.h"
-#include "gfx.h"
-#include "soundux.h"
 #include "movie.h"
-#include "display.h"
 #include "logger.h"
 
-#if !(defined(__unix) || defined(__linux) || defined(__sun) || defined(__DJGPP))
-#define __builtin_expect(exp,c) ((exp)!=(c))
-#endif
+static int	resetno = 0;
+static int	framecounter = 0;
+static FILE	*video = NULL;
+static FILE	*audio = NULL;
 
-int dumpstreams = 0;
-int maxframes = -1;
 
-static int resetno = 0;
-static int framecounter = 0;
-
-int fastforwardpoint = -1;
-int fastforwarddistance = 0;
-
-int keypressscreen = 0;
-
-static int drift = 0;
-
-FILE *video=NULL, *audio=NULL;
-char autodemo[128] = "";
-
-int Logger_FrameCounter()
+void S9xResetLogger (void)
 {
-	return framecounter;
-}
-
-void Logger_NextFrame()
-{
-	framecounter++;
-}
-
-void breakpoint()
-{
-
-}
-
-void ResetLogger()
-{
-	char buffer[256*224*4];
-
-	if (!dumpstreams)
+	if (!Settings.DumpStreams)
 		return;
 
-	framecounter = 0;
-	drift=0;
+	char	buffer[128];
 
-	if (video)
-		fclose(video);
-	if (audio)
-		fclose(audio);
+	S9xCloseLogger();
+	framecounter = 0;
 
 	sprintf(buffer, "videostream%d.dat", resetno);
 	video = fopen(buffer, "wb");
@@ -236,34 +196,27 @@ void ResetLogger()
 		return;
 	}
 
-	char *logo = getenv("LOGO");
-	if (!logo)
-		logo = "logo.dat";
-	FILE *l = fopen(logo, "rb");
-	if (l)
-	{
-		const int soundsize = (so.sixteen_bit ? 2 : 1)*(so.stereo?2:1)*so.playback_rate * Settings.FrameTime / 1000000;
-		printf("Soundsize: %d\n", soundsize);
-		while (!feof(l))
-		{
-			if (fread(buffer, 1024,224, l) != 224)
-				break;
-			VideoLogger(buffer, 256, 224, 4,1024);
-			memset(buffer, 0, soundsize);
-			AudioLogger(buffer, soundsize);
-		}
-		fclose(l);
-	}
 	resetno++;
 }
 
-char message[128];
-int messageframe;
-
-
-void VideoLogger(void *pixels, int width, int height, int depth, int bytes_per_line)
+void S9xCloseLogger (void)
 {
-	int fc = S9xMovieGetFrameCounter();
+	if (video)
+	{
+		fclose(video);
+		video = NULL;
+	}
+
+	if (audio)
+	{
+		fclose(audio);
+		audio = NULL;
+	}
+}	
+
+void S9xVideoLogger (void *pixels, int width, int height, int depth, int bytes_per_line)
+{
+	int	fc = S9xMovieGetFrameCounter();
 	if (fc > 0)
 		framecounter = fc;
 	else
@@ -271,68 +224,24 @@ void VideoLogger(void *pixels, int width, int height, int depth, int bytes_per_l
 
 	if (video)
 	{
-		int i;
-		char *data = (char*)pixels;
-		for (i=0; i < height; i++)
-			fwrite(data + i*bytes_per_line, depth, width, video);
+		char	*data = (char *) pixels;
+
+		for (int i = 0; i < height; i++)
+			fwrite(data + i * bytes_per_line, depth, width, video);
 		fflush(video);
 		fflush(audio);
-		drift++;
 
-		if (maxframes > 0 && __builtin_expect(framecounter >= maxframes, 0))
+		if (Settings.DumpStreamsMaxFrames > 0 && framecounter >= Settings.DumpStreamsMaxFrames)
 		{
-			printf("-maxframes hit\ndrift:%d\n",drift);
-			S9xExit();
+			printf("Logging ended.\n");
+			S9xCloseLogger();
 		}
 
 	}
-
-	if (Settings.DisplayPressedKeys==1 || keypressscreen)
-	{
-		uint16 MovieGetJoypad(int i);
-
-		int buttons = MovieGetJoypad(0);
-		static char buffer[128];
-
-		// This string spacing pattern is optimized for the 256 pixel wide screen.
-                sprintf(buffer, "%s  %s  %s  %s  %s  %s  %c%c%c%c%c%c",
-		buttons & SNES_START_MASK ? "Start" : "_____",
-		buttons & SNES_SELECT_MASK ? "Select" : "______",
-                buttons & SNES_UP_MASK ? "Up" : "__",
-		buttons & SNES_DOWN_MASK ? "Down" : "____",
-		buttons & SNES_LEFT_MASK ? "Left" : "____",
-		buttons & SNES_RIGHT_MASK ? "Right" : "_____",
-		buttons & SNES_A_MASK ? 'A':'_',
-		buttons & SNES_B_MASK ? 'B':'_',
-                buttons & SNES_X_MASK ? 'X':'_',
-                buttons & SNES_Y_MASK ? 'Y':'_',
-		buttons & SNES_TL_MASK ? 'L':'_',
-		buttons & SNES_TR_MASK ? 'R':'_'
-		/*framecounter*/);
-		if (Settings.DisplayPressedKeys==1)
-			fprintf(stderr, "%s %d           \r", buffer, framecounter);
-		//if (keypressscreen)
-                S9xSetInfoString(buffer);
-	}
-
-	if (__builtin_expect(messageframe >= 0 && framecounter == messageframe, 0))
-	{
-		S9xMessage(S9X_INFO, S9X_MOVIE_INFO, message);
-		GFX.InfoStringTimeout = 300;
-		messageframe = -1;
-	}
-
-/*	if (__builtin_expect(fastforwardpoint >= 0 && framecounter >= fastforwardpoint, 0))
-	{
-		Settings.FramesToSkip = fastforwarddistance;
-		fastforwardpoint = -1;
-	}*/
 }
 
-
-void AudioLogger(void *samples, int length)
+void S9xAudioLogger (void *samples, int length)
 {
 	if (audio)
 		fwrite(samples, 1, length, audio);
-	drift--;
 }

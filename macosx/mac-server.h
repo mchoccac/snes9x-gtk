@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,13 +174,13 @@
 #ifndef _mac_server_h_
 #define _mac_server_h_
 
-void NPServerInit(void);
-void NPServerStopServer(void);
-void NPServerDetachNetPlayThread(void);
-void NPServerStopNetPlayThread(void);
-void NPServerStartClients(void);
-void NPServerProcessInput(void);
-bool8 NPServerStartServer(int);
-bool8 NPServerDialog(void);
+void NPServerInit (void);
+void NPServerStopServer (void);
+void NPServerDetachNetPlayThread (void);
+void NPServerStopNetPlayThread (void);
+void NPServerStartClients (void);
+void NPServerProcessInput (void);
+bool8 NPServerStartServer (int);
+bool8 NPServerDialog (void);
 
 #endif

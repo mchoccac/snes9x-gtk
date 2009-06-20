@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,13 +174,13 @@
 #ifndef _mac_cart_h_
 #define _mac_cart_h_
 
-bool8 NavOpenROMImage(FSRef *);
-bool8 NavFreezeTo(char *);
-bool8 NavDefrostFrom(char *);
-bool8 NavRecordMovieTo(char *);
-bool8 NavPlayMovieFrom(char *);
-bool8 NavQTMovieRecordTo(char *);
-bool8 NavBeginOpenROMImageSheet(WindowRef, CFStringRef);
-bool8 NavEndOpenROMImageSheet(FSRef *);
+bool8 NavOpenROMImage (FSRef *);
+bool8 NavBeginOpenROMImageSheet (WindowRef, CFStringRef);
+bool8 NavEndOpenROMImageSheet (FSRef *);
+bool8 NavFreezeTo (char *);
+bool8 NavDefrostFrom (char *);
+bool8 NavRecordMovieTo (char *);
+bool8 NavPlayMovieFrom (char *);
+bool8 NavQTMovieRecordTo (char *);
 
 #endif

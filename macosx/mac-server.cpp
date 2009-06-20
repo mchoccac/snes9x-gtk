@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,21 +171,14 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
-#ifdef MAC_NETPLAY_SUPPORT
+#include "snes9x.h"
+#include "memmap.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <pthread.h>
 #include <semaphore.h>
-
-#include "memmap.h"
 
 #include "mac-prefix.h"
 #include "mac-controls.h"
@@ -202,6 +193,17 @@
 #ifdef SELF_TEST
 #include <sys/un.h>
 #endif
+
+#define KeyIsPressed(km, k)	(1 & (((unsigned char *) km) [(k) >> 3] >> ((k) & 7)))
+
+enum
+{
+	kNPSDialogNone,
+	kNPSDialogInit,
+	kNPSDialogProcess,
+	kNPSDialogDone,
+	kNPSDialogCancel
+};
 
 typedef struct
 {
@@ -262,37 +264,29 @@ static pthread_t	listenthread,
 					processthread,
 					padthread[NP_MAX_PLAYERS];
 
-enum
-{
-	kNPSDialogNone,
-	kNPSDialogInit,
-	kNPSDialogProcess,
-	kNPSDialogDone,
-	kNPSDialogCancel
-};
+static int NPServerAcceptClient (int);
+static int NPServerGetMesFromClient (int);
+static void NPServerBeginListenLoop (void);
+static void NPServerEndListenLoop (void);
+static void NPServerDetachProcessThread (void);
+static void NPServerShutdownClient (int);
+static void NPServerAllotPlayers (void);
+static void NPServerSendPlayerList (void);
+static void NPServerWaitStartReply (void);
+static void NPServerSetPhaseSpan (void);
+static bool8 NPServerSendMesToClient (int, int);
+static bool8 NPServerGetNameFromClient (int);
+static bool8 NPServerSendROMInfoToClient (int);
+static bool8 NPServerSendSRAMToClient (int);
+static bool8 NPServerSendPlayerListToClient (int);
+static void * NPServerListenLoop (void *);
+static void * NPServerProcessThread (void *);
+static void * NPServerNetPlayThread (void *);
+static pascal void NPServerDialogTimerHandler (EventLoopTimerRef, void *);
+static pascal OSStatus NPServerDialogEventHandler (EventHandlerCallRef, EventRef, void *);
 
-static int NPServerAcceptClient(int);
-static int NPServerGetMesFromClient(int);
-static void NPServerBeginListenLoop(void);
-static void NPServerEndListenLoop(void);
-static void NPServerDetachProcessThread(void);
-static void NPServerShutdownClient(int);
-static void NPServerAllotPlayers(void);
-static void NPServerSendPlayerList(void);
-static void NPServerWaitStartReply(void);
-static void NPServerSetPhaseSpan(void);
-static bool8 NPServerSendMesToClient(int, int);
-static bool8 NPServerGetNameFromClient(int);
-static bool8 NPServerSendROMInfoToClient(int);
-static bool8 NPServerSendSRAMToClient(int);
-static bool8 NPServerSendPlayerListToClient(int);
-static void * NPServerListenLoop(void *);
-static void * NPServerProcessThread(void *);
-static void * NPServerNetPlayThread(void *);
-static pascal void NPServerDialogTimerHandler(EventLoopTimerRef, void *);
-static pascal OSStatus NPServerDialogEventHandler(EventHandlerCallRef, EventRef, void *);
 
-bool8 NPServerDialog(void)
+bool8 NPServerDialog (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -313,8 +307,8 @@ bool8 NPServerDialog(void)
 			EventLoopTimerUPP	timerUPP;
 			EventTypeSpec		windowEvents[] = { { kEventClassCommand, kEventCommandProcess      },
 												   { kEventClassCommand, kEventCommandUpdateStatus } };
-			HIViewRef			ctl, root;
-			HIViewID			cid;
+			HIViewRef			ctl;
+			HIViewID			cid = { 'Chse', 0 };
 
 			npserver.dialogprocess = kNPSDialogInit;
 
@@ -324,10 +318,7 @@ bool8 NPServerDialog(void)
 			timerUPP = NewEventLoopTimerUPP(NPServerDialogTimerHandler);
 			err = InstallEventLoopTimer(GetCurrentEventLoop(), 0.0f, 0.1f, timerUPP, (void *) tWindowRef, &tref);
 
-			root = HIViewGetRoot(tWindowRef);
-			cid.signature = 'Chse';
-			cid.id = 0;
-			HIViewFindByID(root, cid, &ctl);
+			HIViewFindByID(HIViewGetRoot(tWindowRef), cid, &ctl);
 			HIViewSetVisible(ctl, false);
 
 			MoveWindowPosition(tWindowRef, kWindowServer, false);
@@ -342,7 +333,7 @@ bool8 NPServerDialog(void)
 			err = RemoveEventHandler(eref);
 			DisposeEventHandlerUPP(eventUPP);
 
-			ReleaseWindow(tWindowRef);
+			CFRelease(tWindowRef);
 		}
 
 		DisposeNibReference(nibRef);
@@ -351,19 +342,17 @@ bool8 NPServerDialog(void)
 	return (!npserver.dialogcancel);
 }
 
-static pascal void NPServerDialogTimerHandler(EventLoopTimerRef inTimer, void *userData)
+static pascal void NPServerDialogTimerHandler (EventLoopTimerRef inTimer, void *userData)
 {
-	#pragma unused (inTimer)
-
 	WindowRef	window = (WindowRef) userData;
-	CFStringRef ref;
+	CFStringRef	ref;
 	HIViewRef	ctl, root;
 	HIViewID	cid;
-	int			c, n = 0;
+	int			n = 0;
 
 	root = HIViewGetRoot(window);
 
-	for (c = 0; c < NP_MAX_PLAYERS; c++)
+	for (int c = 0; c < NP_MAX_PLAYERS; c++)
 	{
 		cid.id = c;
 
@@ -371,12 +360,12 @@ static pascal void NPServerDialogTimerHandler(EventLoopTimerRef inTimer, void *u
 		HIViewFindByID(root, cid, &ctl);
 		if (npplayer[c].ready)
 		{
-			unsigned char	numP[4];
+			char	num[4];
 
-			numP[0] = 2;
-			numP[1] = '1' + n;
-			numP[2] = 'P';
-			SetStaticTextText(ctl, numP, true);
+			num[0] = '1' + n;
+			num[1] = 'P';
+			num[2] = 0;
+			SetStaticTextCStr(ctl, num, true);
 			n++;
 		}
 
@@ -468,13 +457,12 @@ static pascal void NPServerDialogTimerHandler(EventLoopTimerRef inTimer, void *u
 			NPServerEndListenLoop();
 			npserver.dialogcancel = true;
 			QuitAppModalLoopForWindow(window);
+			break;
 	}
 }
 
-static pascal OSStatus NPServerDialogEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus NPServerDialogEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) inUserData;
 
@@ -486,7 +474,7 @@ static pascal OSStatus NPServerDialogEventHandler(EventHandlerCallRef inHandlerR
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(false);
@@ -496,7 +484,7 @@ static pascal OSStatus NPServerDialogEventHandler(EventHandlerCallRef inHandlerR
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
@@ -521,15 +509,20 @@ static pascal OSStatus NPServerDialogEventHandler(EventHandlerCallRef inHandlerR
 							case 'CNSL':
 								npserver.dialogprocess = kNPSDialogCancel;
 								result = noErr;
+								break;
 						}
 					}
+
+					break;
 			}
+
+			break;
 	}
 
 	return (result);
 }
 
-void NPServerInit(void)
+void NPServerInit (void)
 {
 	npserver.listenloop = false;
 	npserver.phasecount = 0;
@@ -570,10 +563,10 @@ void NPServerInit(void)
 	char	name[256];
 	if (gethostname(name, 256) == 0)
 	{
-		struct hostent  *hn;
+		struct hostent	*hn;
 		if ((hn = gethostbyname(name)) != NULL)
 		{
-			struct in_addr  addr;
+			struct in_addr	addr;
 			memcpy(&addr, hn->h_addr_list[0], sizeof(struct in_addr));
 			strcpy(npplayer[0].ip, inet_ntoa(addr));
 		}
@@ -583,7 +576,7 @@ void NPServerInit(void)
 	else
 		strcpy(npplayer[0].ip, "unknown");
 
-	CFStringRef ref;
+	CFStringRef	ref;
 	ref = CFCopyLocalizedString(CFSTR("NPServerName"), "NPServer");
 	if (ref)
 	{
@@ -598,7 +591,7 @@ void NPServerInit(void)
 		strcpy(npplayer[0].name, "unknown");
 }
 
-bool8 NPServerStartServer(int port)
+bool8 NPServerStartServer (int port)
 {
 #ifndef SELF_TEST
 	struct sockaddr_in	address;
@@ -658,7 +651,7 @@ bool8 NPServerStartServer(int port)
 	return (true);
 }
 
-void NPServerStopServer(void)
+void NPServerStopServer (void)
 {
 	NPNotification("Server: Stopping server...", -1);
 
@@ -682,7 +675,7 @@ void NPServerStopServer(void)
 	NPNotification("Server: Stopped server.", -1);
 }
 
-static void NPServerShutdownClient(int c)
+static void NPServerShutdownClient (int c)
 {
 	if (npplayer[c].online)
 	{
@@ -705,7 +698,7 @@ static void NPServerShutdownClient(int c)
 	}
 }
 
-static int NPServerAcceptClient(int port)
+static int NPServerAcceptClient (int port)
 {
 #ifndef SELF_TEST
 	struct sockaddr_in	address;
@@ -754,24 +747,23 @@ static int NPServerAcceptClient(int port)
 	return (c);
 }
 
-static void NPServerBeginListenLoop(void)
+static void NPServerBeginListenLoop (void)
 {
 	npserver.listenloop = true;
 	pthread_create(&listenthread, NULL, NPServerListenLoop, NULL);
 }
 
-static void NPServerEndListenLoop(void)
+static void NPServerEndListenLoop (void)
 {
 	npserver.listenloop = false;
 	pthread_join(listenthread, NULL);
 }
 
-static void * NPServerListenLoop(void *)
+static void * NPServerListenLoop (void *)
 {
-	fd_set			readfds;
 	struct timeval	timeout;
+	fd_set			readfds;
 	int				maxfd;
-	int				c;
 
 	NPNotification("Server: Entered listening loop.", -1);
 
@@ -786,7 +778,7 @@ static void * NPServerListenLoop(void *)
 			maxfd = npserver.socket;
 		}
 
-		for (c = 1; c <= NP_MAX_CLIENTS; c++)
+		for (int c = 1; c <= NP_MAX_CLIENTS; c++)
 		{
 			if (npplayer[c].online)
 			{
@@ -801,7 +793,7 @@ static void * NPServerListenLoop(void *)
 
 		if (select(maxfd + 1, &readfds, NULL, NULL, &timeout) > 0)
 		{
-			for (c = 1; c <= NP_MAX_CLIENTS; c++)
+			for (int c = 1; c <= NP_MAX_CLIENTS; c++)
 			{
 				if (npplayer[c].online)
 				{
@@ -825,6 +817,7 @@ static void * NPServerListenLoop(void *)
 
 							default:
 								NPServerShutdownClient(c);
+								break;
 						}
 					}
 				}
@@ -848,7 +841,7 @@ static void * NPServerListenLoop(void *)
 	return (NULL);
 }
 
-static bool8 NPServerSendMesToClient(int c, int num)
+static bool8 NPServerSendMesToClient (int c, int num)
 {
 	uint8	mes[2];
 
@@ -861,7 +854,7 @@ static bool8 NPServerSendMesToClient(int c, int num)
 	return (true);
 }
 
-static int NPServerGetMesFromClient(int c)
+static int NPServerGetMesFromClient (int c)
 {
 	uint8	mes[2];
 
@@ -871,10 +864,10 @@ static int NPServerGetMesFromClient(int c)
 	if (mes[0] != NP_CLIENT_MAGIC)
 		return (-1);
 
-	return (int) mes[1];
+	return ((int) mes[1]);
 }
 
-static bool8 NPServerGetNameFromClient(int c)
+static bool8 NPServerGetNameFromClient (int c)
 {
 	if (!npplayer[c].online)
 		return (false);
@@ -918,7 +911,7 @@ static bool8 NPServerGetNameFromClient(int c)
 	// next: kNPClientNameSent
 }
 
-static bool8 NPServerSendROMInfoToClient(int c)
+static bool8 NPServerSendROMInfoToClient (int c)
 {
 	if (!npplayer[c].online)
 		return (false);
@@ -939,7 +932,7 @@ static bool8 NPServerSendROMInfoToClient(int c)
 
 	uint8	mes[16];
 	uint32	l;
-	char	drive[_MAX_DRIVE], dir[_MAX_DIR], fname[_MAX_FNAME], ext[_MAX_EXT];
+	char	drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 	_splitpath(Memory.ROMFilename, drive, dir, fname, ext);
 	l = strlen(fname);
@@ -970,7 +963,7 @@ static bool8 NPServerSendROMInfoToClient(int c)
 	// next: kNPClientROMOpened
 }
 
-static bool8 NPServerSendSRAMToClient(int c)
+static bool8 NPServerSendSRAMToClient (int c)
 {
 	if (!npplayer[c].online)
 		return (false);
@@ -1014,13 +1007,13 @@ static bool8 NPServerSendSRAMToClient(int c)
 	// next: kNPClientSRAMLoaded
 }
 
-static void NPServerDetachProcessThread(void)
+static void NPServerDetachProcessThread (void)
 {
 	pthread_create(&processthread, NULL, NPServerProcessThread, NULL);
 	pthread_detach(processthread);
 }
 
-static void * NPServerProcessThread(void *)
+static void * NPServerProcessThread (void *)
 {
 	NPNotification("Server: Entered process thread.", -1);
 
@@ -1035,9 +1028,9 @@ static void * NPServerProcessThread(void *)
 	return (NULL);
 }
 
-static void NPServerAllotPlayers(void)
+static void NPServerAllotPlayers (void)
 {
-	int n = 1;
+	int	n = 1;
 
 	for (int c = 1; c <= NP_MAX_CLIENTS; c++)
 	{
@@ -1058,7 +1051,7 @@ static void NPServerAllotPlayers(void)
 	NPNotification("Server: Number of players: %d", n);
 }
 
-static bool8 NPServerSendPlayerListToClient(int c)
+static bool8 NPServerSendPlayerListToClient (int c)
 {
 	if (!npplayer[c].online || !npplayer[c].ready)
 		return (false);
@@ -1106,7 +1099,7 @@ static bool8 NPServerSendPlayerListToClient(int c)
 	return (true);
 }
 
-static void NPServerSendPlayerList(void)
+static void NPServerSendPlayerList (void)
 {
 	for (int c = 1; c <= NP_MAX_CLIENTS; c++)
 	{
@@ -1118,16 +1111,14 @@ static void NPServerSendPlayerList(void)
 	}
 }
 
-static void NPServerSetPhaseSpan(void)
+static void NPServerSetPhaseSpan (void)
 {
-	uint8			mes[21];
 	struct timeval  tv1, tv2;
+	uint8			mes[21];
 	uint32			dus, dusmax;
 	int				l = npserver.numplayers * 4 + 1;
 
 	NPNotification("Server: Testing sending / receiving pad states...", -1);
-
-	// TODO: more proper estimation
 
 	dusmax = 0;
 
@@ -1189,19 +1180,17 @@ static void NPServerSetPhaseSpan(void)
 	NPNotification("Server: Sent phase span value to clients.", -1);
 }
 
-static void NPServerWaitStartReply(void)
+static void NPServerWaitStartReply (void)
 {
-	fd_set			readfds;
 	struct timeval	timeout;
+	fd_set			readfds;
 	int				maxfd;
-	int				c;
-	bool8			allok;
-	bool8			flag[NP_MAX_PLAYERS];
+	bool8			allok, flag[NP_MAX_PLAYERS];
 
 	NPNotification("Server: Waiting clients reply to start...", -1);
 
 	allok = false;
-	for (c = 1; c <= NP_MAX_CLIENTS; c++)
+	for (int c = 1; c <= NP_MAX_CLIENTS; c++)
 		flag[c] = false;
 
 	while (!allok)
@@ -1209,7 +1198,7 @@ static void NPServerWaitStartReply(void)
 		FD_ZERO(&readfds);
 		maxfd = 0;
 
-		for (c = 1; c <= NP_MAX_CLIENTS; c++)
+		for (int c = 1; c <= NP_MAX_CLIENTS; c++)
 		{
 			if (npplayer[c].ready)
 			{
@@ -1224,7 +1213,7 @@ static void NPServerWaitStartReply(void)
 
 		if (select(maxfd + 1, &readfds, NULL, NULL, &timeout) > 0)
 		{
-			for (c = 1; c <= NP_MAX_CLIENTS; c++)
+			for (int c = 1; c <= NP_MAX_CLIENTS; c++)
 			{
 				if (npplayer[c].ready)
 				{
@@ -1240,7 +1229,7 @@ static void NPServerWaitStartReply(void)
 		}
 
 		allok = true;
-		for (c = 1; c <= NP_MAX_CLIENTS; c++)
+		for (int c = 1; c <= NP_MAX_CLIENTS; c++)
 			if (npplayer[c].ready && !flag[c])
 				allok = false;
 	}
@@ -1248,7 +1237,7 @@ static void NPServerWaitStartReply(void)
 	NPNotification("Server: All clients are ready to start netplay.", -1);
 }
 
-void NPServerDetachNetPlayThread(void)
+void NPServerDetachNetPlayThread (void)
 {
 	NPNotification("Server: Detaching pad threads...", -1);
 
@@ -1270,7 +1259,7 @@ void NPServerDetachNetPlayThread(void)
 	NPNotification("Server: Detached pad threads.", -1);
 }
 
-void NPServerStopNetPlayThread(void)
+void NPServerStopNetPlayThread (void)
 {
 	NPNotification("Server: Stopping pad threads...", -1);
 
@@ -1294,7 +1283,7 @@ void NPServerStopNetPlayThread(void)
 	NPNotification("Server: Stopped pad threads.", -1);
 }
 
-void NPServerStartClients(void)
+void NPServerStartClients (void)
 {
 	NPNotification("Server: Sending start flag to clients...", -1);
 
@@ -1319,7 +1308,7 @@ void NPServerStartClients(void)
 	NPNotification("Server: Netplay started.", -1);
 }
 
-static void * NPServerNetPlayThread(void *p)
+static void * NPServerNetPlayThread (void *p)
 {
 	uint8	mes[NP_MAX_PLAYERS * 64 * 4 + 1];
 	uint8	count = 0;
@@ -1372,13 +1361,11 @@ static void * NPServerNetPlayThread(void *p)
 	return (NULL);
 }
 
-void NPServerProcessInput(void)
+void NPServerProcessInput (void)
 {
-	KeyMap  		myKeys;
 	static uint8	header = 0;
 	static uint32	pos    = 0;
-
-	#define KeyIsPressed(km, k)	(1 & (((unsigned char *) km) [(k) >> 3] >> ((k) & 7)))
+	KeyMap  		myKeys;
 
 	if (npserver.phasecount == 0)
 	{
@@ -1497,5 +1484,3 @@ void NPServerProcessInput(void)
 	npserver.phasecount--;
 	pos++;
 }
-
-#endif

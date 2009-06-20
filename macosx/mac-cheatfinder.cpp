@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,43 +171,51 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
+#include "snes9x.h"
 #include "memmap.h"
-#include "gfx.h"
-#include "ppu.h"
 #include "cheats.h"
 
 #include "mac-prefix.h"
+#include "mac-audio.h"
 #include "mac-dialog.h"
 #include "mac-os.h"
 #include "mac-screenshot.h"
 #include "mac-stringtools.h"
 #include "mac-cheatfinder.h"
 
-#define	kCFNumBytesPop			'Size'
-#define	kCFViewModeRad			'Mode'
-#define	kCFCompModePop			'Math'
-#define kCFCompStoredRad		'RSto'
-#define	kCFCompLastRad			'RLst'
-#define	kCFCompThisRad			'RThs'
-#define	kCFCompValueTxt			'CTxt'
-#define	kCFSearchBtn			'BSea'
-#define	kCFStoreValueBtn		'BSto'
-#define	kCFWatchBtn				'BWat'
-#define kCFDrawerBtn			'Drwr'
-#define	kCFWatchAddrTxt			'WTxt'
-#define	kCFRestoreBtn			'BRes'
-#define	kCFRemoveBtn			'BRem'
-#define	kCFAddEntryBtn			'BAdd'
-#define kCFUserPane				'Pane'
-#define	kCFSheetAddrTxt			'AEad'
-#define	kCFSheetCurrentValueTxt	'AEcv'
-#define	kCFSheetCheetValueTxt	'AEtx'
-#define	kCFSheetDescriptionTxt	'AEde'
-#define	kCFSheetAddBtn			'SHTa'
-#define	kCFSheetCancelBtn		'SHTc'
-#define	kCFListView				'List'
-#define	kCFUpperViews			'UI_T'
-#define	kCFLowerViews			'UI_B'
+#define	kCFNumBytesPop				'Size'
+#define	kCFViewModeRad				'Mode'
+#define	kCFCompModePop				'Math'
+#define kCFCompStoredRad			'RSto'
+#define	kCFCompLastRad				'RLst'
+#define	kCFCompThisRad				'RThs'
+#define	kCFCompValueTxt				'CTxt'
+#define	kCFSearchBtn				'BSea'
+#define	kCFStoreValueBtn			'BSto'
+#define	kCFWatchBtn					'BWat'
+#define kCFDrawerBtn				'Drwr'
+#define	kCFWatchAddrTxt				'WTxt'
+#define	kCFRestoreBtn				'BRes'
+#define	kCFRemoveBtn				'BRem'
+#define	kCFAddEntryBtn				'BAdd'
+#define kCFUserPane					'Pane'
+#define	kCFSheetAddrTxt				'AEad'
+#define	kCFSheetCurrentValueTxt		'AEcv'
+#define	kCFSheetCheetValueTxt		'AEtx'
+#define	kCFSheetDescriptionTxt		'AEde'
+#define	kCFSheetAddBtn				'SHTa'
+#define	kCFSheetCancelBtn			'SHTc'
+#define	kCFListView					'List'
+#define	kCFUpperViews				'UI_T'
+#define	kCFLowerViews				'UI_B'
+
+#define kEventScrollableScrollThere	'ESST'
+#define kEventCheatFinderList		'ECFL'
+#define kControlListLinePart		172
+
+#define	MAIN_MEMORY_SIZE			0x20000
+
+#define	kCheatFinderListViewClassID	CFSTR("com.snes9x.macos.snes9x.cheatfinder")
 
 enum
 {
@@ -235,22 +241,6 @@ enum
 	kCFSearchLessOrEqual
 };
 
-Boolean	cfIsWatching = false;
-
-extern SCheatData	Cheat;
-
-void DisplayChar(uint16 *, uint8);
-
-#define	MAIN_MEMORY_SIZE	0x20000
-
-#define kControlListLinePart		172
-#define kEventScrollableScrollThere	'ESST'
-#define kEventCheatFinderList		'ECFL'
-
-#define	kCheatFinderListViewClassID	CFSTR("com.snes9x.macos.snes9x.cheatfinder")
-
-static const HIViewID	kCheatFinderListViewID = { 'CHET', 'FNDR' };
-
 typedef struct
 {
 	WindowRef	main;
@@ -268,59 +258,67 @@ typedef struct
 	Boolean		inFocus;
 }	ListViewData;
 
-static void CheatFinderSearch(WindowData *);
-static void CheatFinderRestoreList(WindowData *);
-static void CheatFinderRemoveFromList(WindowData *);
-static void CheatFinderAdjustButtons(WindowData *);
-static void CheatFinderBuildResultList(void);
-static void CheatFinderHandleAddEntryButton(WindowData *);
-static void CheatFinderMakeValueFormat(char *);
-static void CheatFinderAddEntry(SInt64, char *);
-static void CheatFinderBeginAddEntrySheet(WindowData *);
-static void CheatFinderListViewScrollToThere(float, ListViewData *);
-static void CheatFinderListViewDraw(CGContextRef, HIRect *, ListViewData *);
-static float CheatFinderListViewSanityCheck(float, ListViewData *);
-static SInt64 CheatFinderReadBytes(UInt8 *, UInt32);
-static SInt64 CheatFinderGetValueEditText(ControlRef);
-static Boolean CheatFinderCompare(SInt64, SInt64);
-static HIViewPartCode CheatFinderListViewFindPart(EventRef, ListViewData *, SInt32 *);
-static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus CheatFinderSheetEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus CheatFinderWindowEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus CheatFinderListFrameEventHandler(EventHandlerCallRef, EventRef, void *);
+Boolean	cfIsWatching = false;
 
-static UInt8	*cfStoredRAM;
-static UInt8	*cfLastRAM;
-static UInt8	*cfCurrentRAM;
-static UInt8	*cfStatusFlag;
-static UInt32	*cfAddress;
+extern SCheatData	Cheat;
 
-static SInt32	cfNumRows;
-static SInt32	cfListSelection;
+void DisplayChar (uint16 *, uint8);
 
-static SInt32	cfViewMode;
-static SInt32	cfCompMode;
-static SInt32	cfCompWith;
-static UInt32	cfViewNumBytes;
-static UInt32	cfWatchAddr;
-static Boolean	cfIsNewGame;
-static Boolean	cfIsStored;
-static Boolean	cfDrawerShow;
+static UInt8		*cfStoredRAM;
+static UInt8		*cfLastRAM;
+static UInt8		*cfCurrentRAM;
+static UInt8		*cfStatusFlag;
+static UInt32		*cfAddress;
+
+static SInt32		cfNumRows;
+static SInt32		cfListSelection;
+
+static SInt32		cfViewMode;
+static SInt32		cfCompMode;
+static SInt32		cfCompWith;
+static UInt32		cfViewNumBytes;
+static UInt32		cfWatchAddr;
+static Boolean		cfIsNewGame;
+static Boolean		cfIsStored;
+static Boolean		cfDrawerShow;
 
 static int			cfListAddrColumnWidth;
 static char			cfWatchTextFormat[32];
 static ATSUStyle	cfListLineATSUStyle;
 
+static HIViewID		kCheatFinderListViewID = { 'CHET', 'FNDR' };
 
-void InitCheatFinder(void)
+static void CheatFinderSearch (WindowData *);
+static void CheatFinderRestoreList (WindowData *);
+static void CheatFinderRemoveFromList (WindowData *);
+static void CheatFinderAdjustButtons (WindowData *);
+static void CheatFinderBuildResultList (void);
+static void CheatFinderHandleAddEntryButton (WindowData *);
+static void CheatFinderMakeValueFormat (char *);
+static void CheatFinderAddEntry (SInt64, char *);
+static void CheatFinderBeginAddEntrySheet (WindowData *);
+static void CheatFinderListViewScrollToThere (float, ListViewData *);
+static void CheatFinderListViewDraw (CGContextRef, HIRect *, ListViewData *);
+static float CheatFinderListViewSanityCheck (float, ListViewData *);
+static SInt64 CheatFinderReadBytes (UInt8 *, UInt32);
+static SInt64 CheatFinderGetValueEditText (ControlRef);
+static Boolean CheatFinderCompare (SInt64, SInt64);
+static HIViewPartCode CheatFinderListViewFindPart (EventRef, ListViewData *, SInt32 *);
+static pascal OSStatus CheatFinderListViewHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus CheatFinderSheetEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus CheatFinderWindowEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus CheatFinderListFrameEventHandler (EventHandlerCallRef, EventRef, void *);
+
+
+void InitCheatFinder (void)
 {
 	OSStatus	err;
 
-	cfStoredRAM  = new UInt8  [MAIN_MEMORY_SIZE + 10];
-	cfLastRAM    = new UInt8  [MAIN_MEMORY_SIZE + 10];
-	cfCurrentRAM = new UInt8  [MAIN_MEMORY_SIZE + 10];
-	cfStatusFlag = new UInt8  [MAIN_MEMORY_SIZE + 10];
-	cfAddress    = new UInt32 [MAIN_MEMORY_SIZE + 10];
+	cfStoredRAM  = new UInt8 [MAIN_MEMORY_SIZE + 10];
+	cfLastRAM    = new UInt8 [MAIN_MEMORY_SIZE + 10];
+	cfCurrentRAM = new UInt8 [MAIN_MEMORY_SIZE + 10];
+	cfStatusFlag = new UInt8 [MAIN_MEMORY_SIZE + 10];
+	cfAddress    = new UInt32[MAIN_MEMORY_SIZE + 10];
 
 	if (!cfStoredRAM || !cfLastRAM || !cfCurrentRAM || !cfStatusFlag || !cfAddress)
 		QuitWithFatalError(0, "cheatfinder 01");
@@ -332,16 +330,16 @@ void InitCheatFinder(void)
 	cfCompMode     = kCFSearchEqual;
 	cfCompWith     = kCFCompWithThis;
 
-	err = CreateATSUIStyleFromFontFullNameAndSize((unsigned char *) "\pLucida Sans Typewriter Regular", 11, &cfListLineATSUStyle);
+	err = CreateATSUIStyleFromFontFullNameAndSize("Lucida Sans Typewriter Regular", 11, &cfListLineATSUStyle);
 	if (err)
 	{
-		err = CreateATSUIStyleFromFontFullNameAndSize((unsigned char *) "\pMonaco", 11, &cfListLineATSUStyle);
+		err = CreateATSUIStyleFromFontFullNameAndSize("Monaco", 11, &cfListLineATSUStyle);
 		if (err)
 			QuitWithFatalError(0, "cheatfinder 02");
 	}
 }
 
-void ResetCheatFinder(void)
+void ResetCheatFinder (void)
 {
 	memset(cfStoredRAM,  0x00, MAIN_MEMORY_SIZE);
 	memset(cfLastRAM,    0x00, MAIN_MEMORY_SIZE);
@@ -356,7 +354,7 @@ void ResetCheatFinder(void)
 	CheatFinderMakeValueFormat(cfWatchTextFormat);
 }
 
-void DeinitCheatFinder(void)
+void DeinitCheatFinder (void)
 {
 	OSStatus	err;
 
@@ -369,37 +367,35 @@ void DeinitCheatFinder(void)
 	delete [] cfAddress;
 }
 
-void CheatFinder(void)
+void CheatFinder (void)
 {
-	OSStatus		err;
-	IBNibRef		nibRef;
-	HIViewRef		ctl;
-	HIViewID		cid;
-	MenuRef			menu;
-	char			num[256];
-	unsigned char	numP[256];
-	WindowData		cf;
-	EventHandlerRef	wEref, sEref, pEref;
-	EventHandlerUPP	wUPP, sUPP, pUPP;
-	EventTypeSpec	wEvents[] = { { kEventClassCommand,    kEventCommandProcess           },
-								  { kEventClassCommand,    kEventCommandUpdateStatus      },
-								  { kEventClassWindow,     kEventWindowClose              },
-								  { kEventClassWindow,     kEventWindowBoundsChanging     } },
-					sEvents[] = { { kEventClassCommand,    kEventCommandProcess           },
-								  { kEventClassCommand,    kEventCommandUpdateStatus      } },
-					pEvents[] = { { kEventClassControl,    kEventControlDraw              } },
-					cEvents[] = { { kEventClassHIObject,   kEventHIObjectConstruct        },
-								  { kEventClassHIObject,   kEventHIObjectInitialize       },
-								  { kEventClassHIObject,   kEventHIObjectDestruct         },
-								  { kEventClassScrollable, kEventScrollableGetInfo        },
-								  { kEventClassScrollable, kEventScrollableScrollTo       },
-								  { kEventCheatFinderList, kEventScrollableScrollThere    },
-								  { kEventClassControl,    kEventControlHitTest           },
-								  { kEventClassControl,    kEventControlTrack             },
-								  { kEventClassControl,    kEventControlValueFieldChanged },
-								  { kEventClassControl,    kEventControlDraw              } };
+	static HIObjectClassRef	cfListViewClass = NULL;
 
-	static HIObjectClassRef	cfListViewClass = nil;
+	OSStatus				err;
+	IBNibRef				nibRef;
+	HIViewRef				ctl;
+	HIViewID				cid;
+	MenuRef					menu;
+	char					num[256];
+	WindowData				cf;
+	EventHandlerRef			wEref, sEref, pEref;
+	EventHandlerUPP			wUPP, sUPP, pUPP;
+	EventTypeSpec			wEvents[] = { { kEventClassCommand,    kEventCommandProcess           },
+										  { kEventClassCommand,    kEventCommandUpdateStatus      },
+										  { kEventClassWindow,     kEventWindowClose              } },
+							sEvents[] = { { kEventClassCommand,    kEventCommandProcess           },
+										  { kEventClassCommand,    kEventCommandUpdateStatus      } },
+							pEvents[] = { { kEventClassControl,    kEventControlDraw              } },
+							cEvents[] = { { kEventClassHIObject,   kEventHIObjectConstruct        },
+										  { kEventClassHIObject,   kEventHIObjectInitialize       },
+										  { kEventClassHIObject,   kEventHIObjectDestruct         },
+										  { kEventClassScrollable, kEventScrollableGetInfo        },
+										  { kEventClassScrollable, kEventScrollableScrollTo       },
+										  { kEventCheatFinderList, kEventScrollableScrollThere    },
+										  { kEventClassControl,    kEventControlHitTest           },
+										  { kEventClassControl,    kEventControlTrack             },
+										  { kEventClassControl,    kEventControlValueFieldChanged },
+										  { kEventClassControl,    kEventControlDraw              } };
 
 	if (!cartOpen)
 		return;
@@ -421,22 +417,23 @@ void CheatFinder(void)
 
 					err = noErr;
 					if (!cfListViewClass)
-						err = HIObjectRegisterSubclass(kCheatFinderListViewClassID, kHIViewClassID, 0, CheatFinderListViewHandler, GetEventTypeCount(cEvents), cEvents, nil, &cfListViewClass);
+						err = HIObjectRegisterSubclass(kCheatFinderListViewClassID, kHIViewClassID, 0, CheatFinderListViewHandler, GetEventTypeCount(cEvents), cEvents, NULL, &cfListViewClass);
 					if (err == noErr)
 					{
-						HIObjectRef	hiObject;
-						HIViewRef	userpane, scrollview, listview, imageview, root;
-						HIRect		frame;
-						HISize		minSize;
-						CGImageRef	image;
-						Rect		rct;
-						float		pich;
+						HIObjectRef		hiObject;
+						HIViewRef		userpane, scrollview, listview, imageview, root;
+						HILayoutInfo	layoutinfo;
+						HIRect			frame;
+						HISize			minSize;
+						CGImageRef		image;
+						Rect			rct;
+						float			pich;
 
 						GetWindowBounds(cf.main, kWindowContentRgn, &rct);
 
 						minSize.width  = (float) (rct.right  - rct.left);
 						minSize.height = (float) (rct.bottom - rct.top );
-						err = SetWindowResizeLimits(cf.main, &minSize, nil);
+						err = SetWindowResizeLimits(cf.main, &minSize, NULL);
 
 						root = HIViewGetRoot(cf.main);
 						cid.id = 0;
@@ -454,25 +451,20 @@ void CheatFinder(void)
 						HIViewSetVisible(scrollview, true);
 						cf.scroll = scrollview;
 
-						if (hiToolboxVersion >= 0x130)
-						{
-							HILayoutInfo	layoutinfo;
+						layoutinfo.version = kHILayoutInfoVersionZero;
+						HIViewGetLayoutInfo(scrollview, &layoutinfo);
 
-							layoutinfo.version = kHILayoutInfoVersionZero;
-							HIViewGetLayoutInfo(scrollview, &layoutinfo);
+						layoutinfo.binding.top.toView    = userpane;
+						layoutinfo.binding.top.kind      = kHILayoutBindTop;
+						layoutinfo.binding.bottom.toView = userpane;
+						layoutinfo.binding.bottom.kind   = kHILayoutBindBottom;
+						layoutinfo.binding.left.toView   = userpane;
+						layoutinfo.binding.left.kind     = kHILayoutBindLeft;
+						layoutinfo.binding.right.toView  = userpane;
+						layoutinfo.binding.right.kind    = kHILayoutBindRight;
+						HIViewSetLayoutInfo(scrollview, &layoutinfo);
 
-							layoutinfo.binding.top.toView    = userpane;
-							layoutinfo.binding.top.kind      = kHILayoutBindTop;
-							layoutinfo.binding.bottom.toView = userpane;
-							layoutinfo.binding.bottom.kind   = kHILayoutBindBottom;
-							layoutinfo.binding.left.toView   = userpane;
-							layoutinfo.binding.left.kind     = kHILayoutBindLeft;
-							layoutinfo.binding.right.toView  = userpane;
-							layoutinfo.binding.right.kind    = kHILayoutBindRight;
-							HIViewSetLayoutInfo(scrollview, &layoutinfo);
-						}
-
-						err = HIObjectCreate(kCheatFinderListViewClassID, nil, &hiObject);
+						err = HIObjectCreate(kCheatFinderListViewClassID, NULL, &hiObject);
 						listview = (HIViewRef) hiObject;
 						HIViewAddSubview(scrollview, listview);
 						SetControl32BitMinimum(listview, 1);
@@ -483,7 +475,7 @@ void CheatFinder(void)
 
 						cid.signature = kCFNumBytesPop;
 						HIViewFindByID(root, cid, &ctl);
-						menu = GetControlPopupMenuHandle(ctl);
+						menu = HIMenuViewGetMenu(ctl);
 						for (int i = 1; i <= CountMenuItems(menu); i++)
 							CheckMenuItem(menu, i, false);
 						CheckMenuItem(menu, cfViewNumBytes, true);
@@ -495,7 +487,7 @@ void CheatFinder(void)
 
 						cid.signature = kCFCompModePop;
 						HIViewFindByID(root, cid, &ctl);
-						menu = GetControlPopupMenuHandle(ctl);
+						menu = HIMenuViewGetMenu(ctl);
 						for (int i = 1; i <= CountMenuItems(menu); i++)
 							CheckMenuItem(menu, i, false);
 						CheckMenuItem(menu, cfCompMode, true);
@@ -542,8 +534,7 @@ void CheatFinder(void)
 						if (cfIsWatching)
 						{
 							sprintf(num, "%06lX", cfWatchAddr + 0x7E0000);
-							ConvertCString(num, numP);
-							SetStaticTextText(ctl, numP, false);
+							SetStaticTextCStr(ctl, num, false);
 						}
 						else
 							SetStaticTextCFString(ctl, CFSTR(""), false);
@@ -609,13 +600,13 @@ void CheatFinder(void)
 							CGImageRelease(image);
 					}
 
-					ReleaseWindow(cf.drawer);
+					CFRelease(cf.drawer);
 				}
 
-				ReleaseWindow(cf.sheet);
+				CFRelease(cf.sheet);
 			}
 
-			ReleaseWindow(cf.main);
+			CFRelease(cf.main);
 		}
 
 		DisposeNibReference(nibRef);
@@ -625,7 +616,7 @@ void CheatFinder(void)
 	}
 }
 
-static SInt64 CheatFinderReadBytes(UInt8 *mem, UInt32 addr)
+static SInt64 CheatFinderReadBytes (UInt8 *mem, UInt32 addr)
 {
 	switch (cfViewMode)
 	{
@@ -633,10 +624,10 @@ static SInt64 CheatFinderReadBytes(UInt8 *mem, UInt32 addr)
 		{
 			switch (cfViewNumBytes)
 			{
-				case 1:	return (SInt64) (SInt8)      mem[addr];
-				case 2:	return (SInt64) (SInt16)    (mem[addr] | (mem[addr + 1] << 8));
-				case 4:	return (SInt64) (SInt32)    (mem[addr] | (mem[addr + 1] << 8) | (mem[addr + 2] << 16) | (mem[addr + 3] << 24));
-				case 3:	return (SInt64) (((SInt32) ((mem[addr] | (mem[addr + 1] << 8) | (mem[addr + 2] << 16)) << 8)) >> 8);
+				case 1:	return ((SInt64) (SInt8)      mem[addr]);
+				case 2:	return ((SInt64) (SInt16)    (mem[addr] | (mem[addr + 1] << 8)));
+				case 4:	return ((SInt64) (SInt32)    (mem[addr] | (mem[addr + 1] << 8) | (mem[addr + 2] << 16) | (mem[addr + 3] << 24)));
+				case 3:	return ((SInt64) (((SInt32) ((mem[addr] | (mem[addr + 1] << 8) | (mem[addr + 2] << 16)) << 8)) >> 8));
 			}
 
 			break;
@@ -647,32 +638,28 @@ static SInt64 CheatFinderReadBytes(UInt8 *mem, UInt32 addr)
 		{
 			switch (cfViewNumBytes)
 			{
-				case 1:	return (SInt64) (UInt8)      mem[addr];
-				case 2:	return (SInt64) (UInt16)    (mem[addr] | (mem[addr + 1] << 8));
-				case 3:	return (SInt64) (UInt32)    (mem[addr] | (mem[addr + 1] << 8) | (mem[addr + 2] << 16));
-				case 4:	return (SInt64) (UInt32)    (mem[addr] | (mem[addr + 1] << 8) | (mem[addr + 2] << 16) | (mem[addr + 3] << 24));
+				case 1:	return ((SInt64) (UInt8)      mem[addr]);
+				case 2:	return ((SInt64) (UInt16)    (mem[addr] | (mem[addr + 1] << 8)));
+				case 3:	return ((SInt64) (UInt32)    (mem[addr] | (mem[addr + 1] << 8) | (mem[addr + 2] << 16)));
+				case 4:	return ((SInt64) (UInt32)    (mem[addr] | (mem[addr + 1] << 8) | (mem[addr + 2] << 16) | (mem[addr + 3] << 24)));
 			}
 
 			break;
 		}
 	}
 
-	return 0;
+	return (0);
 }
 
-static pascal OSStatus CheatFinderWindowEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus CheatFinderWindowEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerCallRef)
-
-	OSStatus				err, result;
+	OSStatus	err, result = eventNotHandledErr;
 	WindowData	*cf;
-	HIViewRef				control, ctl, root;
-	HIViewID				controlID, cid;
-	Boolean					update = false;
-	char					num[256];
-	unsigned char			numP[256];
+	HIViewRef	control, ctl, root;
+	HIViewID	controlID, cid;
+	Boolean		update = false;
+	char		num[256];
 
-	result = eventNotHandledErr;
 	cf = (WindowData *) inUserData;
 
 	switch (GetEventClass(inEvent))
@@ -685,65 +672,6 @@ static pascal OSStatus CheatFinderWindowEventHandler(EventHandlerCallRef inHandl
 				{
 					QuitAppModalLoopForWindow(cf->main);
 					result = noErr;
-					break;
-				}
-
-				case kEventWindowBoundsChanging:
-				{
-				#ifdef MAC_JAGUAR_SUPPORT
-					if (systemVersion < 0x1030)
-					{
-						Rect	winBounds;
-						UInt32	attr;
-
-						err = GetEventParameter(inEvent, kEventParamAttributes, typeUInt32, nil, sizeof(UInt32), nil, &attr);
-						if ((err == noErr) && (attr & kWindowBoundsChangeSizeChanged))
-						{
-							err = GetEventParameter(inEvent, kEventParamCurrentBounds, typeQDRectangle, nil, sizeof(Rect), nil, &winBounds);
-							if (err == noErr)
-							{
-								HIRect	frame, pbounds;
-
-								pbounds.origin.x = 0.0;
-								pbounds.origin.y = 0.0;
-								pbounds.size.width  = (float) (winBounds.right  - winBounds.left);
-								pbounds.size.height = (float) (winBounds.bottom - winBounds.top );
-
-								root = HIViewGetRoot(cf->main);
-								cid.id = 0;
-
-								cid.signature = kCFUpperViews;
-								HIViewFindByID(root, cid, &ctl);
-								HIViewGetFrame(ctl, &frame);
-								frame.origin.x = pbounds.size.width  - frame.size.width;
-								frame.origin.y = 0;
-								HIViewSetFrame(ctl, &frame);
-
-								cid.signature = kCFLowerViews;
-								HIViewFindByID(root, cid, &ctl);
-								HIViewGetFrame(ctl, &frame);
-								frame.origin.x = pbounds.size.width  - frame.size.width;
-								frame.origin.y = pbounds.size.height - frame.size.height;
-								HIViewSetFrame(ctl, &frame);
-
-								cid.signature = kCFUserPane;
-								HIViewFindByID(root, cid, &ctl);
-								HIViewGetFrame(ctl, &frame);
-								frame.size.height = pbounds.size.height -  40.0;
-								frame.size.width  = pbounds.size.width  - 236.0;
-								HIViewSetFrame(ctl, &frame);
-
-								HIViewGetBounds(ctl, &frame);
-								frame.origin.y    += 16.0;
-								frame.size.height -= 16.0;
-								frame = CGRectInset(frame, 1.0, 1.0);
-								HIViewSetFrame(cf->scroll, &frame);
-
-								result = noErr;
-							}
-						}
-					}
-				#endif
 					break;
 				}
 			}
@@ -759,7 +687,7 @@ static pascal OSStatus CheatFinderWindowEventHandler(EventHandlerCallRef inHandl
 
 				case kEventCommandUpdateStatus:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -771,7 +699,7 @@ static pascal OSStatus CheatFinderWindowEventHandler(EventHandlerCallRef inHandl
 
 				case kEventCommandProcess:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						root = HIViewGetRoot(cf->main);
@@ -902,7 +830,7 @@ static pascal OSStatus CheatFinderWindowEventHandler(EventHandlerCallRef inHandl
 								{
 									if (cfAddress[cfListSelection] > (0x20000 - cfViewNumBytes))
 									{
-										SysBeep(10);
+										PlayAlertSound();
 										SetControl32BitValue(control, 0);
 									}
 									else
@@ -911,8 +839,7 @@ static pascal OSStatus CheatFinderWindowEventHandler(EventHandlerCallRef inHandl
 										cfIsWatching = true;
 
 										sprintf(num, "%06lX", cfWatchAddr + 0x7E0000);
-										ConvertCString(num, numP);
-										SetStaticTextText(ctl, numP, true);
+										SetStaticTextCStr(ctl, num, true);
 									}
 								}
 								else
@@ -951,22 +878,19 @@ static pascal OSStatus CheatFinderWindowEventHandler(EventHandlerCallRef inHandl
 	return (result);
 }
 
-static SInt64 CheatFinderGetValueEditText(HIViewRef control)
+static SInt64 CheatFinderGetValueEditText (HIViewRef control)
 {
-	SInt64			result = 0;
-	UInt32			uvalue;
-	SInt32			svalue;
-	char			num[256];
-	unsigned char	numP[256];
+	SInt64	result = 0;
+	UInt32	uvalue;
+	SInt32	svalue;
+	char	num[256];
 
-	GetEditTextText(control, numP);
-	if (numP[0] == 0)
+	GetEditTextCStr(control, num);
+	if (num[0] == 0)
 	{
 		SetEditTextCFString(control, CFSTR("0"), true);
-		return 0;
+		return (0);
 	}
-
-	ConvertPString(numP, num);
 
 	switch (cfViewMode)
 	{
@@ -1145,11 +1069,10 @@ static SInt64 CheatFinderGetValueEditText(HIViewRef control)
 	return (result);
 }
 
-static void CheatFinderSearch(WindowData *cf)
+static void CheatFinderSearch (WindowData *cf)
 {
-	UInt8	*mem;
 	SInt64	cmpvalue;
-	SInt32	i;
+	UInt8	*mem;
 
 	if (cfCompWith == kCFCompWithThis)
 	{
@@ -1159,7 +1082,7 @@ static void CheatFinderSearch(WindowData *cf)
 		HIViewFindByID(HIViewGetRoot(cf->main), cid, &ctl);
 		cmpvalue = CheatFinderGetValueEditText(ctl);
 
-		for (i = 0; i < cfNumRows; i++)
+		for (int i = 0; i < cfNumRows; i++)
 			if (!CheatFinderCompare(CheatFinderReadBytes(cfCurrentRAM, cfAddress[i]), cmpvalue))
 				cfStatusFlag[cfAddress[i]] = 0;
 	}
@@ -1167,7 +1090,7 @@ static void CheatFinderSearch(WindowData *cf)
 	{
 		mem = (cfCompWith == kCFCompWithStored) ? cfStoredRAM : cfLastRAM;
 
-		for (i = 0; i < cfNumRows; i++)
+		for (int i = 0; i < cfNumRows; i++)
 			if (!CheatFinderCompare(CheatFinderReadBytes(cfCurrentRAM, cfAddress[i]), CheatFinderReadBytes(mem, cfAddress[i])))
 				cfStatusFlag[cfAddress[i]] = 0;
 	}
@@ -1178,7 +1101,7 @@ static void CheatFinderSearch(WindowData *cf)
 	SetControl32BitValue(cf->list, 1);
 }
 
-static Boolean CheatFinderCompare(SInt64 ramvalue, SInt64 cmpvalue)
+static Boolean CheatFinderCompare (SInt64 ramvalue, SInt64 cmpvalue)
 {
 	switch (cfCompMode)
 	{
@@ -1193,7 +1116,7 @@ static Boolean CheatFinderCompare(SInt64 ramvalue, SInt64 cmpvalue)
 	return (false);
 }
 
-static void CheatFinderBuildResultList(void)
+static void CheatFinderBuildResultList (void)
 {
 	cfNumRows = 0;
 
@@ -1209,7 +1132,7 @@ static void CheatFinderBuildResultList(void)
 	cfListSelection = 0;
 }
 
-static void CheatFinderAdjustButtons(WindowData *cf)
+static void CheatFinderAdjustButtons (WindowData *cf)
 {
 	HIViewRef	ctl, root;
 	HIViewID	cid;
@@ -1250,7 +1173,7 @@ static void CheatFinderAdjustButtons(WindowData *cf)
 	}
 }
 
-static void CheatFinderRemoveFromList(WindowData *cf)
+static void CheatFinderRemoveFromList (WindowData *cf)
 {
 	if (cfNumRows > 0)
 	{
@@ -1265,7 +1188,7 @@ static void CheatFinderRemoveFromList(WindowData *cf)
 		}
 		else
 		{
-			for (SInt32 i = cfListSelection; i < cfNumRows - 1; i++)
+			for (int i = cfListSelection; i < cfNumRows - 1; i++)
 				cfAddress[i] = cfAddress[i + 1];
 
 			cfNumRows--;
@@ -1278,7 +1201,7 @@ static void CheatFinderRemoveFromList(WindowData *cf)
 	}
 }
 
-static void CheatFinderRestoreList(WindowData *cf)
+static void CheatFinderRestoreList (WindowData *cf)
 {
 	memset(cfStatusFlag, 0xFF, MAIN_MEMORY_SIZE);
 	CheatFinderBuildResultList();
@@ -1287,7 +1210,7 @@ static void CheatFinderRestoreList(WindowData *cf)
 	SetControl32BitValue(cf->list, 1);
 }
 
-static void CheatFinderMakeValueFormat(char *text)
+static void CheatFinderMakeValueFormat (char *text)
 {
 	switch (cfViewMode)
 	{
@@ -1306,12 +1229,12 @@ static void CheatFinderMakeValueFormat(char *text)
 	}
 }
 
-void CheatFinderDrawWatchAddr(void)
+void CheatFinderDrawWatchAddr (void)
 {
-	uint16	*basePtr;
-	int		len;
-
 	static char	code[256];
+
+	uint16		*basePtr;
+	int			len;
 
 	sprintf(code, cfWatchTextFormat, CheatFinderReadBytes(Memory.RAM, cfWatchAddr));
 
@@ -1325,10 +1248,10 @@ void CheatFinderDrawWatchAddr(void)
     }
 }
 
-static void CheatFinderHandleAddEntryButton(WindowData *cf)
+static void CheatFinderHandleAddEntryButton (WindowData *cf)
 {
 	if (cfAddress[cfListSelection] > (0x20000 - cfViewNumBytes))
-		SysBeep(10);
+		PlayAlertSound();
 	else
 	if (Cheat.num_cheats + cfViewNumBytes > MAX_CHEATS)
 		AppearanceAlert(kAlertCautionAlert, kCFCantAddWarning, kCFCantAddHint);
@@ -1336,13 +1259,13 @@ static void CheatFinderHandleAddEntryButton(WindowData *cf)
 		CheatFinderBeginAddEntrySheet(cf);
 }
 
-static void CheatFinderBeginAddEntrySheet(WindowData *cf)
+static void CheatFinderBeginAddEntrySheet (WindowData *cf)
 {
 	OSStatus	err;
 	HIViewRef	ctl, root;
 	HIViewID	cid;
 	UInt32		addr;
-	char		buf1[256], buf2[256];
+	char		str[256], form[256];
 
 	addr = cfAddress[cfListSelection];
 
@@ -1351,37 +1274,32 @@ static void CheatFinderBeginAddEntrySheet(WindowData *cf)
 
 	cid.signature = kCFSheetAddrTxt;
 	HIViewFindByID(root, cid, &ctl);
-	sprintf(buf1, "%06lX", addr + 0x7E0000);
-	ConvertCString(buf1, (unsigned char *) buf2);
-	SetStaticTextText(ctl, (unsigned char *) buf2, false);
+	sprintf(str, "%06lX", addr + 0x7E0000);
+	SetStaticTextCStr(ctl, str, false);
 
 	cid.signature = kCFSheetCurrentValueTxt;
 	HIViewFindByID(root, cid, &ctl);
-	CheatFinderMakeValueFormat(buf2);
-	sprintf(buf1, buf2, CheatFinderReadBytes(cfCurrentRAM, addr));
-	ConvertCString(buf1, (unsigned char *) buf2);
-	SetStaticTextText(ctl, (unsigned char *) buf2, false);
+	CheatFinderMakeValueFormat(form);
+	sprintf(str, form, CheatFinderReadBytes(cfCurrentRAM, addr));
+	SetStaticTextCStr(ctl, str, false);
 
 	cid.signature = kCFSheetCheetValueTxt;
 	HIViewFindByID(root, cid, &ctl);
-	SetEditTextText(ctl, (unsigned char *) buf2, false);
+	SetEditTextCStr(ctl, str, false);
 
 	err = ClearKeyboardFocus(cf->sheet);
 	err = SetKeyboardFocus(cf->sheet, ctl, kControlFocusNextPart);
 
 	cid.signature = kCFSheetDescriptionTxt;
 	HIViewFindByID(root, cid, &ctl);
-	sprintf(buf1, "%06lX-%06lX", addr + 0x7E0000, addr + cfViewNumBytes - 1 + 0x7E0000);
-	ConvertCString(buf1, (unsigned char *) buf2);
-	SetEditTextText(ctl, (unsigned char *) buf2, false);
+	sprintf(str, "%06lX-%06lX", addr + 0x7E0000, addr + cfViewNumBytes - 1 + 0x7E0000);
+	SetStaticTextCStr(ctl, str, false);
 
 	err = ShowSheetWindow(cf->sheet, cf->main);
 }
 
-static pascal OSStatus CheatFinderSheetEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus CheatFinderSheetEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerCallRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowData	*cf = (WindowData *) inUserData;
 
@@ -1395,7 +1313,7 @@ static pascal OSStatus CheatFinderSheetEventHandler(EventHandlerCallRef inHandle
 
 				case kEventCommandUpdateStatus:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(false);
@@ -1407,7 +1325,7 @@ static pascal OSStatus CheatFinderSheetEventHandler(EventHandlerCallRef inHandle
 
 				case kEventCommandProcess:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
@@ -1472,14 +1390,14 @@ static pascal OSStatus CheatFinderSheetEventHandler(EventHandlerCallRef inHandle
 	return (result);
 }
 
-static void CheatFinderAddEntry(SInt64 value, char *description)
+static void CheatFinderAddEntry (SInt64 value, char *description)
 {
-	UInt32	addr, v, i;
+	UInt32	addr, v;
 
 	addr = cfAddress[cfListSelection];
 	v = (UInt32) (SInt32) value;
 
-	for (i = 0; i < cfViewNumBytes; i++)
+	for (int i = 0; i < cfViewNumBytes; i++)
 	{
 		strcpy(Cheat.c[Cheat.num_cheats].name, description);
 		S9xAddCheat(true, true, addr + i + 0x7E0000, (UInt8) ((v & (0x000000FF << (i * 8))) >> (i * 8)));
@@ -1488,10 +1406,8 @@ static void CheatFinderAddEntry(SInt64 value, char *description)
 	S9xApplyCheats();
 }
 
-static pascal OSStatus CheatFinderListFrameEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *userData)
+static pascal OSStatus CheatFinderListFrameEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *userData)
 {
-	#pragma unused (inHandlerCallRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	HIViewRef	view = (HIViewRef) userData;
 
@@ -1509,16 +1425,16 @@ static pascal OSStatus CheatFinderListFrameEventHandler(EventHandlerCallRef inHa
 					HIViewGetBounds(view, &bounds);
 					cfListAddrColumnWidth = (int) (bounds.size.width * 0.4);
 
-					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, nil, sizeof(CGContextRef), nil, &ctx);
+					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, NULL, sizeof(CGContextRef), NULL, &ctx);
 					if (err == noErr)
 					{
 						HIRect	drawBounds;
 
 						if (systemVersion >= 0x1040)
 						{
-							HIShapeRef	shape = nil;
+							HIShapeRef	shape = NULL;
 
-							err = GetEventParameter(inEvent, kEventParamShape, typeHIShapeRef, nil, sizeof(HIShapeRef), nil, &shape);
+							err = GetEventParameter(inEvent, kEventParamShape, typeHIShapeRef, NULL, sizeof(HIShapeRef), NULL, &shape);
 							if (err == noErr)
 							{
 								if (shape)
@@ -1527,12 +1443,12 @@ static pascal OSStatus CheatFinderListFrameEventHandler(EventHandlerCallRef inHa
 									drawBounds = bounds;
 							}
 						}
-					#ifdef MAC_PANTHER_JAGUAR_SUPPORT
+					#ifdef MAC_PANTHER_SUPPORT
 						else
 						{
-							RgnHandle	rgn = nil;
+							RgnHandle	rgn = NULL;
 
-							err = GetEventParameter(inEvent, kEventParamRgnHandle, typeQDRgnHandle, nil, sizeof(RgnHandle), nil, &rgn);
+							err = GetEventParameter(inEvent, kEventParamRgnHandle, typeQDRgnHandle, NULL, sizeof(RgnHandle), NULL, &rgn);
 							if (err == noErr)
 							{
 								if (rgn)
@@ -1550,143 +1466,84 @@ static pascal OSStatus CheatFinderListFrameEventHandler(EventHandlerCallRef inHa
 							}
 						}
 					#endif
+
 						if (err == noErr)
 						{
 							if (CGRectContainsRect(drawBounds, bounds))
 							{
-								if (hiToolboxVersion >= 0x130)
+								HIRect					rct;
+								HIThemeFrameDrawInfo	frameinfo;
+								HIThemeButtonDrawInfo	buttoninfo;
+								HIThemeTextInfo			textinfo;
+								CFStringRef				str;
+
+								buttoninfo.version          = 0;
+								buttoninfo.state            = kThemeStateActive;
+								buttoninfo.kind             = kThemeListHeaderButton;
+								buttoninfo.value            = kThemeButtonOff;
+								buttoninfo.adornment        = kThemeAdornmentNone;
+
+								frameinfo.version           = 0;
+								frameinfo.state             = kThemeStateActive;
+								frameinfo.kind              = kHIThemeFrameListBox;
+								frameinfo.isFocused         = false;
+
+								textinfo.version            = 0;
+								textinfo.state              = kThemeStateActive;
+								textinfo.fontID             = kThemeSmallSystemFont;
+								textinfo.verticalFlushness  = kHIThemeTextVerticalFlushCenter;
+								textinfo.options            = 0;
+								textinfo.truncationPosition = kHIThemeTextTruncationNone;
+								textinfo.truncationMaxLines = 0;
+								textinfo.truncationHappened = false;
+
+								CGContextSaveGState(ctx);
+
+								rct = CGRectInset(bounds, 1.0, 1.0);
+								err = HIThemeDrawFrame(&rct, &frameinfo, ctx, kHIThemeOrientationNormal);
+
+								rct = bounds;
+								rct.size.height = 16.0;
+								rct.size.width  = (float) cfListAddrColumnWidth + 1.0;
+								err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, NULL);
+
+								CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+
+								rct.size.width  = (float) cfListAddrColumnWidth;
+								rct.origin.y++;
+								textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushCenter;
+								str = CFCopyLocalizedString(CFSTR("Address"), "address");
+								if (str)
 								{
-									HIRect					rct;
-									HIThemeFrameDrawInfo	frameinfo;
-									HIThemeButtonDrawInfo	buttoninfo;
-									HIThemeTextInfo			textinfo;
-									CFStringRef				str;
-
-									buttoninfo.version          = 0;
-									buttoninfo.state            = kThemeStateActive;
-									buttoninfo.kind             = kThemeListHeaderButton;
-									buttoninfo.value            = kThemeButtonOff;
-									buttoninfo.adornment        = kThemeAdornmentNone;
-
-									frameinfo.version           = 0;
-									frameinfo.state             = kThemeStateActive;
-									frameinfo.kind              = kHIThemeFrameListBox;
-									frameinfo.isFocused         = false;
-
-									textinfo.version            = 0;
-									textinfo.state              = kThemeStateActive;
-									textinfo.fontID             = kThemeSmallSystemFont;
-									textinfo.verticalFlushness  = kHIThemeTextVerticalFlushCenter;
-									textinfo.options            = 0;
-									textinfo.truncationPosition = kHIThemeTextTruncationNone;
-									textinfo.truncationMaxLines = 0;
-									textinfo.truncationHappened = false;
-
-									CGContextSaveGState(ctx);
-
-									rct = CGRectInset(bounds, 1.0, 1.0);
-									err = HIThemeDrawFrame(&rct, &frameinfo, ctx, kHIThemeOrientationNormal);
-
-									rct = bounds;
-									rct.size.height = 16.0;
-									rct.size.width  = (float) cfListAddrColumnWidth + 1.0;
-									err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, nil);
-
-									CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
-
-									rct.size.width  = (float) cfListAddrColumnWidth;
-									rct.origin.y++;
-									textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushCenter;
-									str = CFCopyLocalizedString(CFSTR("Address"), "address");
-									if (str)
-									{
-										err = HIThemeDrawTextBox(str, &rct, &textinfo, ctx, kHIThemeOrientationNormal);
-										CFRelease(str);
-									}
-
-									rct = bounds;
-									rct.size.height = 16.0;
-									rct.size.width -= (float) cfListAddrColumnWidth;
-									rct.origin.x   += (float) cfListAddrColumnWidth;
-									err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, nil);
-
-									CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
-
-									rct.size.width -= 28.0;
-									rct.origin.y++;
-									textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushRight;
-									str = CFCopyLocalizedString(CFSTR("Value"), "value");
-									if (str)
-									{
-										err = HIThemeDrawTextBox(str, &rct, &textinfo, ctx, kHIThemeOrientationNormal);
-										CFRelease(str);
-									}
-
-									rct = bounds;
-									rct.size.height = 16.0;
-									rct.size.width  = 16.0;
-									rct.origin.x    = bounds.size.width - 16.0;
-									err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, nil);
-
-									CGContextRestoreGState(ctx);
+									err = HIThemeDrawTextBox(str, &rct, &textinfo, ctx, kHIThemeOrientationNormal);
+									CFRelease(str);
 								}
-							#ifdef MAC_JAGUAR_SUPPORT
-								else
+
+								rct = bounds;
+								rct.size.height = 16.0;
+								rct.size.width -= (float) cfListAddrColumnWidth;
+								rct.origin.x   += (float) cfListAddrColumnWidth;
+								err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, NULL);
+
+								CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+
+								rct.size.width -= 28.0;
+								rct.origin.y++;
+								textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushRight;
+								str = CFCopyLocalizedString(CFSTR("Value"), "value");
+								if (str)
 								{
-									Rect				qdbounds, rct;
-									ThemeButtonDrawInfo	buttoninfo;
-									CFStringRef			str;
-									CGrafPtr			old;
-
-									GetPort(&old);
-									SetPortWindowPort(GetControlOwner(view));
-
-									buttoninfo.state     = kThemeStateActive;
-									buttoninfo.value     = kThemeButtonOff;
-									buttoninfo.adornment = kThemeAdornmentNone;
-
-									GetControlBounds(view, &qdbounds);
-
-									rct = qdbounds;
-									InsetRect(&rct, 1, 1);
-									err = DrawThemeListBoxFrame(&rct, kThemeStateActive);
-
-									rct = qdbounds;
-									rct.bottom = rct.top  + 16;
-									rct.right  = rct.left + cfListAddrColumnWidth + 1;
-									err = DrawThemeButton(&rct, kThemeListHeaderButton, &buttoninfo, nil, nil, nil, 0);
-
-									rct.right  = rct.left + cfListAddrColumnWidth;
-									OffsetRect(&rct, 0, 1);
-									str = CFCopyLocalizedString(CFSTR("Address"), "address");
-									if (str)
-									{
-										err = DrawThemeTextBox(str, kThemeSmallSystemFont, kThemeStateActive, false, &rct, teCenter, ctx);
-										CFRelease(str);
-									}
-
-									rct = qdbounds;
-									rct.bottom = rct.top + 16;
-									rct.left  += cfListAddrColumnWidth;
-									err = DrawThemeButton(&rct, kThemeListHeaderButton, &buttoninfo, nil, nil, nil, 0);
-
-									rct.right -= 28;
-									OffsetRect(&rct, 0, 1);
-									str = CFCopyLocalizedString(CFSTR("Value"), "value");
-									if (str)
-									{
-										err = DrawThemeTextBox(str, kThemeSmallSystemFont, kThemeStateActive, false, &rct, teFlushRight, ctx);
-										CFRelease(str);
-									}
-
-									rct = qdbounds;
-									rct.bottom = rct.top   + 16;
-									rct.left   = rct.right - 16;
-									err = DrawThemeButton(&rct, kThemeListHeaderButton, &buttoninfo, nil, nil, nil, 0);
-
-									SetPort(old);
+									err = HIThemeDrawTextBox(str, &rct, &textinfo, ctx, kHIThemeOrientationNormal);
+									CFRelease(str);
 								}
-							#endif
+
+								rct = bounds;
+								rct.size.height = 16.0;
+								rct.size.width  = 16.0;
+								rct.origin.x    = bounds.size.width - 16.0;
+								err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, NULL);
+
+								CGContextRestoreGState(ctx);
 							}
 
 							result = noErr;
@@ -1704,7 +1561,7 @@ static pascal OSStatus CheatFinderListFrameEventHandler(EventHandlerCallRef inHa
 	return (result);
 }
 
-static void CheatFinderListViewDraw(CGContextRef ctx, HIRect *bounds, ListViewData *myData)
+static void CheatFinderListViewDraw (CGContextRef ctx, HIRect *bounds, ListViewData *myData)
 {
 	static Boolean	init = true;
 	static Rect		aRect = { 0, 0, 0, 0 }, vRect = { 0, 0, 0, 0 };
@@ -1813,7 +1670,7 @@ static void CheatFinderListViewDraw(CGContextRef ctx, HIRect *bounds, ListViewDa
 	}
 }
 
-static HIViewPartCode CheatFinderListViewFindPart(EventRef inEvent, ListViewData *myData, SInt32 *whichLine)
+static HIViewPartCode CheatFinderListViewFindPart (EventRef inEvent, ListViewData *myData, SInt32 *whichLine)
 {
 	OSStatus		err;
 	HIViewPartCode	part;
@@ -1826,7 +1683,7 @@ static HIViewPartCode CheatFinderListViewFindPart(EventRef inEvent, ListViewData
 	start = (SInt32) (myData->originPoint.y / myData->lineSize.height);
 	y = start * myData->lineSize.height - myData->originPoint.y;
 
-	err = GetEventParameter(inEvent, kEventParamMouseLocation, typeHIPoint, nil, sizeof(hipt), nil, &hipt);
+	err = GetEventParameter(inEvent, kEventParamMouseLocation, typeHIPoint, NULL, sizeof(hipt), NULL, &hipt);
 	if (err == noErr)
 	{
 		line = start + (SInt32) ((hipt.y - y - 1) / myData->lineSize.height) + 1;
@@ -1834,14 +1691,14 @@ static HIViewPartCode CheatFinderListViewFindPart(EventRef inEvent, ListViewData
 		if (line <= GetControl32BitMaximum(myData->view))
 			part = kControlListLinePart;
 
-		if (whichLine != nil)
+		if (whichLine != NULL)
 			*whichLine = line;
 	}
 
 	return (part);
 }
 
-static float CheatFinderListViewSanityCheck(float where, ListViewData *myData)
+static float CheatFinderListViewSanityCheck (float where, ListViewData *myData)
 {
 	HIRect	bounds;
 	HISize	imageSize;
@@ -1858,7 +1715,7 @@ static float CheatFinderListViewSanityCheck(float where, ListViewData *myData)
 	return (where);
 }
 
-static void CheatFinderListViewScrollToThere(float where, ListViewData *myData)
+static void CheatFinderListViewScrollToThere (float where, ListViewData *myData)
 {
 	OSStatus	err;
 	EventRef	theEvent;
@@ -1875,9 +1732,9 @@ static void CheatFinderListViewScrollToThere(float where, ListViewData *myData)
 	}
 }
 
-static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus CheatFinderListViewHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-	OSStatus				err, result = eventNotHandledErr;
+	OSStatus		err, result = eventNotHandledErr;
 	ListViewData	*myData = (ListViewData *) inUserData;
 
 	switch (GetEventClass(inEvent))
@@ -1895,7 +1752,7 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 					{
 						HIViewRef	epView;
 
-						err = GetEventParameter(inEvent, kEventParamHIObjectInstance, typeHIObjectRef, nil, sizeof(epView), nil, &epView);
+						err = GetEventParameter(inEvent, kEventParamHIObjectInstance, typeHIObjectRef, NULL, sizeof(epView), NULL, &epView);
 						if (err == noErr)
 						{
 							data->view = epView;
@@ -1959,7 +1816,7 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 				{
 					HIPoint	where;
 
-					err = GetEventParameter(inEvent, kEventParamOrigin, typeHIPoint, nil, sizeof(where), nil, &where);
+					err = GetEventParameter(inEvent, kEventParamOrigin, typeHIPoint, NULL, sizeof(where), NULL, &where);
 					if (err == noErr)
 					{
 						where.y = CheatFinderListViewSanityCheck(where.y, myData);
@@ -1985,7 +1842,7 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 				{
 					HIPoint	where;
 
-					err = GetEventParameter(inEvent, kEventParamOrigin, typeHIPoint, nil, sizeof(where), nil, &where);
+					err = GetEventParameter(inEvent, kEventParamOrigin, typeHIPoint, NULL, sizeof(where), NULL, &where);
 					if (err == noErr)
 					{
 						where.y = CheatFinderListViewSanityCheck(where.y, myData);
@@ -2013,7 +1870,7 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 				{
 					CGContextRef	ctx;
 
-					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, nil, sizeof(ctx), nil, &ctx);
+					err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, NULL, sizeof(ctx), NULL, &ctx);
 					if (err == noErr)
 					{
 						HIRect	bounds;
@@ -2021,9 +1878,7 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 						HIViewGetBounds(myData->view, &bounds);
 
 						CGContextSaveGState(ctx);
-
 						CheatFinderListViewDraw(ctx, &bounds, myData);
-
 						CGContextRestoreGState(ctx);
 
 						result = noErr;
@@ -2036,7 +1891,7 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 				{
 					HIViewPartCode	part;
 
-					part = CheatFinderListViewFindPart(inEvent, myData, nil);
+					part = CheatFinderListViewFindPart(inEvent, myData, NULL);
 
 					result = SetEventParameter(inEvent, kEventParamControlPart, typeControlPartCode, sizeof(part), &part);
 
@@ -2050,7 +1905,6 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 					HIViewRef			contentView;
 					HIViewPartCode		part;
 					HIRect				frame;
-					CGrafPtr			oldPort;
 					SInt32				whichLine = 0;
 
 					part = CheatFinderListViewFindPart(inEvent, myData, &whichLine);
@@ -2063,23 +1917,45 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 					HIViewGetFrame(myData->view, &frame);
 					HIViewConvertRect(&frame, myData->view, contentView);
 
-					Boolean	portChanged;
-					Point	qdpt;
+					HIPoint		hipt;
+				#ifdef MAC_TIGER_PANTHER_SUPPORT
+					CGrafPtr	oldPort;
+					Point		qdpt;
+					Boolean		portChanged = false;
 
-					portChanged = QDSwapPort(GetWindowPort(window), &oldPort);
+					if (systemVersion < 0x1050)
+						portChanged = QDSwapPort(GetWindowPort(window), &oldPort);
+				#endif
 
-					TrackMouseLocation(nil, &qdpt, &trackResult);
+					if (systemVersion >= 0x1050)
+						err = HIViewTrackMouseLocation(contentView, 0, kEventDurationForever, 0, NULL, &hipt, NULL, NULL, &trackResult);
+				#ifdef MAC_TIGER_PANTHER_SUPPORT
+					else
+						TrackMouseLocation(NULL, &qdpt, &trackResult);
+				#endif
 
 					while (trackResult != kMouseTrackingMouseUp)
 					{
-						SInt32	start, line;
+						SInt32	start, line = 0;
 						float	y;
 
 						start = (SInt32) (myData->originPoint.y / myData->lineSize.height);
 						y = start * myData->lineSize.height - myData->originPoint.y;
-						line = (SInt32) ((qdpt.v - frame.origin.y - y - 1) / myData->lineSize.height) + 1;
-						if (qdpt.v < frame.origin.y)
-							line--;
+
+						if (systemVersion >= 0x1050)
+						{
+							line = (SInt32) ((hipt.y - frame.origin.y - y - 1) / myData->lineSize.height) + 1;
+							if (hipt.y < frame.origin.y)
+								line--;
+						}
+					#ifdef MAC_TIGER_PANTHER_SUPPORT
+						else
+						{
+							line = (SInt32) ((qdpt.v - frame.origin.y - y - 1) / myData->lineSize.height) + 1;
+							if (qdpt.v < frame.origin.y)
+								line--;
+						}
+					#endif
 						line += start;
 
 						if (line != whichLine)
@@ -2106,11 +1982,21 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 							}
 						}
 
-						TrackMouseLocation(nil, &qdpt, &trackResult);
+						if (systemVersion >= 0x1050)
+							err = HIViewTrackMouseLocation(contentView, 0, kEventDurationForever, 0, NULL, &hipt, NULL, NULL, &trackResult);
+					#ifdef MAC_TIGER_PANTHER_SUPPORT
+						else
+							TrackMouseLocation(NULL, &qdpt, &trackResult);
+					#endif
 					}
 
-					if (portChanged)
-						QDSwapPort(oldPort, nil);
+				#ifdef MAC_TIGER_PANTHER_SUPPORT
+					if (systemVersion < 0x1050)
+					{
+						if (portChanged)
+							QDSwapPort(oldPort, NULL);
+					}
+				#endif
 
 					err = SetEventParameter(inEvent, kEventParamControlPart, typeControlPartCode, sizeof(part), &part);
 
@@ -2138,6 +2024,8 @@ static pascal OSStatus CheatFinderListViewHandler(EventHandlerCallRef inHandlerC
 					break;
 				}
 			}
+
+			break;
 		}
 	}
 

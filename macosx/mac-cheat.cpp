@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -186,7 +184,6 @@
 #include "mac-cheat.h"
 
 #define	kDataBrowser	'BRSR'
-#define	kButtonsPane	'BTNS'
 #define	kCmCheckBox		'CHK_'
 #define	kCmAddress		'ADDR'
 #define	kCmValue		'VALU'
@@ -197,48 +194,49 @@
 
 extern SCheatData	Cheat;
 
-static void InitCheatItems(void);
-static void ImportCheatItems(void);
-static void DetachCheatItems(void);
-static void AddCheatItem(void);
-static void DeleteCheatItem(void);
-static void EnableAllCheatItems(void);
-static pascal void DBItemNotificationCallBack(ControlRef, DataBrowserItemID, DataBrowserItemNotification);
-static pascal Boolean DBCompareCallBack(ControlRef, DataBrowserItemID, DataBrowserItemID, DataBrowserPropertyID);
-static pascal OSStatus DBClientDataCallback(ControlRef, DataBrowserItemID, DataBrowserPropertyID, DataBrowserItemDataRef, Boolean);
-static pascal OSStatus CheatEventHandler(EventHandlerCallRef, EventRef, void *);
-
 typedef struct
 {
-	UInt32	id;
-	Boolean	valid;
-	Boolean	enabled;
-	UInt32	address;
-	UInt8	value;
+	uint32	id;
+	uint32	address;
+	uint8	value;
+	bool8	valid;
+	bool8	enabled;
 	char	description[22];
 }	CheatItem;
 
-static ControlRef	dbRef;
 static WindowRef	wRef;
+static HIViewRef	dbRef;
 static CheatItem	citem[MAX_CHEATS];
-static UInt32		numofcheats;
+static uint32		numofcheats;
 
-static void InitCheatItems(void)
+static void InitCheatItems (void);
+static void ImportCheatItems (void);
+static void DetachCheatItems (void);
+static void AddCheatItem (void);
+static void DeleteCheatItem (void);
+static void EnableAllCheatItems (void);
+static pascal void DBItemNotificationCallBack (HIViewRef, DataBrowserItemID, DataBrowserItemNotification);
+static pascal Boolean DBCompareCallBack (HIViewRef, DataBrowserItemID, DataBrowserItemID, DataBrowserPropertyID);
+static pascal OSStatus DBClientDataCallback (HIViewRef, DataBrowserItemID, DataBrowserPropertyID, DataBrowserItemDataRef, Boolean);
+static pascal OSStatus CheatEventHandler (EventHandlerCallRef, EventRef, void *);
+
+
+static void InitCheatItems (void)
 {
-	for (UInt32 i = 0; i < MAX_CHEATS; i++)
+	for (unsigned int i = 0; i < MAX_CHEATS; i++)
 	{
 		citem[i].id      = i + 1;
 		citem[i].valid   = false;
 		citem[i].enabled = false;
 		citem[i].address = 0;
 		citem[i].value   = 0;
-		sprintf(citem[i].description, "Cheat %02lu", citem[i].id);
+		sprintf(citem[i].description, "Cheat %03" PRIu32, citem[i].id);
 	}
 }
 
-static void ImportCheatItems(void)
+static void ImportCheatItems (void)
 {
-	for (UInt32 i = 0; i < Cheat.num_cheats; i++)
+	for (unsigned int i = 0; i < Cheat.num_cheats; i++)
 	{
 		citem[i].valid   = true;
 		citem[i].enabled = Cheat.c[i].enabled;
@@ -248,223 +246,62 @@ static void ImportCheatItems(void)
 	}
 }
 
-static void DetachCheatItems(void)
+static void DetachCheatItems (void)
 {
-	S9xDeleteCheats(); // ->  include Cheat.num_cheats = 0
+	S9xDeleteCheats(); // Cheat.num_cheats = 0
 
-	for (UInt32 i = 0; i < MAX_CHEATS; i++)
+	for (unsigned int i = 0; i < MAX_CHEATS; i++)
 	{
 		if (citem[i].valid)
 		{
 			strcpy(Cheat.c[Cheat.num_cheats].name, citem[i].description);
-			S9xAddCheat(citem[i].enabled, false, citem[i].address, citem[i].value); // ->  include Cheat.num_cheats++
+			S9xAddCheat(citem[i].enabled, false, citem[i].address, citem[i].value); // Cheat.num_cheats++
 		}
 	}
 
 	S9xApplyCheats();
 }
 
-void ConfigureCheat(void)
+void ConfigureCheat (void)
 {
-	OSStatus	err;
-	IBNibRef	nibRef;
-
 	if (!cartOpen)
 		return;
+
+	OSStatus	err;
+	IBNibRef	nibRef;
 
 	err = CreateNibReference(kMacS9XCFString, &nibRef);
 	if (err == noErr)
 	{
-		WindowRef	uiparts;
-
-		err = CreateWindowFromNib(nibRef, CFSTR("CheatEntry"), &uiparts);
+		err = CreateWindowFromNib(nibRef, CFSTR("CheatEntry"), &wRef);
 		if (err == noErr)
 		{
-			DataBrowserCallbacks			callbacks;
-			DataBrowserListViewColumnDesc	columnDesc;
-			EventHandlerRef					eref;
-			EventHandlerUPP					eUPP;
-			EventTypeSpec					events[] = { { kEventClassCommand, kEventCommandProcess       },
-														 { kEventClassCommand, kEventCommandUpdateStatus  },
-														 { kEventClassWindow,  kEventWindowClose          },
-														 { kEventClassWindow,  kEventWindowBoundsChanging } };
-			ControlRef						ctl, userpane, contentview;
-			ControlID						cid;
-			CFStringRef						str;
-			HISize							minSize;
-			Rect							winBounds, btnBounds, rct;
-			WindowAttributes				metal = 0;
+			DataBrowserCallbacks	callbacks;
+			EventHandlerRef			eref;
+			EventHandlerUPP			eUPP;
+			EventTypeSpec			events[] = { { kEventClassCommand, kEventCommandProcess      },
+												 { kEventClassCommand, kEventCommandUpdateStatus },
+												 { kEventClassWindow,  kEventWindowClose         } };
+			HIViewRef				ctl, root;
+			HIViewID				cid;
 
+			root = HIViewGetRoot(wRef);
 			cid.id = 0;
-			cid.signature = kButtonsPane;
-			GetControlByID(uiparts, &cid, &userpane);
-			GetWindowBounds(uiparts, kWindowContentRgn, &winBounds);
+			cid.signature = kDataBrowser;
+			HIViewFindByID(root, cid, &dbRef);
 
-			if (systemVersion >= 0x1030)	// DataBrowser supports compositing
+		#ifdef MAC_PANTHER_SUPPORT
+			if (systemVersion < 0x1040)
 			{
-				HIRect	frame;
+				HISize	minSize;
+				Rect	rct;
 
-				str = CFCopyLocalizedString(CFSTR("CreateMetalDlg"), "NO");
-				if (str)
-				{
-					if (CFStringCompare(str, CFSTR("YES"), 0) == kCFCompareEqualTo)
-						metal = kWindowMetalAttribute;
-
-					CFRelease(str);
-				}
-
-				err = HIViewGetFrame(userpane, &frame);
-				MoveControl(userpane, 0, 0);	// since uiparts window is non-compositing
-				err = CreateNewWindow(kDocumentWindowClass, kWindowCloseBoxAttribute | kWindowCollapseBoxAttribute | kWindowFullZoomAttribute | kWindowResizableAttribute | kWindowLiveResizeAttribute | kWindowStandardHandlerAttribute | kWindowCompositingAttribute | metal, &winBounds, &wRef);
-				err = HIViewFindByID(HIViewGetRoot(wRef), kHIViewWindowContentID, &contentview);
-				err = HIViewAddSubview(contentview, userpane);
-				err = HIViewSetFrame(userpane, &frame);
-			}
-		#ifdef MAC_JAGUAR_SUPPORT
-			else
-			{
-				err = CreateNewWindow(kDocumentWindowClass, kWindowCloseBoxAttribute | kWindowCollapseBoxAttribute | kWindowFullZoomAttribute | kWindowResizableAttribute | kWindowLiveResizeAttribute | kWindowStandardHandlerAttribute, &winBounds, &wRef);
-				err = CreateRootControl(wRef, &contentview);
-				err = EmbedControl(userpane, contentview);
+				GetWindowBounds(wRef, kWindowContentRgn, &rct);
+				minSize.width  = (float) (rct.right  - rct.left);
+				minSize.height = (float) (rct.bottom - rct.top );
+				err = SetWindowResizeLimits(wRef, &minSize, NULL);
 			}
 		#endif
-
-			ReleaseWindow(uiparts);
-
-			if (!metal)
-				err = SetThemeWindowBackground(wRef, kThemeBrushDialogBackgroundActive, false);
-
-			str = CFCopyLocalizedString(CFSTR("CheatEntryDlg"), "CheatEntry");
-			if (str)
-			{
-				err = SetWindowTitleWithCFString(wRef, str);
-				CFRelease(str);
-			}
-
-			if (systemVersion >= 0x1030)	// DataBrowser supports compositing
-			{
-				HILayoutInfo	layoutinfo;
-
-				layoutinfo.version = kHILayoutInfoVersionZero;
-				err = HIViewGetLayoutInfo(userpane, &layoutinfo);
-
-				layoutinfo.binding.top.toView    = contentview;
-				layoutinfo.binding.top.kind      = kHILayoutBindTop;
-				layoutinfo.binding.bottom.toView = contentview;
-				layoutinfo.binding.bottom.kind   = kHILayoutBindNone;
-				layoutinfo.binding.left.toView   = contentview;
-				layoutinfo.binding.left.kind     = kHILayoutBindNone;
-				layoutinfo.binding.right.toView  = contentview;
-				layoutinfo.binding.right.kind    = kHILayoutBindRight;
-				err = HIViewSetLayoutInfo(userpane, &layoutinfo);
-			}
-
-			minSize.width  = (float) (winBounds.right  - winBounds.left);
-			minSize.height = (float) (winBounds.bottom - winBounds.top );
-			err = SetWindowResizeLimits(wRef, &minSize, nil);
-
-			MoveWindowPosition(wRef, kWindowCheatEntry, true);
-
-			GetWindowBounds(wRef, kWindowContentRgn, &winBounds);
-			GetControlBounds(userpane, &btnBounds);
-
-		#ifdef MAC_JAGUAR_SUPPORT
-			if (systemVersion < 0x1030)
-			{
-				MoveControl(userpane, (winBounds.right - winBounds.left) - (btnBounds.right - btnBounds.left), btnBounds.top);
-				GetControlBounds(userpane, &btnBounds);
-			}
-		#endif
-
-			rct.top = rct.left = 20;
-			rct.bottom = (winBounds.bottom - winBounds.top ) - 20;
-			rct.right  = (winBounds.right  - winBounds.left) - (btnBounds.right - btnBounds.left) - 8;
-			err = CreateDataBrowserControl(wRef, &rct, kDataBrowserListView, &dbRef);
-
-			if (systemVersion >= 0x1030)	// DataBrowser supports compositing
-			{
-				HILayoutInfo	layoutinfo;
-
-				layoutinfo.version = kHILayoutInfoVersionZero;
-				err = HIViewGetLayoutInfo(dbRef, &layoutinfo);
-
-				layoutinfo.binding.top.toView    = contentview;
-				layoutinfo.binding.top.kind      = kHILayoutBindTop;
-				layoutinfo.binding.bottom.toView = contentview;
-				layoutinfo.binding.bottom.kind   = kHILayoutBindBottom;
-				layoutinfo.binding.left.toView   = contentview;
-				layoutinfo.binding.left.kind     = kHILayoutBindLeft;
-				layoutinfo.binding.right.toView  = contentview;
-				layoutinfo.binding.right.kind    = kHILayoutBindRight;
-				err = HIViewSetLayoutInfo(dbRef, &layoutinfo);
-			}
-
-			columnDesc.propertyDesc.propertyID = kCmCheckBox;
-			columnDesc.propertyDesc.propertyType = kDataBrowserCheckboxType;
-			columnDesc.propertyDesc.propertyFlags = kDataBrowserListViewSortableColumn | kDataBrowserListViewSelectionColumn | kDataBrowserPropertyIsMutable | kDataBrowserDefaultPropertyFlags;
-			columnDesc.headerBtnDesc.version = kDataBrowserListViewLatestHeaderDesc;
-			columnDesc.headerBtnDesc.minimumWidth = 30;
-			columnDesc.headerBtnDesc.maximumWidth = 30;
-			columnDesc.headerBtnDesc.titleOffset = 0;
-			columnDesc.headerBtnDesc.titleString = nil;
-			columnDesc.headerBtnDesc.initialOrder = kDataBrowserOrderIncreasing;
-			columnDesc.headerBtnDesc.btnFontStyle.flags = kControlUseJustMask;
-			columnDesc.headerBtnDesc.btnFontStyle.just = teCenter;
-			columnDesc.headerBtnDesc.btnContentInfo.contentType = 0;
-			columnDesc.headerBtnDesc.btnContentInfo.u.resID = 0;
-
-			err = AddDataBrowserListViewColumn(dbRef, &columnDesc, ULONG_MAX);
-
-			columnDesc.propertyDesc.propertyID = kCmAddress;
-			columnDesc.propertyDesc.propertyType = kDataBrowserTextType;
-			columnDesc.propertyDesc.propertyFlags = kDataBrowserListViewSortableColumn | kDataBrowserListViewSelectionColumn | kDataBrowserPropertyIsMutable | kDataBrowserDefaultPropertyFlags;
-			columnDesc.headerBtnDesc.version = kDataBrowserListViewLatestHeaderDesc;
-			columnDesc.headerBtnDesc.minimumWidth = 84;
-			columnDesc.headerBtnDesc.maximumWidth = 84;
-			columnDesc.headerBtnDesc.titleOffset = 0;
-			columnDesc.headerBtnDesc.titleString = CFCopyLocalizedString(CFSTR("Address"), "address");
-			columnDesc.headerBtnDesc.initialOrder = kDataBrowserOrderIncreasing;
-			columnDesc.headerBtnDesc.btnFontStyle.flags = kControlUseJustMask;
-			columnDesc.headerBtnDesc.btnFontStyle.just = teCenter;
-			columnDesc.headerBtnDesc.btnContentInfo.contentType = 0;
-			columnDesc.headerBtnDesc.btnContentInfo.u.resID = 0;
-
-			err = AddDataBrowserListViewColumn(dbRef, &columnDesc, ULONG_MAX);
-			CFRelease(columnDesc.headerBtnDesc.titleString);
-
-			columnDesc.propertyDesc.propertyID = kCmValue;
-			columnDesc.propertyDesc.propertyType = kDataBrowserTextType;
-			columnDesc.propertyDesc.propertyFlags = kDataBrowserListViewSortableColumn | kDataBrowserListViewSelectionColumn | kDataBrowserPropertyIsMutable | kDataBrowserDefaultPropertyFlags;
-			columnDesc.headerBtnDesc.version = kDataBrowserListViewLatestHeaderDesc;
-			columnDesc.headerBtnDesc.minimumWidth = 65;
-			columnDesc.headerBtnDesc.maximumWidth = 65;
-			columnDesc.headerBtnDesc.titleOffset = 0;
-			columnDesc.headerBtnDesc.titleString = CFCopyLocalizedString(CFSTR("Value"), "value");
-			columnDesc.headerBtnDesc.initialOrder = kDataBrowserOrderIncreasing;
-			columnDesc.headerBtnDesc.btnFontStyle.flags = kControlUseJustMask;
-			columnDesc.headerBtnDesc.btnFontStyle.just = teCenter;
-			columnDesc.headerBtnDesc.btnContentInfo.contentType = 0;
-			columnDesc.headerBtnDesc.btnContentInfo.u.resID = 0;
-
-			err = AddDataBrowserListViewColumn(dbRef, &columnDesc, ULONG_MAX);
-			CFRelease(columnDesc.headerBtnDesc.titleString);
-
-			columnDesc.propertyDesc.propertyID = kCmDescription;
-			columnDesc.propertyDesc.propertyType = kDataBrowserTextType;
-			columnDesc.propertyDesc.propertyFlags = kDataBrowserListViewSortableColumn | kDataBrowserListViewSelectionColumn | kDataBrowserPropertyIsMutable | kDataBrowserDefaultPropertyFlags;
-			columnDesc.headerBtnDesc.version = kDataBrowserListViewLatestHeaderDesc;
-			columnDesc.headerBtnDesc.minimumWidth = 196;
-			columnDesc.headerBtnDesc.maximumWidth = 196;
-			columnDesc.headerBtnDesc.titleOffset = 0;
-			columnDesc.headerBtnDesc.titleString = CFCopyLocalizedString(CFSTR("Description"), "description");
-			columnDesc.headerBtnDesc.initialOrder = kDataBrowserOrderIncreasing;
-			columnDesc.headerBtnDesc.btnFontStyle.flags = kControlUseJustMask;
-			columnDesc.headerBtnDesc.btnFontStyle.just = teFlushLeft;
-			columnDesc.headerBtnDesc.btnContentInfo.contentType = 0;
-			columnDesc.headerBtnDesc.btnContentInfo.u.resID = 0;
-
-			err = AddDataBrowserListViewColumn(dbRef, &columnDesc, ULONG_MAX);
-			CFRelease(columnDesc.headerBtnDesc.titleString);
 
 			callbacks.version = kDataBrowserLatestCallbacks;
 			err = InitDataBrowserCallbacks(&callbacks);
@@ -473,30 +310,21 @@ void ConfigureCheat(void)
 			callbacks.u.v1.itemNotificationCallback = NewDataBrowserItemNotificationUPP(DBItemNotificationCallBack);
 			err = SetDataBrowserCallbacks(dbRef, &callbacks);
 
-			err = SetDataBrowserHasScrollBars(dbRef, false, true);
-			err = SetDataBrowserSortOrder(dbRef, kDataBrowserOrderIncreasing);
-			err = SetDataBrowserSortProperty(dbRef, kCmAddress);
-			err = SetDataBrowserSelectionFlags(dbRef, kDataBrowserDragSelect | kDataBrowserCmdTogglesSelection);
-			err = SetDataBrowserTableViewHiliteStyle(dbRef, kDataBrowserTableViewFillHilite);
-
 			if (systemVersion >= 0x1040)
 				err = DataBrowserChangeAttributes(dbRef, kDataBrowserAttributeListViewAlternatingRowColors, kDataBrowserAttributeNone);
-
-			cid.signature = kDataBrowser;
-			SetControlID(dbRef, &cid);
 
 			InitCheatItems();
 			ImportCheatItems();
 
 			DataBrowserItemID	*id;
 
-			id = new DataBrowserItemID [MAX_CHEATS];
+			id = new DataBrowserItemID[MAX_CHEATS];
 			if (!id)
 				QuitWithFatalError(0, "cheat 01");
 
 			numofcheats = 0;
 
-			for (UInt32 i = 0; i < MAX_CHEATS; i++)
+			for (unsigned int i = 0; i < MAX_CHEATS; i++)
 			{
 				if (citem[i].valid)
 				{
@@ -511,21 +339,21 @@ void ConfigureCheat(void)
 			delete [] id;
 
 			cid.signature = kNewButton;
-			GetControlByID(wRef, &cid, &ctl);
+			HIViewFindByID(root, cid, &ctl);
 			if (numofcheats == MAX_CHEATS)
 				err = DeactivateControl(ctl);
 			else
 				err = ActivateControl(ctl);
 
 			cid.signature = kAllButton;
-			GetControlByID(wRef, &cid, &ctl);
+			HIViewFindByID(root, cid, &ctl);
 			if (numofcheats == 0)
 				err = DeactivateControl(ctl);
 			else
 				err = ActivateControl(ctl);
 
 			cid.signature = kDelButton;
-			GetControlByID(wRef, &cid, &ctl);
+			HIViewFindByID(root, cid, &ctl);
 			err = DeactivateControl(ctl);
 
 			eUPP = NewEventHandlerUPP(CheatEventHandler);
@@ -533,10 +361,10 @@ void ConfigureCheat(void)
 
 			err = SetKeyboardFocus(wRef, dbRef, kControlFocusNextPart);
 
+			MoveWindowPosition(wRef, kWindowCheatEntry, true);
 			ShowWindow(wRef);
 			err = RunAppModalLoopForWindow(wRef);
 			HideWindow(wRef);
-
 			SaveWindowPosition(wRef, kWindowCheatEntry);
 
 			err = RemoveEventHandler(eref);
@@ -546,7 +374,7 @@ void ConfigureCheat(void)
 			DisposeDataBrowserItemCompareUPP(callbacks.u.v1.itemCompareCallback);
 			DisposeDataBrowserItemDataUPP(callbacks.u.v1.itemDataCallback);
 
-			ReleaseWindow(wRef);
+			CFRelease(wRef);
 
 			DetachCheatItems();
 		}
@@ -555,13 +383,13 @@ void ConfigureCheat(void)
 	}
 }
 
-static void AddCheatItem(void)
+static void AddCheatItem (void)
 {
 	OSStatus			err;
-	ControlRef			control;
-	ControlID			cid;
-	UInt32				i;
+	HIViewRef			ctl, root;
+	HIViewID			cid;
 	DataBrowserItemID	id[1];
+	unsigned int		i;
 
 	if (numofcheats == MAX_CHEATS)
 		return;
@@ -578,36 +406,37 @@ static void AddCheatItem(void)
 	citem[i].enabled = false;
 	citem[i].address = 0;
 	citem[i].value   = 0;
-	sprintf(citem[i].description, "Cheat %02lu", citem[i].id);
+	sprintf(citem[i].description, "Cheat %03" PRIu32, citem[i].id);
 
 	id[0] = citem[i].id;
 	err = AddDataBrowserItems(dbRef, kDataBrowserNoItem, 1, id, kDataBrowserItemNoProperty);
 	err = RevealDataBrowserItem(dbRef, id[0], kCmAddress, true);
 
+	root = HIViewGetRoot(wRef);
 	cid.id = 0;
 
 	if (numofcheats == MAX_CHEATS)
 	{
 		cid.signature = kNewButton;
-		GetControlByID(wRef, &cid, &control);
-		err = DeactivateControl(control);
+		HIViewFindByID(root, cid, &ctl);
+		err = DeactivateControl(ctl);
 	}
 
 	if (numofcheats)
 	{
 		cid.signature = kAllButton;
-		GetControlByID(wRef, &cid, &control);
-		err = ActivateControl(control);
+		HIViewFindByID(root, cid, &ctl);
+		err = ActivateControl(ctl);
 	}
 }
 
-static void DeleteCheatItem(void)
+static void DeleteCheatItem (void)
 {
 	OSStatus	err;
-	ControlRef	control;
-	ControlID	cid;
+	HIViewRef	ctl, root;
+	HIViewID	cid;
 	Handle		selectedItems;
-	UInt32		selectionCount;
+	ItemCount	selectionCount;
 
 	selectedItems = NewHandle(0);
 	if (!selectedItems)
@@ -624,7 +453,7 @@ static void DeleteCheatItem(void)
 
 	err = RemoveDataBrowserItems(dbRef, kDataBrowserNoItem, selectionCount, (DataBrowserItemID *) *selectedItems, kDataBrowserItemNoProperty);
 
-	for (UInt32 i = 0; i < selectionCount; i++)
+	for (unsigned int i = 0; i < selectionCount; i++)
 	{
 		citem[((DataBrowserItemID *) (*selectedItems))[i] - 1].valid   = false;
 		citem[((DataBrowserItemID *) (*selectedItems))[i] - 1].enabled = false;
@@ -633,35 +462,36 @@ static void DeleteCheatItem(void)
 
 	DisposeHandle(selectedItems);
 
+	root = HIViewGetRoot(wRef);
 	cid.id = 0;
 
 	if (numofcheats < MAX_CHEATS)
 	{
 		cid.signature = kNewButton;
-		GetControlByID(wRef, &cid, &control);
-		err = ActivateControl(control);
+		HIViewFindByID(root, cid, &ctl);
+		err = ActivateControl(ctl);
 	}
 
 	if (numofcheats == 0)
 	{
 		cid.signature = kAllButton;
-		GetControlByID(wRef, &cid, &control);
-		err = DeactivateControl(control);
+		HIViewFindByID(root, cid, &ctl);
+		err = DeactivateControl(ctl);
 	}
 }
 
-static void EnableAllCheatItems(void)
+static void EnableAllCheatItems (void)
 {
 	OSStatus	err;
 
-	for (int i = 0; i < MAX_CHEATS; i++)
+	for (unsigned int i = 0; i < MAX_CHEATS; i++)
 		if (citem[i].valid)
 			citem[i].enabled = true;
 
-	err = UpdateDataBrowserItems(dbRef, kDataBrowserNoItem, kDataBrowserNoItem, nil, kDataBrowserItemNoProperty, kCmCheckBox);
+	err = UpdateDataBrowserItems(dbRef, kDataBrowserNoItem, kDataBrowserNoItem, NULL, kDataBrowserItemNoProperty, kCmCheckBox);
 }
 
-static pascal OSStatus DBClientDataCallback(ControlRef browser, DataBrowserItemID itemID, DataBrowserPropertyID property, DataBrowserItemDataRef itemData, Boolean changeValue)
+static pascal OSStatus DBClientDataCallback (HIViewRef browser, DataBrowserItemID itemID, DataBrowserPropertyID property, DataBrowserItemDataRef itemData, Boolean changeValue)
 {
 	OSStatus 	err, result;
 	CFStringRef	str;
@@ -697,16 +527,18 @@ static pascal OSStatus DBClientDataCallback(ControlRef browser, DataBrowserItemI
 				{
 					Boolean	translated;
 
-					if (S9xProActionReplayToRaw(code, address, value) == nil)
+					if (S9xProActionReplayToRaw(code, address, value) == NULL)
 						translated = true;
 					else
-					if (S9xGameGenieToRaw(code, address, value) == nil)
+					if (S9xGameGenieToRaw(code, address, value) == NULL)
 						translated = true;
 					else
 					{
 						translated = false;
 						if (sscanf(code, "%" SCNx32, &address) != 1)
 							address = 0;
+						else
+							address &= 0xFFFFFF;
 					}
 
 					citem[itemID - 1].address = address;
@@ -727,7 +559,7 @@ static pascal OSStatus DBClientDataCallback(ControlRef browser, DataBrowserItemI
 			}
 			else
 			{
-				sprintf(code, "%06lX", citem[itemID - 1].address);
+				sprintf(code, "%06" PRIX32, citem[itemID - 1].address);
 				str = CFStringCreateWithCString(kCFAllocatorDefault, code, CFStringGetSystemEncoding());
 				err = SetDataBrowserItemDataText(itemData, str);
 				CFRelease(str);
@@ -743,10 +575,10 @@ static pascal OSStatus DBClientDataCallback(ControlRef browser, DataBrowserItemI
 				CFRelease(str);
 				if (r)
 				{
-					UInt32	byte;
+					uint32	byte;
 
-					if (sscanf(code, "%lx", &byte) == 1)
-						citem[itemID - 1].value = (UInt8) byte;
+					if (sscanf(code, "%" SCNx32, &byte) == 1)
+						citem[itemID - 1].value = (uint8) byte;
 					else
 					{
 						citem[itemID - 1].value = 0;
@@ -756,7 +588,7 @@ static pascal OSStatus DBClientDataCallback(ControlRef browser, DataBrowserItemI
 			}
 			else
 			{
-				sprintf(code, "%02X", citem[itemID - 1].value);
+				sprintf(code, "%02" PRIX8, citem[itemID - 1].value);
 				str = CFStringCreateWithCString(kCFAllocatorDefault, code, CFStringGetSystemEncoding());
 				err = SetDataBrowserItemDataText(itemData, str);
 				CFRelease(str);
@@ -801,10 +633,10 @@ static pascal OSStatus DBClientDataCallback(ControlRef browser, DataBrowserItemI
 			result = errDataBrowserPropertyNotSupported;
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal Boolean DBCompareCallBack(ControlRef browser, DataBrowserItemID itemOne, DataBrowserItemID itemTwo, DataBrowserPropertyID sortProperty)
+static pascal Boolean DBCompareCallBack (HIViewRef browser, DataBrowserItemID itemOne, DataBrowserItemID itemTwo, DataBrowserPropertyID sortProperty)
 {
 	Boolean	result = false;
 
@@ -826,33 +658,31 @@ static pascal Boolean DBCompareCallBack(ControlRef browser, DataBrowserItemID it
 			result = (strcmp(citem[itemOne - 1].description, citem[itemTwo - 1].description) < 0) ? true : false;
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal void DBItemNotificationCallBack(ControlRef browser, DataBrowserItemID itemID, DataBrowserItemNotification message)
+static pascal void DBItemNotificationCallBack (HIViewRef browser, DataBrowserItemID itemID, DataBrowserItemNotification message)
 {
 	OSStatus	err;
-	ControlRef	control;
-	ControlID	cid = { kDelButton, 0 };
-	UInt32		selectionCount;
+	HIViewRef	ctl;
+	HIViewID	cid = { kDelButton, 0 };
+	ItemCount	selectionCount;
 
 	switch (message)
 	{
 		case kDataBrowserSelectionSetChanged:
-			GetControlByID(wRef, &cid, &control);
+			HIViewFindByID(HIViewGetRoot(wRef), cid, &ctl);
 
 			err = GetDataBrowserItemCount(browser, kDataBrowserNoItem, true, kDataBrowserItemIsSelected, &selectionCount);
 			if (selectionCount == 0)
-				err = DeactivateControl(control);
+				err = DeactivateControl(ctl);
 			else
-				err = ActivateControl(control);
+				err = ActivateControl(ctl);
 	}
 }
 
-static pascal OSStatus CheatEventHandler(EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus CheatEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerCallRef)
-
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef;
 
@@ -867,44 +697,6 @@ static pascal OSStatus CheatEventHandler(EventHandlerCallRef inHandlerCallRef, E
 					QuitAppModalLoopForWindow(tWindowRef);
 					result = noErr;
 					break;
-
-				case kEventWindowBoundsChanging:
-				#ifdef MAC_JAGUAR_SUPPORT
-					if (systemVersion < 0x1030)
-					{
-						ControlRef	ctl;
-						ControlID	cid;
-						Rect		winBounds, btnBounds;
-						UInt32		attr;
-						short		x, y;
-
-						err = GetEventParameter(inEvent, kEventParamAttributes, typeUInt32, nil, sizeof(UInt32), nil, &attr);
-						if ((err == noErr) && (attr & kWindowBoundsChangeSizeChanged))
-						{
-							err = GetEventParameter(inEvent, kEventParamCurrentBounds, typeQDRectangle, nil, sizeof(Rect), nil, &winBounds);
-							if (err == noErr)
-							{
-								cid.id = 0;
-								cid.signature = kButtonsPane;
-								GetControlByID(tWindowRef, &cid, &ctl);
-								GetControlBounds(ctl, &btnBounds);
-								y = btnBounds.top;
-								x = (winBounds.right - winBounds.left) - (btnBounds.right - btnBounds.left);
-								MoveControl(ctl, x, y);
-
-								cid.signature = kDataBrowser;
-								GetControlByID(tWindowRef, &cid, &ctl);
-								x = (winBounds.right  - winBounds.left) - (btnBounds.right - btnBounds.left) - 28;
-								y = (winBounds.bottom - winBounds.top ) - 40;
-								SizeControl(ctl, x, y);
-
-								result = noErr;
-							}
-						}
-					}
-				#else
-					break;
-				#endif
 			}
 
 			break;
@@ -915,7 +707,7 @@ static pascal OSStatus CheatEventHandler(EventHandlerCallRef inHandlerCallRef, E
 				HICommand	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -925,7 +717,7 @@ static pascal OSStatus CheatEventHandler(EventHandlerCallRef inHandlerCallRef, E
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						switch (tHICommand.commandID)
@@ -948,5 +740,5 @@ static pascal OSStatus CheatEventHandler(EventHandlerCallRef inHandlerCallRef, E
 			}
 	}
 
-	return result;
+	return (result);
 }

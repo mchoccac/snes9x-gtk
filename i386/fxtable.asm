@@ -23,7 +23,7 @@
 ; Super NES and Super Nintendo Entertainment System are trademarks of
 ; Nintendo Co., Limited and its subsidiary companies.
 ;
-%include "i386/macros.mac"
+%include "macros.mac"
 EXTSYM FxTable,FxTableA1,FxTableA2,FxTableA3,FxTableb,FxTablebA1,FxTablebA2
 EXTSYM FxTablebA3,FxTablec,FxTablecA1,FxTablecA2,FxTablecA3,FxTabled
 EXTSYM FxTabledA1,FxTabledA2,FxTabledA3,SfxMemTable,romdata,sfxramdata

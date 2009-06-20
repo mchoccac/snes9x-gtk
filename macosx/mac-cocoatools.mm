@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -175,7 +173,8 @@
 
 #import <AppKit/AppKit.h>
 
-void CocoaPlayFreezeDefrostSound(void)
+
+void CocoaPlayFreezeDefrostSound (void)
 {
 	NSAutoreleasePool	*pool;
 	NSBundle			*bundle;

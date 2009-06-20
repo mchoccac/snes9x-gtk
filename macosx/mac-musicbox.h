@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,11 +174,11 @@
 #ifndef _mac_musicbox_h_
 #define _mac_musicbox_h_
 
-void MusicBoxDialog(void);
-
 #define	kMBXSoundEmulation	1
 #define	kMBXWholeEmulation	2
 
 extern volatile Boolean	mboxPause;
+
+void MusicBoxDialog (void);
 
 #endif

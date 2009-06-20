@@ -158,90 +158,84 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 //  Input recording/playback code
 //  (c) Copyright 2004 blip
+
 
 #ifndef _MOVIE_H_
 #define _MOVIE_H_
 
-#include <stdio.h>
-#include <time.h>
-#include "snes9x.h"
+#define MOVIE_OPT_FROM_SNAPSHOT		0
+#define MOVIE_OPT_FROM_RESET		(1 << 0)
+#define MOVIE_OPT_PAL				(1 << 1)
+#define MOVIE_OPT_NOSAVEDATA		(1 << 2)
+#define MOVIE_SYNC_DATA_EXISTS		0x01
+#define MOVIE_SYNC_OBSOLETE			0x02
+#define MOVIE_SYNC_LEFTRIGHT		0x04
+#define MOVIE_SYNC_VOLUMEENVX		0x08
+#define MOVIE_SYNC_FAKEMUTE			0x10
+#define MOVIE_SYNC_SYNCSOUND		0x20
+#define MOVIE_SYNC_HASROMINFO		0x40
+#define MOVIE_SYNC_NOCPUSHUTDOWN	0x80
+#define MOVIE_MAX_METADATA			512
 
-#ifndef SUCCESS
-#  define SUCCESS 1
-#  define WRONG_FORMAT (-1)
-#  define WRONG_VERSION (-2)
-#  define FILE_NOT_FOUND (-3)
-#endif
+#define CONTROLLER_DATA_SIZE		2
+#define MOUSE_DATA_SIZE				5
+#define SCOPE_DATA_SIZE				6
+#define JUSTIFIER_DATA_SIZE			11
 
-#define MOVIE_OPT_FROM_SNAPSHOT 0
-#define MOVIE_OPT_FROM_RESET	(1<<0)
-#define MOVIE_OPT_PAL           (1<<1)
-#define MOVIE_OPT_NOSAVEDATA    (1<<2)
-#define MOVIE_MAX_METADATA		512
-
-#define MOVIE_SYNC_DATA_EXISTS   0x01
-#define MOVIE_SYNC_OBSOLETE      0x02
-#define MOVIE_SYNC_LEFTRIGHT     0x04
-#define MOVIE_SYNC_VOLUMEENVX    0x08
-#define MOVIE_SYNC_FAKEMUTE      0x10
-#define MOVIE_SYNC_SYNCSOUND     0x20
-#define MOVIE_SYNC_HASROMINFO    0x40
-#define MOVIE_SYNC_NOCPUSHUTDOWN 0x80
-
-START_EXTERN_C
 struct MovieInfo
 {
 	time_t	TimeCreated;
+	uint32	Version;
 	uint32	LengthFrames;
+	uint32	LengthSamples;
 	uint32	RerecordCount;
-	wchar_t	Metadata[MOVIE_MAX_METADATA];		// really should be wchar_t
 	uint8	Opts;
 	uint8	ControllersMask;
-	bool8	ReadOnly;
 	uint8	SyncFlags;
-
-	uint32	ROMCRC32;
-	char	ROMName [23];
-
-	uint32	LengthSamples;
+	bool8	ReadOnly;
 	uint8	PortType[2];
-	uint32	Version;
+	wchar_t	Metadata[MOVIE_MAX_METADATA];
+	uint32	ROMCRC32;
+	char	ROMName[23];
 };
 
 // methods used by the user-interface code
-int S9xMovieOpen (const char* filename, bool8 read_only);
-int S9xMovieCreate (const char* filename, uint8 controllers_mask, uint8 opts, const wchar_t* metadata, int metadata_length);
-int S9xMovieGetInfo (const char* filename, struct MovieInfo* info);
-void S9xMovieStop (bool8 suppress_message);
-void S9xMovieToggleRecState ();
-void S9xMovieToggleFrameDisplay ();
-const char *S9xChooseMovieFilename(bool8 read_only);
+int S9xMovieOpen (const char *, bool8);
+int S9xMovieCreate (const char *, uint8, uint8, const wchar_t *, int);
+int S9xMovieGetInfo (const char *, struct MovieInfo *);
+void S9xMovieStop (bool8);
+void S9xMovieToggleRecState (void);
+void S9xMovieToggleFrameDisplay (void);
+const char * S9xChooseMovieFilename (bool8);
 
 // methods used by the emulation
-void S9xMovieInit ();
-void S9xMovieShutdown ();
-void S9xMovieUpdate (bool addFrame=true);
-void S9xMovieUpdateOnReset ();
-//bool8 S9xMovieRewind (uint32 at_frame);
-void S9xMovieFreeze (uint8** buf, uint32* size);
-int S9xMovieUnfreeze (const uint8* buf, uint32 size);
-void S9xUpdateFrameCounter (int offset=0);
+void S9xMovieInit (void);
+void S9xMovieShutdown (void);
+void S9xMovieUpdate (bool a = true);
+void S9xMovieUpdateOnReset (void);
+void S9xUpdateFrameCounter (int o = 0);
+void S9xMovieFreeze (uint8 **, uint32 *);
+int S9xMovieUnfreeze (uint8 *, uint32);
 
 // accessor functions
-bool8 S9xMovieActive ();
-bool8 S9xMoviePlaying ();
-bool8 S9xMovieRecording ();
-// the following accessors return 0/false if !S9xMovieActive()
-bool8 S9xMovieReadOnly ();
-uint32 S9xMovieGetId ();
-uint32 S9xMovieGetLength ();
-uint32 S9xMovieGetFrameCounter ();
-uint8 S9xMovieControllers ();
+bool8 S9xMovieActive (void);
+bool8 S9xMoviePlaying (void);
+bool8 S9xMovieRecording (void);
+bool8 S9xMovieReadOnly (void);
+uint8 S9xMovieControllers (void);
+uint32 S9xMovieGetId (void);
+uint32 S9xMovieGetLength (void);
+uint32 S9xMovieGetFrameCounter (void);
 
-END_EXTERN_C
+uint16 MovieGetJoypad (int);
+void MovieSetJoypad (int, uint16);
+bool MovieGetMouse (int, uint8 d[MOUSE_DATA_SIZE]);
+void MovieSetMouse (int, uint8 d[MOUSE_DATA_SIZE], bool);
+bool MovieGetScope (int, uint8 d[SCOPE_DATA_SIZE]);
+void MovieSetScope (int, uint8 d[SCOPE_DATA_SIZE]);
+bool MovieGetJustifier (int, uint8 d[JUSTIFIER_DATA_SIZE]);
+void MovieSetJustifier (int, uint8 d[JUSTIFIER_DATA_SIZE]);
 
 #endif

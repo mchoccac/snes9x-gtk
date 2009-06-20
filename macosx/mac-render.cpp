@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,13 +171,11 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
-#include <sys/time.h>
-
+#include "snes9x.h"
 #include "memmap.h"
-#include "gfx.h"
-#include "display.h"
-#include "ppu.h"
 #include "soundux.h"
+#include "display.h"
+#include "blit.h"
 
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/CGLRenderers.h>
@@ -187,81 +183,49 @@
 #include <OpenGL/glu.h>
 #include <OpenGL/glext.h>
 #include <AGL/agl.h>
+#include <sys/time.h>
 
 #include "mac-prefix.h"
-#include "mac-2xsai.h"
-#include "mac-epx.h"
-#include "mac-hq2x.h"
-#include "mac-blit.h"
 #include "mac-cheatfinder.h"
+#include "mac-coreimage.h"
 #include "mac-os.h"
 #include "mac-quicktime.h"
 #include "mac-screenshot.h"
 #include "mac-render.h"
 
-#ifdef MAC_COREIMAGE_SUPPORT
-#include "mac-coreimage.h"
-#endif
+void DisplayChar (uint16 *, uint8);
 
-void DisplayChar(uint16 *, uint8);
-
-static OSStatus BlitMPTask(void *);
-static OSStatus BlitMPGLTask(void *);
-static OSStatus PrepareMPBlit(void);
-static OSStatus PrepareMPBlitGL(void);
-static void S9xInitFullScreen(void);
-static void S9xDeinitFullScreen(void);
-static void S9xInitWindowMode(void);
-static void S9xDeinitWindowMode(void);
-static void S9xInitDirectFullScreen(void);
-static void S9xDeinitDirectFullScreen(void);
-static void S9xInitDirectWindowMode(void);
-static void S9xDeinitDirectWindowMode(void);
-static void S9xInitOpenGLFullScreen(void);
-static void S9xDeinitOpenGLFullScreen(void);
-static void S9xInitOpenGLWindowMode(void);
-static void S9xDeinitOpenGLWindowMode(void);
-static void S9xInitBlitGL(void);
-static void S9xDeinitBlitGL(void);
-static void S9xInitOpenGLContext(void);
-static void S9xDeinitOpenGLContext(void);
-static void S9xInitCoreImage(void);
-static void S9xDeinitCoreImage(void);
-static void S9xPutImageDirect(int, int);
-static void S9xPutImageOpenGL(int, int);
-static void S9xPutImageBlitGL(int, int);
-static void S9xPutImageCoreImage(int, int);
-static void S9xPutImageOverscanDirect(int, int);
-static void S9xPutImageOverscanOpenGL(int, int);
-static void S9xPutImageOverscanBlitGL(int, int);
-static void S9xPutImageOverscanCoreImage(int, int);
-static void S9xPutImageBlitGL2(int, int);
-static void S9xPutImageBlitGL2CoreImage(int, int);
-static void GLMakeScreenMesh(GLfloat *, int, int);
-static void GLMakeTextureMesh(GLfloat *, int, int, float, float);
+static OSStatus BlitMPGLTask (void *);
+static OSStatus PrepareMPBlitGL (void);
+static void S9xInitFullScreen (void);
+static void S9xDeinitFullScreen (void);
+static void S9xInitWindowMode (void);
+static void S9xDeinitWindowMode (void);
+static void S9xInitOpenGLFullScreen (void);
+static void S9xDeinitOpenGLFullScreen (void);
+static void S9xInitOpenGLWindowMode (void);
+static void S9xDeinitOpenGLWindowMode (void);
+static void S9xInitBlitGL (void);
+static void S9xDeinitBlitGL (void);
+static void S9xInitOpenGLContext (void);
+static void S9xDeinitOpenGLContext (void);
+static void S9xInitCoreImage (void);
+static void S9xDeinitCoreImage (void);
+static void S9xPutImageOpenGL (int, int);
+static void S9xPutImageBlitGL (int, int);
+static void S9xPutImageCoreImage (int, int);
+static void S9xPutImageOverscanOpenGL (int, int);
+static void S9xPutImageOverscanBlitGL (int, int);
+static void S9xPutImageOverscanCoreImage (int, int);
+static void S9xPutImageBlitGL2 (int, int);
+static void S9xPutImageBlitGL2CoreImage (int, int);
+static void GLMakeScreenMesh (GLfloat *, int, int);
+static void GLMakeTextureMesh (GLfloat *, int, int, float, float);
 
 #define	BYTES_PER_PIXEL	2
 
-#define kMarginDouble		((kMacWindowHeight - (SNES_HEIGHT          << 1)) >> 1)		/* 15 */
-#define kMarginSingle		((kMacWindowHeight - (SNES_HEIGHT          << 1)) >> 2)		/*  7 */
-#define kMarginDoubleExt	((kMacWindowHeight - (SNES_HEIGHT_EXTENDED << 1)) >> 1)		/*  0 */
-#define kMarginSingleExt	((kMacWindowHeight - (SNES_HEIGHT_EXTENDED << 1)) >> 2)		/*  0 */
-
-#ifdef MAC_ENABLE_DIRECT_MODE
-#define BEGIN_UPDATE_WINDOW_BACKBUFFER \
-	LockPortBits(gWindowPort); \
-	PixMapHandle pixmap = GetPortPixMap(gWindowPort); \
-	gMacRowBytes = GetPixRowBytes(pixmap); \
-	gMacScreenPtr = (unsigned char *) GetPixBaseAddr(pixmap); \
-	gWinScreenPtr = gMacScreenPtr + gWindowBarHeight * gMacRowBytes;
-#define END_UPDATE_WINDOW_BACKBUFFER \
-	UnlockPortBits(gWindowPort); \
-	QDSetDirtyRegion(gWindowPort, gWindowRgn); \
-	QDFlushPortBuffer(gWindowPort, nil);
-#else
-#define BEGIN_UPDATE_WINDOW_BACKBUFFER	;
-#define END_UPDATE_WINDOW_BACKBUFFER	;
-#endif
+#define kMarginDouble		((kMacWindowHeight - (SNES_HEIGHT          << 1)) >> 1)
+#define kMarginDoubleExt	((kMacWindowHeight - (SNES_HEIGHT_EXTENDED << 1)) >> 1)
 
 enum
 {
@@ -300,14 +264,17 @@ enum
 	kSCMeshY = 9
 };
 
-typedef void (* Blitter) (register unsigned char *, register unsigned char *, register long, register Rect *, register Rect *);
+typedef void (* Blitter) (uint8 *, int, uint8 *, int, int, int);
 
 typedef struct
 {
 	Blitter	blitFn;
-	Rect	srcRect;
-	Rect	copyRect;
+	int		srcWidth;
+	int		srcHeight;
+	int		srcRowBytes;
 	int		dstRowBytes;
+	int		copyWidth;
+	int		copyHeight;
 	uint16	*gfxBuffer;
 }	MPData;
 
@@ -331,30 +298,22 @@ static uint8				*blitGLBuffer;
 
 static CGDirectDisplayID	gGameDisplayID;
 
-static unsigned char		*gMacScreenPtr,
-							*gWinScreenPtr;
-static long					gMacRowBytes;
-
-static Blitter				BlitFn256x240     = nil,
-							BlitFn512x240     = nil,
-							BlitFn512x480     = nil;
-
-static MPTaskID				taskID            = nil;
-static MPQueueID			notificationQueue = nil,
-							taskQueue         = nil;
-static MPSemaphoreID		readySemaphore    = nil;
-static MPData				*mpDataBuffer     = nil;
+static MPTaskID				taskID            = NULL;
+static MPQueueID			notificationQueue = NULL,
+							taskQueue         = NULL;
+static MPSemaphoreID		readySemaphore    = NULL;
+static MPData				*mpDataBuffer     = NULL;
 
 static OpenGLData			OpenGL;
 static CGLContextObj		glContext;
 static AGLContext			agContext;
 static CGLPixelFormatObj	cglpix;
 static AGLPixelFormat		aglpix;
-static long					glSwapInterval    = 0;
+static GLint				glSwapInterval    = 0;
 static GLint				agSwapInterval    = 0;
 static CFDictionaryRef		oldDisplayMode;
-static CGImageRef			cgGameImage       = nil,
-							cgBlitImage       = nil;
+static CGImageRef			cgGameImage       = NULL,
+							cgBlitImage       = NULL;
 
 static int					whichBuf          = 0;
 static int					textureNum        = 0;
@@ -367,7 +326,8 @@ static GLfloat				*scScnArray;
 
 static struct timeval		bencht1, bencht2;
 
-void InitGraphics(void)
+
+void InitGraphics (void)
 {
 	int	safebuffersize = 520 * 520 * BYTES_PER_PIXEL - 512 * 512 * BYTES_PER_PIXEL;
 
@@ -385,15 +345,10 @@ void InitGraphics(void)
     if (!snesScreenA || !snesScreenB || !blitGLBuffer)
 		QuitWithFatalError(0, "render 01");
 
-	#ifdef GFX_MULTI_FORMAT
-	S9xSetRenderPixelFormat(RGB555);
-	#endif
-
-	Init_2xSaI(555);
-	InitLUTs();
+	S9xBlitInit(555);
 }
 
-void DeinitGraphics(void)
+void DeinitGraphics (void)
 {
 	if (snesScreenA)
 		free(snesScreenA);
@@ -403,81 +358,26 @@ void DeinitGraphics(void)
 		free(blitGLBuffer);
 }
 
-static OSStatus BlitMPTask(void *parameter)
+static OSStatus BlitMPGLTask (void *parameter)
 {
 	OSStatus	err = noErr;
-    long		theCommand, param1, param2;
-
-	#pragma unused (parameter)
-
-	printf("MP: Entered DirectDraw thread.\n");
-
-	for (;;)
-    {
-		err = MPWaitOnQueue(taskQueue, (void **) &theCommand, (void **) &param1, (void **) &param2, kDurationForever);
-        if (err)
-			break;
-
-		if (theCommand == kMPBlitFrame)
-		{
-			if (!fullscreen)
-			{
-				BEGIN_UPDATE_WINDOW_BACKBUFFER
-				(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, gWinScreenPtr, gMacRowBytes, &mpDataBuffer->srcRect, &mpDataBuffer->copyRect);
-				END_UPDATE_WINDOW_BACKBUFFER
-			}
-			else
-				(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, gWinScreenPtr, gMacRowBytes, &mpDataBuffer->srcRect, &mpDataBuffer->copyRect);
-
-			MPSignalSemaphore(readySemaphore);
-		}
-		else
-		if (theCommand == kMPBlitNone)
-			MPSignalSemaphore(readySemaphore);
-		else
-		if (theCommand == kMPBlitDone)
-			break;
-		else
-		{
-			err = userCanceledErr;
-			break;
-		}
-	}
-
-	MPFree(mpDataBuffer);
-	MPDeleteSemaphore(readySemaphore);
-    MPDeleteQueue(taskQueue);
-	mpDataBuffer   = nil;
-	readySemaphore = nil;
-	taskQueue      = nil;
-
-	printf("MP: Exited DirectDraw thread.\n");
-
-	return err;
-}
-
-static OSStatus BlitMPGLTask(void *parameter)
-{
-	OSStatus	err = noErr;
-    long		theCommand, param1, param2;
-
-	#pragma unused (parameter)
+	int32		theCommand, param1, param2;
 
 	printf("MP: Entered BlitGL thread.\n");
 
 	for (;;)
-    {
+	{
 		err = MPWaitOnQueue(taskQueue, (void **) &theCommand, (void **) &param1, (void **) &param2, kDurationForever);
-        if (err)
+		if (err)
 			break;
 
 		if (theCommand == kMPBlitFrame)
 		{
-			(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, blitGLBuffer, mpDataBuffer->dstRowBytes, &mpDataBuffer->srcRect, &mpDataBuffer->copyRect);
- 			if (!ciFilterEnable)
-				S9xPutImageBlitGL2(mpDataBuffer->copyRect.right, mpDataBuffer->copyRect.bottom);
+			(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, mpDataBuffer->srcRowBytes, blitGLBuffer, mpDataBuffer->dstRowBytes, mpDataBuffer->srcWidth, mpDataBuffer->srcHeight);
+			if (!ciFilterEnable)
+				S9xPutImageBlitGL2(mpDataBuffer->copyWidth, mpDataBuffer->copyHeight);
 			else
-				S9xPutImageBlitGL2CoreImage(mpDataBuffer->copyRect.right, mpDataBuffer->copyRect.bottom);
+				S9xPutImageBlitGL2CoreImage(mpDataBuffer->copyWidth, mpDataBuffer->copyHeight);
 			MPSignalSemaphore(readySemaphore);
 		}
 		else
@@ -495,23 +395,23 @@ static OSStatus BlitMPGLTask(void *parameter)
 
 	MPFree(mpDataBuffer);
 	MPDeleteSemaphore(readySemaphore);
-    MPDeleteQueue(taskQueue);
-	mpDataBuffer   = nil;
-	readySemaphore = nil;
-	taskQueue      = nil;
+	MPDeleteQueue(taskQueue);
+	mpDataBuffer   = NULL;
+	readySemaphore = NULL;
+	taskQueue      = NULL;
 
 	printf("MP: Exited BlitGL thread.\n");
 
-	return err;
+	return (err);
 }
 
-static OSStatus PrepareMPBlit(void)
+static OSStatus PrepareMPBlitGL (void)
 {
 	OSStatus	err;
 
 	mpDataBuffer = (MPData *) MPAllocateAligned(sizeof(MPData), kMPAllocateDefaultAligned, kMPAllocateClearMask);
 	if (!mpDataBuffer)
-		return memFullErr;
+		return (memFullErr);
 
 	err = MPCreateQueue(&notificationQueue);
 	if (err == noErr)
@@ -523,46 +423,19 @@ static OSStatus PrepareMPBlit(void)
 			if (err == noErr)
 			{
 				MPSignalSemaphore(readySemaphore);
-				err = MPCreateTask(BlitMPTask, nil, 0, notificationQueue, nil, nil, 0, &taskID);
+				err = MPCreateTask(BlitMPGLTask, NULL, 0, notificationQueue, NULL, NULL, 0, &taskID);
 			}
 		}
 	}
 
-	return err;
+	return (err);
 }
 
-static OSStatus PrepareMPBlitGL(void)
-{
-	OSStatus	err;
-
-	mpDataBuffer = (MPData *) MPAllocateAligned(sizeof(MPData), kMPAllocateDefaultAligned, kMPAllocateClearMask);
-	if (!mpDataBuffer)
-		return memFullErr;
-
-	err = MPCreateQueue(&notificationQueue);
-	if (err == noErr)
-	{
-		err = MPCreateQueue(&taskQueue);
-		if (err == noErr)
-		{
-			err = MPCreateBinarySemaphore(&readySemaphore);
-			if (err == noErr)
-			{
-				MPSignalSemaphore(readySemaphore);
-				err = MPCreateTask(BlitMPGLTask, nil, 0, notificationQueue, nil, nil, 0, &taskID);
-			}
-		}
-	}
-
-	return err;
-}
-
-void DrawPauseScreen(CGContextRef ctx, HIRect bounds)
+void DrawPauseScreen (CGContextRef ctx, HIRect bounds)
 {
 	CGImageRef	image;
 	CGRect		crt;
-	Rect		copyRect;
-	short		width, height;
+	int			top, bottom, left, right, width, height;
 
 	width  = IPPU.RenderedScreenWidth;
 	height = IPPU.RenderedScreenHeight;
@@ -570,85 +443,65 @@ void DrawPauseScreen(CGContextRef ctx, HIRect bounds)
 	if ((width == 0) || (height == 0))
 		return;
 
-	copyRect.top  = 0;
-	copyRect.left = 0;
+	top = left = 0;
 
 	if (width > 256)
 	{
-		copyRect.right = width;
+		right = width;
 
 		if (height > 256)
 		{
-			copyRect.bottom = height;
+			bottom = height;
 
 			if (!drawoverscan)
 			{
 				if (height < (SNES_HEIGHT_EXTENDED << 1))
 				{
-					copyRect.top     = kMarginDouble;
-					copyRect.bottom += kMarginDouble;
+					top     = kMarginDouble;
+					bottom += kMarginDouble;
 				}
 				else
 				{
-					copyRect.top     = kMarginDoubleExt;
-					copyRect.bottom += kMarginDoubleExt;
+					top     = kMarginDoubleExt;
+					bottom += kMarginDoubleExt;
 				}
 			}
 		}
 		else
 		{
-			copyRect.bottom = height << 1;
+			bottom = height << 1;
 
 			if (!drawoverscan)
 			{
 				if (height < SNES_HEIGHT_EXTENDED)
 				{
-					copyRect.top     = kMarginDouble;
-					copyRect.bottom += kMarginDouble;
+					top     = kMarginDouble;
+					bottom += kMarginDouble;
 				}
 				else
 				{
-					copyRect.top     = kMarginDoubleExt;
-					copyRect.bottom += kMarginDoubleExt;
+					top     = kMarginDoubleExt;
+					bottom += kMarginDoubleExt;
 				}
 			}
 		}
 	}
 	else
 	{
-		if (doubleSize)
-		{
-			copyRect.right  = width  << 1;
-			copyRect.bottom = height << 1;
+		right  = width  << 1;
+		bottom = height << 1;
 
-			if (!drawoverscan)
+		if (!drawoverscan)
+		{
+			if (height < SNES_HEIGHT_EXTENDED)
 			{
-				if (height < SNES_HEIGHT_EXTENDED)
-				{
-					copyRect.top     = kMarginDouble;
-					copyRect.bottom += kMarginDouble;
-				}
-				else
-				{
-					copyRect.top     = kMarginDoubleExt;
-					copyRect.bottom += kMarginDoubleExt;
-				}
+				top     = kMarginDouble;
+				bottom += kMarginDouble;
 			}
-		}
-		else
-		{
-			copyRect.top    = 120;
-			copyRect.left   = 128;
-			copyRect.bottom = 120 + height;
-			copyRect.right  = 128 + width;
-
-			if (!drawoverscan)
+			else
 			{
-				if (height < SNES_HEIGHT_EXTENDED)
-				{
-					copyRect.top    += kMarginSingle;
-					copyRect.bottom += kMarginSingle;
-				}
+				top     = kMarginDoubleExt;
+				bottom += kMarginDoubleExt;
 			}
 		}
 	}
@@ -663,15 +516,9 @@ void DrawPauseScreen(CGContextRef ctx, HIRect bounds)
 
 		if (!drawoverscan)
 		{
-			if (drawingMethod == kDrawingDirect)
-			{
-				ofs = copyRect.top;
-				ry = bounds.size.height / (float) kMacWindowHeight;
-			}
-			else
 			if (windowExtend)
 			{
-				ofs = copyRect.top;
+				ofs = top;
 				ry = bounds.size.height / (float) kMacWindowHeight;
 			}
 			else
@@ -682,21 +529,17 @@ void DrawPauseScreen(CGContextRef ctx, HIRect bounds)
 		}
 		else
 		{
-			if (!doubleSize && (width <= SNES_WIDTH))
-				ofs = kMacWindowHeight - (120 + height);
-			else
-				ofs = kMacWindowHeight - ((height <= 256) ? (height << 1) : height);
-
+			ofs = kMacWindowHeight - ((height <= 256) ? (height << 1) : height);
 			ry = bounds.size.height / (float) kMacWindowHeight;
 		}
 
 		CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
 		CGContextFillRect(ctx, bounds);
 
-		crt = CGRectMake(0, 0, copyRect.right - copyRect.left, copyRect.bottom - copyRect.top);
+		crt = CGRectMake(0, 0, right - left, bottom - top);
 		crt.size.width  *= rx;
 		crt.size.height *= ry;
-		crt.origin.x = (float) (int) (rx * (float) copyRect.left);
+		crt.origin.x = (float) (int) (rx * (float) left);
 		crt.origin.y = (float) (int) (ry * (float) ofs);
 		CGContextDrawImage(ctx, crt, image);
 
@@ -707,7 +550,7 @@ void DrawPauseScreen(CGContextRef ctx, HIRect bounds)
 	}
 }
 
-void DrawFreezeDefrostScreen(uint8 *draw)
+void DrawFreezeDefrostScreen (uint8 *draw)
 {
 	const int	w = SNES_WIDTH << 1, h = kMacWindowHeight;
 
@@ -715,7 +558,7 @@ void DrawFreezeDefrostScreen(uint8 *draw)
 	imageWidth[1] = imageHeight[1] = 0;
 	prevBlitWidth = prevBlitHeight = 0;
 
-	if (((drawingMethod == kDrawingDirect) || (drawingMethod == kDrawingBlitGL)) && multiprocessor)
+	if ((drawingMethod == kDrawingBlitGL) && multiprocessor)
 	{
 		MPWaitOnSemaphore(readySemaphore, kDurationForever);
 		printf("MP: Send dummy signal.\n");
@@ -724,76 +567,55 @@ void DrawFreezeDefrostScreen(uint8 *draw)
 
 	memcpy(blitGLBuffer, draw, w * h * 2);
 
-	if (drawingMethod == kDrawingDirect)
-	{
-		Rect	rct  = { 0, 0, kMacWindowHeight, 512 };
-
-		if (!fullscreen)
-		{
-			BEGIN_UPDATE_WINDOW_BACKBUFFER
-			BlitPixSmall16(blitGLBuffer, gWinScreenPtr, gMacRowBytes, &rct, &rct);
-			END_UPDATE_WINDOW_BACKBUFFER
-		}
-		else
-			BlitPixSmall16(blitGLBuffer, gWinScreenPtr, gMacRowBytes, &rct, &rct);
-	}
+	if (!ciFilterEnable)
+		S9xPutImageBlitGL2(512, kMacWindowHeight);
 	else
-	{
-		if (!ciFilterEnable)
-			S9xPutImageBlitGL2(512, kMacWindowHeight);
-		else
-			S9xPutImageBlitGL2CoreImage(512, kMacWindowHeight);
-	}
+		S9xPutImageBlitGL2CoreImage(512, kMacWindowHeight);
 }
 
-void ClearGFXScreen(void)
+void ClearGFXScreen (void)
 {
-	uint16	*p, *q, x, y;
+	uint16	*p, *q;
 
 	p = gfxScreen[0];
 	q = gfxScreen[1];
 
-	for (x = 0; x < 512; x++)
-		for (y = 0; y < 512; y++)
+	for (int x = 0; x < 512; x++)
+		for (int y = 0; y < 512; y++)
 			*p++ = *q++ = 0;
 
-	BlitUpdateEntireDelta();
+	S9xBlitClearDelta();
 
 	imageWidth[0] = imageHeight[0] = 0;
 	imageWidth[1] = imageHeight[1] = 0;
 	prevBlitWidth = prevBlitHeight = 0;
 
-	if (drawingMethod == kDrawingDirect)
-		S9xPutImageDirect(512, kMacWindowHeight);
+	if (fullscreen)
+	{
+		CGLSetCurrentContext(glContext);
+		glViewport(0, 0, glScreenW, glScreenH);
+	}
 	else
 	{
+		aglSetCurrentContext(agContext);
+		aglUpdateContext(agContext);
+		glViewport(0, 0, (GLsizei) gWindowRect.size.width, (GLsizei) gWindowRect.size.height);
+	}
+
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+
+	for (int i = 0; i < 2; i++)
+	{
+		glClear(GL_COLOR_BUFFER_BIT);
+
 		if (fullscreen)
-		{
-			CGLSetCurrentContext(glContext);
-			glViewport(0, 0, glScreenW, glScreenH);
-		}
+			CGLFlushDrawable(glContext);
 		else
-		{
-			aglSetCurrentContext(agContext);
-			aglUpdateContext(agContext);
-			glViewport(0, 0, gWindowRect.right - gWindowRect.left, gWindowRect.bottom - gWindowRect.top);
-		}
-
-		glClearColor(0.0, 0.0, 0.0, 0.0);
-
-		for (int i = 0; i < 2; i++)
-		{
-			glClear(GL_COLOR_BUFFER_BIT);
-
-			if (fullscreen)
-				CGLFlushDrawable(glContext);
-			else
-				aglSwapBuffers(agContext);
-		}
+			aglSwapBuffers(agContext);
 	}
 }
 
-static void S9xInitFullScreen(void)
+static void S9xInitFullScreen (void)
 {
 	CFDictionaryRef	mode;
 	boolean_t		exactMatch;
@@ -815,7 +637,7 @@ static void S9xInitFullScreen(void)
 		height = CGDisplayPixelsHigh(gGameDisplayID);
 	}
 
-	if (((drawingMethod == kDrawingOpenGL) || (drawingMethod == kDrawingBlitGL)) && gl32bit)
+	if (gl32bit)
 		depth = 32;
 
 	mode = CGDisplayBestModeForParameters(gGameDisplayID, depth, width, height, &exactMatch);
@@ -841,7 +663,7 @@ static void S9xInitFullScreen(void)
 	}
 }
 
-static void S9xDeinitFullScreen(void)
+static void S9xDeinitFullScreen (void)
 {
 	CGAssociateMouseAndMouseCursorPosition(true);
 	CGDisplayShowCursor(gGameDisplayID);
@@ -850,7 +672,7 @@ static void S9xDeinitFullScreen(void)
     CGDisplayRelease(gGameDisplayID);
 }
 
-static void S9xInitWindowMode(void)
+static void S9xInitWindowMode (void)
 {
 	CFDictionaryRef	mode;
 	Rect			rct;
@@ -863,7 +685,7 @@ static void S9xInitWindowMode(void)
 	width  = CGDisplayPixelsWide(gGameDisplayID);
 	height = CGDisplayPixelsHigh(gGameDisplayID);
 
-	if (((drawingMethod == kDrawingOpenGL) || (drawingMethod == kDrawingBlitGL)) && gl32bit)
+	if (gl32bit)
 		depth = 32;
 
 	mode = CGDisplayBestModeForParameters(gGameDisplayID, depth, width, height, &exactMatch);
@@ -873,115 +695,23 @@ static void S9xInitWindowMode(void)
 	InitGameWindow();
 	ShowWindow(gWindow);
 
-	gWindowPort = GetWindowPort(gWindow);
+	GetWindowBounds(gWindow, kWindowContentRgn, &rct);
+	gWindowRect = CGRectMake((float) rct.left, (float) rct.top, (float) (rct.right - rct.left), (float) (rct.bottom - rct.top));
 
-#ifdef MAC_ENABLE_DIRECT_MODE
-	gWindowRgn = NewRgn();
-	SetRectRgn(gWindowRgn, 0, 0, 512, kMacWindowHeight);
-#endif
-
-	GetWindowBounds(gWindow, kWindowContentRgn, &gWindowRect);
-
-	GetWindowBounds(gWindow, kWindowStructureRgn, &rct);
-	gWindowBarHeight = gWindowRect.top - rct.top;
-
-	if (drawingMethod != kDrawingDirect)
-		UpdateGameWindow();
+	UpdateGameWindow();
 }
 
-static void S9xDeinitWindowMode(void)
+static void S9xDeinitWindowMode (void)
 {
-#ifdef MAC_ENABLE_DIRECT_MODE
-	DisposeRgn(gWindowRgn);
-#endif
-	gWindowPort = nil;
-	gWindowRgn  = nil;
-
     CGDisplaySwitchToMode(gGameDisplayID, oldDisplayMode);
 
 	UpdateGameWindow();
 }
 
-static void S9xInitDirectFullScreen(void)
-{
-	size_t	offsetX, offsetY;
-
-	glScreenW = CGDisplayPixelsWide(gGameDisplayID);
-	glScreenH = CGDisplayPixelsHigh(gGameDisplayID);
-
-	offsetX = (glScreenW - 512) >> 1;
-	offsetY = (glScreenH - kMacWindowHeight) >> 1;
-
-	gMacRowBytes  = CGDisplayBytesPerRow(gGameDisplayID);
-	gMacScreenPtr = (unsigned char *) CGDisplayBaseAddress(gGameDisplayID);
-	gWinScreenPtr = gMacScreenPtr + offsetY * gMacRowBytes + offsetX * 2;
-
-	BlitFn256x240 = doubleSize ? (hq2xMode ? BlitPixHQ2x16 : (epxMode ? BlitPixEPX16: (supsaiMode ? BlitPixSuper2xSaI16 : (saiMode ? BlitPix2xSaI16 : (eagleMode ? BlitPixEagle16 : (tvMode ? BlitPixScaledTV16 : (smoothMode ? BlitPixFiltered16 : BlitPixScaled16))))))) : BlitPixSmall16;
-	BlitFn512x240 = tvMode ? BlitPixHiResTV16 : BlitPixHiRes16;
-	BlitFn512x480 = BlitPixSmall16;
-
-	BlitUpdateEntireDelta();
-
-	if (multiprocessor)
-	{
-		printf("MP: Creating DirectDraw thread.\n");
-
-		if (noErr != PrepareMPBlit())
-			multiprocessor = false;
-	}
-}
-
-static void S9xDeinitDirectFullScreen(void)
-{
-	if (multiprocessor)
-	{
-		MPNotifyQueue(taskQueue, (void *) kMPBlitDone, 0, 0);
-		MPWaitOnQueue(notificationQueue, nil, nil, nil, kDurationForever);
-		MPDeleteQueue(notificationQueue);
-		notificationQueue = nil;
-
-		printf("MP: Successfully received terminate signal from DirectDraw thread.\n");
-	}
-}
-
-static void S9xInitDirectWindowMode(void)
-{
-	gMacRowBytes  = 0;
-	gMacScreenPtr = nil;
-	gWinScreenPtr = nil;
-
-	BlitFn256x240 = doubleSize ? (hq2xMode ? BlitPixHQ2x16 : (epxMode ? BlitPixEPX16: (supsaiMode ? BlitPixSuper2xSaI16 : (saiMode ? BlitPix2xSaI16 : (eagleMode ? BlitPixEagle16 : (tvMode ? BlitPixScaledTV16 : (smoothMode ? BlitPixFiltered16 : BlitPixScaled16))))))) : BlitPixSmall16;
-	BlitFn512x240 = tvMode ? BlitPixHiResTV16 : BlitPixHiRes16;
-	BlitFn512x480 = BlitPixSmall16;
-
-	BlitUpdateEntireDelta();
-
-	if (multiprocessor)
-	{
-		printf("MP: Creating DirectDraw thread.\n");
-
-		if (noErr != PrepareMPBlit())
-			multiprocessor = false;
-	}
-}
-
-static void S9xDeinitDirectWindowMode(void)
-{
-	if (multiprocessor)
-	{
-		MPNotifyQueue(taskQueue, (void *) kMPBlitDone, 0, 0);
-		MPWaitOnQueue(notificationQueue, nil, nil, nil, kDurationForever);
-		MPDeleteQueue(notificationQueue);
-		notificationQueue = nil;
-
-		printf("MP: Successfully received terminate signal from DirectDraw thread.\n");
-	}
-}
-
-static void S9xInitOpenGLFullScreen(void)
+static void S9xInitOpenGLFullScreen (void)
 {
 	CGOpenGLDisplayMask	displayMask;
-	long 				numPixelFormats;
+	GLint 				numPixelFormats;
 
 	displayMask = CGDisplayIDToOpenGLDisplayMask(gGameDisplayID);
 	CGLPixelFormatAttribute	attribs[] = { (CGLPixelFormatAttribute) kCGLPFAFullScreen,
@@ -995,7 +725,7 @@ static void S9xInitOpenGLFullScreen(void)
 										  (CGLPixelFormatAttribute) 0 };
 
 	CGLChoosePixelFormat(attribs, &cglpix, &numPixelFormats);
-	CGLCreateContext(cglpix, nil, &glContext);
+	CGLCreateContext(cglpix, NULL, &glContext);
 	glSwapInterval = vsync ? 1 : 0;
 	if (extraOptions.benchmark)
 		glSwapInterval = 0;
@@ -1007,18 +737,18 @@ static void S9xInitOpenGLFullScreen(void)
 	glScreenH = CGDisplayPixelsHigh(gGameDisplayID);
 }
 
-static void S9xDeinitOpenGLFullScreen(void)
+static void S9xDeinitOpenGLFullScreen (void)
 {
 	if (glContext)
 	{
-		CGLSetCurrentContext(nil);
+		CGLSetCurrentContext(NULL);
 		CGLClearDrawable(glContext);
 		CGLDestroyContext(glContext);
 		CGLDestroyPixelFormat(cglpix);
 	}
 }
 
-static void S9xInitOpenGLWindowMode(void)
+static void S9xInitOpenGLWindowMode (void)
 {
 	GLint	attribs[] = { AGL_RGBA,
 						  AGL_DOUBLEBUFFER,
@@ -1027,9 +757,16 @@ static void S9xInitOpenGLWindowMode(void)
 						  AGL_PIXEL_SIZE, gl32bit ? 32 : 16,
 						  AGL_NONE };
 
-	aglpix = aglChoosePixelFormat(nil, 0, attribs);
-	agContext = aglCreateContext(aglpix, nil);
-	aglSetDrawable(agContext, GetWindowPort(gWindow));
+	aglpix = aglChoosePixelFormat(NULL, 0, attribs);
+	agContext = aglCreateContext(aglpix, NULL);
+
+	if (systemVersion >= 0x1050)
+		aglSetWindowRef(agContext, gWindow);
+#ifdef MAC_TIGER_PANTHER_SUPPORT
+	else
+		aglSetDrawable(agContext, GetWindowPort(gWindow));
+#endif
+
 	agSwapInterval = vsync ? 1 : 0;
 	if (extraOptions.benchmark)
 		agSwapInterval = 0;
@@ -1043,18 +780,24 @@ static void S9xInitOpenGLWindowMode(void)
 	}
 }
 
-static void S9xDeinitOpenGLWindowMode(void)
+static void S9xDeinitOpenGLWindowMode (void)
 {
 	if (agContext)
 	{
-		aglSetDrawable(agContext, nil);
-		aglSetCurrentContext(nil);
+		if (systemVersion >= 0x1050)
+			aglSetWindowRef(agContext, NULL);
+	#ifdef MAC_TIGER_PANTHER_SUPPORT
+		else
+			aglSetDrawable(agContext, NULL);
+	#endif
+
+		aglSetCurrentContext(NULL);
 		aglDestroyContext(agContext);
 		aglDestroyPixelFormat(aglpix);
 	}
 }
 
-static void S9xInitBlitGL(void)
+static void S9xInitBlitGL (void)
 {
 	if (multiprocessor)
 	{
@@ -1065,20 +808,20 @@ static void S9xInitBlitGL(void)
 	}
 }
 
-static void S9xDeinitBlitGL(void)
+static void S9xDeinitBlitGL (void)
 {
 	if (multiprocessor)
 	{
 		MPNotifyQueue(taskQueue, (void *) kMPBlitDone, 0, 0);
-		MPWaitOnQueue(notificationQueue, nil, nil, nil, kDurationForever);
+		MPWaitOnQueue(notificationQueue, NULL, NULL, NULL, kDurationForever);
 		MPDeleteQueue(notificationQueue);
-		notificationQueue = nil;
+		notificationQueue = NULL;
 
 		printf("MP: Successfully received terminate signal from BlitGL thread.\n");
 	}
 }
 
-static void S9xInitOpenGLContext(void)
+static void S9xInitOpenGLContext (void)
 {
 	OpenGL.internal_format = GL_RGB5_A1;
 	OpenGL.format          = GL_BGRA;
@@ -1156,8 +899,8 @@ static void S9xInitOpenGLContext(void)
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(OpenGL.target, GL_TEXTURE_MAG_FILTER, smoothMode ? GL_LINEAR : GL_NEAREST);
-	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, smoothMode ? GL_LINEAR : GL_NEAREST);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MAG_FILTER, videoMode == VIDEOMODE_SMOOTH ? GL_LINEAR : GL_NEAREST);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, videoMode == VIDEOMODE_SMOOTH ? GL_LINEAR : GL_NEAREST);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glTexImage2D(OpenGL.target, 0, OpenGL.internal_format, OpenGL.texW[kGL256256], OpenGL.texH[kGL256256], 0, OpenGL.format, OpenGL.type, GFX.Screen);
 
@@ -1190,8 +933,8 @@ static void S9xInitOpenGLContext(void)
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(OpenGL.target, GL_TEXTURE_MAG_FILTER, smoothMode ? GL_LINEAR : GL_NEAREST);
-	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, smoothMode ? GL_LINEAR : GL_NEAREST);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MAG_FILTER, videoMode == VIDEOMODE_SMOOTH ? GL_LINEAR : GL_NEAREST);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, videoMode == VIDEOMODE_SMOOTH ? GL_LINEAR : GL_NEAREST);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glTexImage2D(OpenGL.target, 0, OpenGL.internal_format, OpenGL.texW[kGL512256], OpenGL.texH[kGL512256], 0, OpenGL.format, OpenGL.type, GFX.Screen);
 
@@ -1224,8 +967,8 @@ static void S9xInitOpenGLContext(void)
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(OpenGL.target, GL_TEXTURE_MAG_FILTER, smoothMode ? GL_LINEAR : GL_NEAREST);
-	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, smoothMode ? GL_LINEAR : GL_NEAREST);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MAG_FILTER, videoMode == VIDEOMODE_SMOOTH ? GL_LINEAR : GL_NEAREST);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, videoMode == VIDEOMODE_SMOOTH ? GL_LINEAR : GL_NEAREST);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glTexImage2D(OpenGL.target, 0, OpenGL.internal_format, OpenGL.texW[kGL512512], OpenGL.texH[kGL512512], 0, OpenGL.format, OpenGL.type, GFX.Screen);
 
@@ -1393,7 +1136,7 @@ static void S9xInitOpenGLContext(void)
 	{
 		aglSetCurrentContext(agContext);
 		aglUpdateContext(agContext);
-		glViewport(0, 0, gWindowRect.right - gWindowRect.left, gWindowRect.bottom - gWindowRect.top);
+		glViewport(0, 0, (GLsizei) gWindowRect.size.width, (GLsizei) gWindowRect.size.height);
 	}
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
@@ -1409,7 +1152,7 @@ static void S9xInitOpenGLContext(void)
 	}
 }
 
-static void S9xDeinitOpenGLContext(void)
+static void S9xDeinitOpenGLContext (void)
 {
 	if (screencurvature)
 	{
@@ -1423,53 +1166,47 @@ static void S9xDeinitOpenGLContext(void)
 		delete [] scTexArray[kSC3xEHiRes];
 		delete [] scScnArray;
 
-		scTexArray[kSC2xNormal] = nil;
-		scTexArray[kSC2xExtend] = nil;
-		scTexArray[kSC2xNHiRes] = nil;
-		scTexArray[kSC2xEHiRes] = nil;
-		scTexArray[kSC3xNormal] = nil;
-		scTexArray[kSC3xExtend] = nil;
-		scTexArray[kSC3xNHiRes] = nil;
-		scTexArray[kSC3xEHiRes] = nil;
-		scScnArray              = nil;
+		scTexArray[kSC2xNormal] = NULL;
+		scTexArray[kSC2xExtend] = NULL;
+		scTexArray[kSC2xNHiRes] = NULL;
+		scTexArray[kSC2xEHiRes] = NULL;
+		scTexArray[kSC3xNormal] = NULL;
+		scTexArray[kSC3xExtend] = NULL;
+		scTexArray[kSC3xNHiRes] = NULL;
+		scTexArray[kSC3xEHiRes] = NULL;
+		scScnArray              = NULL;
 	}
 
 	glDeleteTextures(kGLNumTextures, OpenGL.textures);
 }
 
-static void S9xInitCoreImage(void)
+static void S9xInitCoreImage (void)
 {
-#ifdef MAC_COREIMAGE_SUPPORT
-	cgGameImage = nil;
-	cgBlitImage = nil;
+	cgGameImage = NULL;
+	cgBlitImage = NULL;
 
 	InitCoreImageContext(glContext, cglpix);
-#endif
 }
 
-static void S9xDeinitCoreImage(void)
+static void S9xDeinitCoreImage (void)
 {
-#ifdef MAC_COREIMAGE_SUPPORT
 	DeinitCoreImageContext();
 
 	if (cgGameImage)
 	{
 		CGImageRelease(cgGameImage);
-		cgGameImage = nil;
+		cgGameImage = NULL;
 	}
 
 	if (cgBlitImage)
 	{
 		CGImageRelease(cgBlitImage);
-		cgBlitImage = nil;
+		cgBlitImage = NULL;
 	}
-#endif
 }
 
-void S9xInitDisplay(int argc, char **argv)
+void S9xInitDisplay (int argc, char **argv)
 {
-	#pragma unused (argc, argv)
-
 	if (directDisplay)
 		return;
 
@@ -1502,7 +1239,13 @@ void S9xInitDisplay(int argc, char **argv)
 	GFX.Screen    = gfxScreen[0];
 	whichBuf      = 0;
 	textureNum    = 0;
-	nx            = hq4xMode ? 4 : (hq3xMode ? 3 : 2);
+
+	switch (videoMode)
+	{
+		case VIDEOMODE_HQ4X:	nx = 4;	break;
+		case VIDEOMODE_HQ3X:	nx = 3;	break;
+		default:				nx = 2;	break;
+	}
 
 	if (fullscreen)
 	{
@@ -1511,23 +1254,13 @@ void S9xInitDisplay(int argc, char **argv)
 		switch (drawingMethod)
 		{
 			case kDrawingOpenGL:
-				gSrcP = 512;
-				Settings.OpenGLEnable = true;
 				S9xInitOpenGLFullScreen();
 				S9xInitOpenGLContext();
 				if (ciFilterEnable)
 					S9xInitCoreImage();
 				break;
 
-			case kDrawingDirect:
-				gSrcP = 1024;
-				Settings.OpenGLEnable = false;
-				S9xInitDirectFullScreen();
-				break;
-
 			case kDrawingBlitGL:
-				gSrcP = 1024;
-				Settings.OpenGLEnable = false;
 				S9xInitOpenGLFullScreen();
 				S9xInitOpenGLContext();
 				if (ciFilterEnable)
@@ -1542,23 +1275,13 @@ void S9xInitDisplay(int argc, char **argv)
 		switch (drawingMethod)
 		{
 			case kDrawingOpenGL:
-				gSrcP = 512;
-				Settings.OpenGLEnable = true;
 				S9xInitOpenGLWindowMode();
 				S9xInitOpenGLContext();
 				if (ciFilterEnable)
 					S9xInitCoreImage();
 				break;
 
-			case kDrawingDirect:
-				gSrcP = 1024;
-				Settings.OpenGLEnable = false;
-				S9xInitDirectWindowMode();
-				break;
-
 			case kDrawingBlitGL:
-				gSrcP = 1024;
-				Settings.OpenGLEnable = false;
 				S9xInitOpenGLWindowMode();
 				S9xInitOpenGLContext();
 				if (ciFilterEnable)
@@ -1572,12 +1295,12 @@ void S9xInitDisplay(int argc, char **argv)
 
 	windowResizeCount = 1;
 
-	gettimeofday(&bencht1, nil);
+	gettimeofday(&bencht1, NULL);
 
 	directDisplay = true;
 }
 
-void S9xDeinitDisplay(void)
+void S9xDeinitDisplay (void)
 {
 	if (!directDisplay)
 		return;
@@ -1593,10 +1316,6 @@ void S9xDeinitDisplay(void)
 					S9xDeinitCoreImage();
 				S9xDeinitOpenGLContext();
 				S9xDeinitOpenGLFullScreen();
-				break;
-
-			case kDrawingDirect:
-				S9xDeinitDirectFullScreen();
 				break;
 
 			case kDrawingBlitGL:
@@ -1620,10 +1339,6 @@ void S9xDeinitDisplay(void)
 				S9xDeinitOpenGLWindowMode();
 				break;
 
-			case kDrawingDirect:
-				S9xDeinitDirectWindowMode();
-				break;
-
 			case kDrawingBlitGL:
 				S9xDeinitBlitGL();
 				if (ciFilterEnable)
@@ -1635,31 +1350,28 @@ void S9xDeinitDisplay(void)
 		S9xDeinitWindowMode();
 	}
 
-	Settings.OpenGLEnable = false;
 	directDisplay = false;
-
-	lastDrawingMethod = drawingMethod;
 }
 
-bool8 S9xInitUpdate(void)
+bool8 S9xInitUpdate (void)
 {
-	return true;
+	return (true);
 }
 
-bool8 S9xDeinitUpdate(int width, int height)
+bool8 S9xDeinitUpdate (int width, int height)
 {
 	if (directDisplay)
 		S9xPutImage(width, height);
 
-	return true;
+	return (true);
 }
 
-bool8 S9xContinueUpdate(int width, int height)
+bool8 S9xContinueUpdate (int width, int height)
 {
-	return true;
+	return (true);
 }
 
-void S9xPutImage(int width, int height)
+void S9xPutImage (int width, int height)
 {
 	static float	fps   = 0.0;
 	static long		count = 0;
@@ -1668,11 +1380,12 @@ void S9xPutImage(int width, int height)
 	if (extraOptions.benchmark)
 	{
 		uint16	*basePtr;
-		long	delta, len;
+		long	delta;
+		size_t	len;
 
 		count++;
 
-		gettimeofday(&bencht2, nil);
+		gettimeofday(&bencht2, NULL);
 
 		delta = 1000000 * (bencht2.tv_sec - bencht1.tv_sec) + (bencht2.tv_usec - bencht1.tv_usec);
 		if (delta > 1000000)
@@ -1680,7 +1393,7 @@ void S9xPutImage(int width, int height)
 			fps = (1000000.0 * (float) count) / (float) delta;
 			count = 0;
 
-			gettimeofday(&bencht1, nil);
+			gettimeofday(&bencht1, NULL);
 		}
 
 		sprintf(text, "%.1f", fps);
@@ -1688,7 +1401,7 @@ void S9xPutImage(int width, int height)
 		basePtr = GFX.Screen + 1;
 		len = strlen(text);
 
-		for (int i = 0; i < len; i++)
+		for (unsigned int i = 0; i < len; i++)
 		{
 			DisplayChar(basePtr, text[i]);
 			basePtr += (8 - 1);
@@ -1701,10 +1414,10 @@ void S9xPutImage(int width, int height)
 
 		if (Settings.DisplayFrameRate)
 		{
-			static int	drawnFrames[60] = { 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1,
-											1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1 };
+			static int	drawnFrames[60] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+											1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 			static int	tableIndex = 0;
-			int			frameCalc = 0, count;
+			int			frameCalc  = 0;
 
 			drawnFrames[tableIndex] = skipFrames;
 
@@ -1717,8 +1430,8 @@ void S9xPutImage(int width, int height)
 
 			tableIndex = (tableIndex + 1) % 60;
 
-			for (count = 0; count < 60; count++)
-				frameCalc += drawnFrames[count];
+			for (int i = 0; i < 60; i++)
+				frameCalc += drawnFrames[i];
 
 			IPPU.DisplayedRenderedFrameCount = (Memory.ROMFramesPerSecond * 60) / frameCalc;
 		}
@@ -1733,10 +1446,6 @@ void S9xPutImage(int width, int height)
 					S9xPutImageOpenGL(width, height);
 				else
 					S9xPutImageCoreImage(width, height);
-				break;
-
-			case kDrawingDirect:
-				S9xPutImageDirect(width, height);
 				break;
 
 			case kDrawingBlitGL:
@@ -1754,135 +1463,13 @@ void S9xPutImage(int width, int height)
 					S9xPutImageOverscanCoreImage(width, height);
 				break;
 
-			case kDrawingDirect:
-				S9xPutImageOverscanDirect(width, height);
-				break;
-
 			case kDrawingBlitGL:
 				S9xPutImageOverscanBlitGL(width, height);
 		}
 	}
 }
 
-static void S9xPutImageDirect(int width, int height)
-{
-	Rect	srcRect = { 0, 0, height, width }, copyRect;
-	Blitter	BlitFn;
-
-	if ((width <= 256) && ((imageWidth[whichBuf] != width) || (imageHeight[whichBuf] != height)))
-	{
-		if (eagleMode || supsaiMode || saiMode || epxMode || hq2xMode)
-			BlitClearExtendArea((uint8 *) GFX.Screen, &srcRect);
-		else
-			BlitUpdateEntireDelta();
-	}
-
-	copyRect.top  = 0;
-	copyRect.left = 0;
-
-	if (width > 256)
-	{
-		copyRect.right = width;
-
-		if (height > 256)
-		{
-			copyRect.bottom = height;
-			BlitFn = BlitFn512x480;
-
-			if (height < (SNES_HEIGHT_EXTENDED << 1))
-			{
-				copyRect.top     = kMarginDouble;
-				copyRect.bottom += kMarginDouble;
-			}
-			else
-			{
-				copyRect.top     = kMarginDoubleExt;
-				copyRect.bottom += kMarginDoubleExt;
-			}
-		}
-		else
-		{
-			copyRect.bottom = height << 1;
-			BlitFn = BlitFn512x240;
-
-			if (height < SNES_HEIGHT_EXTENDED)
-			{
-				copyRect.top     = kMarginDouble;
-				copyRect.bottom += kMarginDouble;
-			}
-			else
-			{
-				copyRect.top     = kMarginDoubleExt;
-				copyRect.bottom += kMarginDoubleExt;
-			}
-		}
-	}
-	else
-	{
-		if (doubleSize)
-		{
-			copyRect.right  = width  << 1;
-			copyRect.bottom = height << 1;
-
-			if (height < SNES_HEIGHT_EXTENDED)
-			{
-				copyRect.top     = kMarginDouble;
-				copyRect.bottom += kMarginDouble;
-			}
-			else
-			{
-				copyRect.top     = kMarginDoubleExt;
-				copyRect.bottom += kMarginDoubleExt;
-			}
-		}
-		else
-		{
-			copyRect.top    = 120;
-			copyRect.left   = 128;
-			copyRect.bottom = 120 + height;
-			copyRect.right  = 128 + width;
-
-			if (height < SNES_HEIGHT_EXTENDED)
-			{
-				copyRect.top    += kMarginSingle;
-				copyRect.bottom += kMarginSingle;
-			}
-		}
-
-		BlitFn = BlitFn256x240;
-	}
-
-	imageWidth[whichBuf]  = width;
-	imageHeight[whichBuf] = height;
-
-	if (multiprocessor)
-	{
-		MPWaitOnSemaphore(readySemaphore, kDurationForever);
-
-		mpDataBuffer->blitFn    = BlitFn;
-		mpDataBuffer->srcRect   = srcRect;
-		mpDataBuffer->copyRect  = copyRect;
-		mpDataBuffer->gfxBuffer = GFX.Screen;
-
-		MPNotifyQueue(taskQueue, (void *) kMPBlitFrame, 0, 0);
-
-		whichBuf = 1 - whichBuf;
-		GFX.Screen = gfxScreen[whichBuf];
-	}
-	else
-	{
-		if (!fullscreen)
-		{
-			BEGIN_UPDATE_WINDOW_BACKBUFFER
-			BlitFn((uint8 *) GFX.Screen, gWinScreenPtr, gMacRowBytes, &srcRect, &copyRect);
-			END_UPDATE_WINDOW_BACKBUFFER
-		}
-		else
-			BlitFn((uint8 *) GFX.Screen, gWinScreenPtr, gMacRowBytes, &srcRect, &copyRect);
-	}
-}
-
-static void S9xPutImageOpenGL(int width, int height)
+static void S9xPutImageOpenGL (int width, int height)
 {
 	if ((imageWidth[0] != width) || (imageHeight[0] != height) || (windowResizeCount > 0))
 	{
@@ -1904,8 +1491,8 @@ static void S9xPutImageOpenGL(int width, int height)
 		}
 		else
 		{
-			int	ww = gWindowRect.right  - gWindowRect.left,
-				wh = gWindowRect.bottom - gWindowRect.top;
+			int	ww = (int) gWindowRect.size.width,
+				wh = (int) gWindowRect.size.height;
 
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
@@ -1980,21 +1567,14 @@ static void S9xPutImageOpenGL(int width, int height)
 		aglSwapBuffers(agContext);
 }
 
-static void S9xPutImageBlitGL(int width, int height)
+static void S9xPutImageBlitGL (int width, int height)
 {
-	Rect	srcRect = { 0, 0, height, width }, copyRect;
 	Blitter	blitFn;
+	int		copyWidth, copyHeight;
 
-	copyRect.top  = 0;
-	copyRect.left = 0;
-
-	if ((width <= 256) && ((imageWidth[whichBuf] != width) || (imageHeight[whichBuf] != height)))
-	{
-		if (eagleMode || supsaiMode || saiMode || epxMode || hq2xMode || hq3xMode || hq4xMode)
-			BlitClearExtendArea((uint8 *) GFX.Screen, &srcRect);
-		else
-			BlitUpdateEntireDelta();
-	}
+	if (videoMode == VIDEOMODE_TV)
+		if ((width <= 256) && ((imageWidth[whichBuf] != width) || (imageHeight[whichBuf] != height)))
+			S9xBlitClearDelta();
 
 	switch (nx)
 	{
@@ -2002,22 +1582,32 @@ static void S9xPutImageBlitGL(int width, int height)
 		case 2:
 			if (width <= 256)
 			{
-				copyRect.right  = width  * 2;
-				copyRect.bottom = height * 2;
-				blitFn = hq2xMode ? BlitPixHQ2x16 : (epxMode ? BlitPixEPX16: (supsaiMode ? BlitPixSuper2xSaI16 : (saiMode ? BlitPix2xSaI16 : (eagleMode ? BlitPixEagle16 : BlitPixScaledTV16))));
+				copyWidth  = width  * 2;
+				copyHeight = height * 2;
+
+				switch (videoMode)
+				{
+					default:
+					case VIDEOMODE_TV:			blitFn = S9xBlitPixScaledTV16;		break;
+					case VIDEOMODE_SUPEREAGLE:	blitFn = S9xBlitPixSuperEagle16;	break;
+					case VIDEOMODE_2XSAI:		blitFn = S9xBlitPix2xSaI16;			break;
+					case VIDEOMODE_SUPER2XSAI:	blitFn = S9xBlitPixSuper2xSaI16;	break;
+					case VIDEOMODE_EPX:			blitFn = S9xBlitPixEPX16;			break;
+					case VIDEOMODE_HQ2X:		blitFn = S9xBlitPixHQ2x16;			break;
+				}
 			}
 			else
-			if (tvMode && (height <= 256))
+			if ((videoMode == VIDEOMODE_TV) && (height <= 256))
 			{
-				copyRect.right  = width;
-				copyRect.bottom = height * 2;
-				blitFn = BlitPixHiResTV16;
+				copyWidth  = width;
+				copyHeight = height * 2;
+				blitFn = S9xBlitPixHiResTV16;
 			}
 			else
 			{
-				copyRect.right  = width;
-				copyRect.bottom = height;
-				blitFn = BlitPixSmall16;
+				copyWidth  = width;
+				copyHeight = height;
+				blitFn = S9xBlitPixSmall16;
 			}
 
 			break;
@@ -2025,15 +1615,15 @@ static void S9xPutImageBlitGL(int width, int height)
 		case 3:
 			if (width <= 256)
 			{
-				copyRect.right  = width  * 3;
-				copyRect.bottom = height * 3;
-				blitFn = /*hq3xMode ? */ BlitPixHQ3x16;
+				copyWidth  = width  * 3;
+				copyHeight = height * 3;
+				blitFn = S9xBlitPixHQ3x16;
 			}
 			else
 			{
-				copyRect.right  = width;
-				copyRect.bottom = height;
-				blitFn = BlitPixSmall16;
+				copyWidth  = width;
+				copyHeight = height;
+				blitFn = S9xBlitPixSmall16;
 			}
 
 			break;
@@ -2041,15 +1631,15 @@ static void S9xPutImageBlitGL(int width, int height)
 		case 4:
 			if (width <= 256)
 			{
-				copyRect.right  = width  * 4;
-				copyRect.bottom = height * 4;
-				blitFn =  /*hq4xMode ? */ BlitPixHQ4x16;
+				copyWidth  = width  * 4;
+				copyHeight = height * 4;
+				blitFn = S9xBlitPixHQ4x16;
 			}
 			else
 			{
-				copyRect.right  = width  * 2;
-				copyRect.bottom = height * 2;
-				blitFn =  /*hq4xMode ? */ BlitPixHQ2x16;
+				copyWidth  = width  * 2;
+				copyHeight = height * 2;
+				blitFn = S9xBlitPixHQ2x16;
 			}
 
 			break;
@@ -2063,9 +1653,12 @@ static void S9xPutImageBlitGL(int width, int height)
 		MPWaitOnSemaphore(readySemaphore, kDurationForever);
 
 		mpDataBuffer->blitFn      = blitFn;
-		mpDataBuffer->dstRowBytes = (OpenGL.rangeExt ? copyRect.right : ((copyRect.right > 512) ? 1024 : 512)) * 2;
-		mpDataBuffer->srcRect     = srcRect;
-		mpDataBuffer->copyRect    = copyRect;
+		mpDataBuffer->srcWidth    = width;
+		mpDataBuffer->srcHeight   = height;
+		mpDataBuffer->srcRowBytes = width * 2;
+		mpDataBuffer->dstRowBytes = (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2;
+		mpDataBuffer->copyWidth   = copyWidth;
+		mpDataBuffer->copyHeight  = copyHeight;
 		mpDataBuffer->gfxBuffer   = GFX.Screen;
 
 		MPNotifyQueue(taskQueue, (void *) kMPBlitFrame, 0, 0);
@@ -2075,17 +1668,16 @@ static void S9xPutImageBlitGL(int width, int height)
 	}
 	else
 	{
-		blitFn((uint8 *) GFX.Screen, blitGLBuffer, (OpenGL.rangeExt ? copyRect.right : ((copyRect.right > 512) ? 1024 : 512)) * 2, &srcRect, &copyRect);
+		blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2, width, height);
 		if (!ciFilterEnable)
-			S9xPutImageBlitGL2(copyRect.right, copyRect.bottom);
+			S9xPutImageBlitGL2(copyWidth, copyHeight);
 		else
-			S9xPutImageBlitGL2CoreImage(copyRect.right, copyRect.bottom);
+			S9xPutImageBlitGL2CoreImage(copyWidth, copyHeight);
 	}
 }
 
-static void S9xPutImageCoreImage(int width, int height)
+static void S9xPutImageCoreImage (int width, int height)
 {
-#ifdef MAC_COREIMAGE_SUPPORT
 	if ((imageWidth[0] != width) || (imageHeight[0] != height) || (windowResizeCount > 0))
 	{
 		int	vh = (height > 256) ? height : (height << 1);
@@ -2106,8 +1698,8 @@ static void S9xPutImageCoreImage(int width, int height)
 		}
 		else
 		{
-			int	ww = gWindowRect.right  - gWindowRect.left,
-				wh = gWindowRect.bottom - gWindowRect.top;
+			int	ww = (int) gWindowRect.size.width,
+				wh = (int) gWindowRect.size.height;
 
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
@@ -2145,102 +1737,9 @@ static void S9xPutImageCoreImage(int width, int height)
 		CGLFlushDrawable(glContext);
 	else
 		aglSwapBuffers(agContext);
-#endif
 }
 
-static void S9xPutImageOverscanDirect(int width, int height)
-{
-	Rect	srcRect, copyRect;
-	Blitter	BlitFn;
-	int		extbtm;
-
-	extbtm = (height > 256) ? (SNES_HEIGHT_EXTENDED << 1) : SNES_HEIGHT_EXTENDED;
-
-	srcRect.left   = 0;
-	srcRect.top    = 0;
-	srcRect.right  = width;
-	srcRect.bottom = extbtm;
-
-	if ((imageWidth[whichBuf] != width) || (imageHeight[whichBuf] != height))
-	{
-		if ((height == SNES_HEIGHT) || (height == (SNES_HEIGHT << 1)))
-		{
-			const unsigned int	pitch = 1024;
-			unsigned int		i;
-			uint32				*extarea;
-
-			extarea = (uint32 *) ((uint8 *) GFX.Screen + height * pitch);
-			for (i = 0; i < (((extbtm - height) * pitch) >> 2); i++)
-				extarea[i] = 0;
-		}
-
-		if (width <= 256)
-		{
-			if (eagleMode || supsaiMode || saiMode || epxMode || hq2xMode)
-				BlitClearExtendArea((uint8 *) GFX.Screen, &srcRect);
-			else
-				BlitUpdateEntireDelta();
-		}
-	}
-
-	copyRect.top  = 0;
-	copyRect.left = 0;
-
-	if (width > 256)
-	{
-		copyRect.right  = width;
-		copyRect.bottom = SNES_HEIGHT_EXTENDED << 1;
-		BlitFn = (height > 256) ? BlitFn512x480 : BlitFn512x240;
-	}
-	else
-	{
-		if (doubleSize)
-		{
-			copyRect.right  = width << 1;
-			copyRect.bottom = SNES_HEIGHT_EXTENDED << 1;
-		}
-		else
-		{
-			copyRect.top    = 120;
-			copyRect.left   = 128;
-			copyRect.bottom = 120 + SNES_HEIGHT_EXTENDED;
-			copyRect.right  = 128 + width;
-		}
-
-		BlitFn = BlitFn256x240;
-	}
-
-	imageWidth[whichBuf]  = width;
-	imageHeight[whichBuf] = height;
-
-	if (multiprocessor)
-	{
-		MPWaitOnSemaphore(readySemaphore, kDurationForever);
-
-		mpDataBuffer->blitFn    = BlitFn;
-		mpDataBuffer->srcRect   = srcRect;
-		mpDataBuffer->copyRect  = copyRect;
-		mpDataBuffer->gfxBuffer = GFX.Screen;
-
-		MPNotifyQueue(taskQueue, (void *) kMPBlitFrame, 0, 0);
-
-		whichBuf = 1 - whichBuf;
-		GFX.Screen = gfxScreen[whichBuf];
-	}
-	else
-	{
-		if (!fullscreen)
-		{
-			BEGIN_UPDATE_WINDOW_BACKBUFFER
-			BlitFn((uint8 *) GFX.Screen, gWinScreenPtr, gMacRowBytes, &srcRect, &copyRect);
-			END_UPDATE_WINDOW_BACKBUFFER
-		}
-		else
-			BlitFn((uint8 *) GFX.Screen, gWinScreenPtr, gMacRowBytes, &srcRect, &copyRect);
-	}
-}
-
-static void S9xPutImageOverscanOpenGL(int width, int height)
+static void S9xPutImageOverscanOpenGL (int width, int height)
 {
 	if ((imageWidth[0] != width) || (imageHeight[0] != height) || (windowResizeCount > 0))
 	{
@@ -2272,8 +1771,8 @@ static void S9xPutImageOverscanOpenGL(int width, int height)
 		}
 		else
 		{
-			int	ww = gWindowRect.right  - gWindowRect.left,
-				wh = gWindowRect.bottom - gWindowRect.top;
+			int	ww = (int) gWindowRect.size.width,
+				wh = (int) gWindowRect.size.height;
 
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
@@ -2339,18 +1838,12 @@ static void S9xPutImageOverscanOpenGL(int width, int height)
 		aglSwapBuffers(agContext);
 }
 
-static void S9xPutImageOverscanBlitGL(int width, int height)
+static void S9xPutImageOverscanBlitGL (int width, int height)
 {
-	Rect	srcRect, copyRect;
 	Blitter	blitFn;
-	int		extbtm;
+	int		copyWidth, copyHeight, extbtm;
 
 	extbtm = (height > 256) ? (SNES_HEIGHT_EXTENDED << 1) : SNES_HEIGHT_EXTENDED;
-
-	srcRect.left   = 0;
-	srcRect.top    = 0;
-	srcRect.right  = width;
-	srcRect.bottom = extbtm;
 
 	if ((imageWidth[whichBuf] != width) || (imageHeight[whichBuf] != height))
 	{
@@ -2365,17 +1858,10 @@ static void S9xPutImageOverscanBlitGL(int width, int height)
 				extarea[i] = 0;
 		}
 
-		if (width <= 256)
-		{
-			if (eagleMode || supsaiMode || saiMode || epxMode || hq2xMode || hq3xMode || hq4xMode)
-				BlitClearExtendArea((uint8 *) GFX.Screen, &srcRect);
-			else
-				BlitUpdateEntireDelta();
-		}
+		if (videoMode == VIDEOMODE_TV)
+			if (width <= 256)
+				S9xBlitClearDelta();
 	}
-
-	copyRect.top  = 0;
-	copyRect.left = 0;
 
 	switch (nx)
 	{
@@ -2383,22 +1869,32 @@ static void S9xPutImageOverscanBlitGL(int width, int height)
 		case 2:
 			if (width <= 256)
 			{
-				copyRect.right  = width * 2;
-				copyRect.bottom = SNES_HEIGHT_EXTENDED * 2;
-				blitFn = hq2xMode ? BlitPixHQ2x16 : (epxMode ? BlitPixEPX16: (supsaiMode ? BlitPixSuper2xSaI16 : (saiMode ? BlitPix2xSaI16 : (eagleMode ? BlitPixEagle16 : BlitPixScaledTV16))));
+				copyWidth  = width * 2;
+				copyHeight = SNES_HEIGHT_EXTENDED * 2;
+
+				switch (videoMode)
+				{
+					default:
+					case VIDEOMODE_TV:			blitFn = S9xBlitPixScaledTV16;		break;
+					case VIDEOMODE_SUPEREAGLE:	blitFn = S9xBlitPixSuperEagle16;	break;
+					case VIDEOMODE_2XSAI:		blitFn = S9xBlitPix2xSaI16;		break;
+					case VIDEOMODE_SUPER2XSAI:	blitFn = S9xBlitPixSuper2xSaI16;	break;
+					case VIDEOMODE_EPX:			blitFn = S9xBlitPixEPX16;			break;
+					case VIDEOMODE_HQ2X:		blitFn = S9xBlitPixHQ2x16;			break;
+				}
 			}
 			else
-			if (tvMode && (height <= 256))
+			if ((videoMode == VIDEOMODE_TV) && (height <= 256))
 			{
-				copyRect.right  = width;
-				copyRect.bottom = SNES_HEIGHT_EXTENDED * 2;
-				blitFn = BlitPixHiResTV16;
+				copyWidth  = width;
+				copyHeight = SNES_HEIGHT_EXTENDED * 2;
+				blitFn = S9xBlitPixHiResTV16;
 			}
 			else
 			{
-				copyRect.right  = width;
-				copyRect.bottom = extbtm;
-				blitFn = BlitPixSmall16;
+				copyWidth  = width;
+				copyHeight = extbtm;
+				blitFn = S9xBlitPixSmall16;
 			}
 
 			break;
@@ -2406,15 +1902,15 @@ static void S9xPutImageOverscanBlitGL(int width, int height)
 		case 3:
 			if (width <= 256)
 			{
-				copyRect.right  = width * 3;
-				copyRect.bottom = SNES_HEIGHT_EXTENDED * 3;
-				blitFn =  /*hq3xMode ? */ BlitPixHQ3x16;
+				copyWidth  = width * 3;
+				copyHeight = SNES_HEIGHT_EXTENDED * 3;
+				blitFn = S9xBlitPixHQ3x16;
 			}
 			else
 			{
-				copyRect.right  = width;
-				copyRect.bottom = extbtm;
-				blitFn = BlitPixSmall16;
+				copyWidth  = width;
+				copyHeight = extbtm;
+				blitFn = S9xBlitPixSmall16;
 			}
 
 			break;
@@ -2422,15 +1918,15 @@ static void S9xPutImageOverscanBlitGL(int width, int height)
 		case 4:
 			if (width <= 256)
 			{
-				copyRect.right  = width * 4;
-				copyRect.bottom = SNES_HEIGHT_EXTENDED * 4;
-				blitFn =  /*hq4xMode ? */ BlitPixHQ4x16;
+				copyWidth  = width * 4;
+				copyHeight = SNES_HEIGHT_EXTENDED * 4;
+				blitFn = S9xBlitPixHQ4x16;
 			}
 			else
 			{
-				copyRect.right  = width * 2;
-				copyRect.bottom = extbtm * 2;
-				blitFn =  /*hq4xMode ? */ BlitPixHQ2x16;
+				copyWidth  = width * 2;
+				copyHeight = extbtm * 2;
+				blitFn = S9xBlitPixHQ2x16;
 			}
 
 			break;
@@ -2444,9 +1940,12 @@ static void S9xPutImageOverscanBlitGL(int width, int height)
 		MPWaitOnSemaphore(readySemaphore, kDurationForever);
 
 		mpDataBuffer->blitFn      = blitFn;
-		mpDataBuffer->dstRowBytes = (OpenGL.rangeExt ? copyRect.right : ((copyRect.right > 512) ? 1024 : 512)) * 2;
-		mpDataBuffer->srcRect     = srcRect;
-		mpDataBuffer->copyRect    = copyRect;
+		mpDataBuffer->srcWidth    = width;
+		mpDataBuffer->srcHeight   = height;
+		mpDataBuffer->srcRowBytes = width * 2;
+		mpDataBuffer->dstRowBytes = (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2;
+		mpDataBuffer->copyWidth   = copyWidth;
+		mpDataBuffer->copyHeight  = copyHeight;
 		mpDataBuffer->gfxBuffer   = GFX.Screen;
 
 		MPNotifyQueue(taskQueue, (void *) kMPBlitFrame, 0, 0);
@@ -2456,17 +1955,16 @@ static void S9xPutImageOverscanBlitGL(int width, int height)
 	}
 	else
 	{
-		blitFn((uint8 *) GFX.Screen, blitGLBuffer, (OpenGL.rangeExt ? copyRect.right : ((copyRect.right > 512) ? 1024 : 512)) * 2, &srcRect, &copyRect);
+		blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2, width, height);
 		if (!ciFilterEnable)
-			S9xPutImageBlitGL2(copyRect.right, copyRect.bottom);
+			S9xPutImageBlitGL2(copyWidth, copyHeight);
 		else
-			S9xPutImageBlitGL2CoreImage(copyRect.right, copyRect.bottom);
+			S9xPutImageBlitGL2CoreImage(copyWidth, copyHeight);
 	}
 }
 
-static void S9xPutImageOverscanCoreImage(int width, int height)
+static void S9xPutImageOverscanCoreImage (int width, int height)
 {
-#ifdef MAC_COREIMAGE_SUPPORT
 	int	extbtm = (height > 256) ? (SNES_HEIGHT_EXTENDED << 1) : SNES_HEIGHT_EXTENDED;
 
 	if ((imageWidth[0] != width) || (imageHeight[0] != height) || (windowResizeCount > 0))
@@ -2498,8 +1996,8 @@ static void S9xPutImageOverscanCoreImage(int width, int height)
 		}
 		else
 		{
-			int	ww = gWindowRect.right  - gWindowRect.left,
-				wh = gWindowRect.bottom - gWindowRect.top;
+			int	ww = (int) gWindowRect.size.width,
+				wh = (int) gWindowRect.size.height;
 
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
@@ -2534,10 +2032,9 @@ static void S9xPutImageOverscanCoreImage(int width, int height)
 		CGLFlushDrawable(glContext);
 	else
 		aglSwapBuffers(agContext);
-#endif
 }
 
-static void S9xPutImageBlitGL2(int blit_width, int blit_height)
+static void S9xPutImageBlitGL2 (int blit_width, int blit_height)
 {
 	if ((prevBlitWidth != blit_width) || (prevBlitHeight != blit_height) || (windowResizeCount > 0))
 	{
@@ -2561,8 +2058,8 @@ static void S9xPutImageBlitGL2(int blit_width, int blit_height)
 		}
 		else
 		{
-			int	ww = gWindowRect.right  - gWindowRect.left,
-				wh = gWindowRect.bottom - gWindowRect.top;
+			int	ww = (int) gWindowRect.size.width,
+				wh = (int) gWindowRect.size.height;
 
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
@@ -2668,9 +2165,8 @@ static void S9xPutImageBlitGL2(int blit_width, int blit_height)
 		aglSwapBuffers(agContext);
 }
 
-static void S9xPutImageBlitGL2CoreImage(int blit_width, int blit_height)
+static void S9xPutImageBlitGL2CoreImage (int blit_width, int blit_height)
 {
-#ifdef MAC_COREIMAGE_SUPPORT
 	if ((prevBlitWidth != blit_width) || (prevBlitHeight != blit_height) || (windowResizeCount > 0))
 	{
 		if (fullscreen)
@@ -2693,8 +2189,8 @@ static void S9xPutImageBlitGL2CoreImage(int blit_width, int blit_height)
 		}
 		else
 		{
-			int	ww = gWindowRect.right  - gWindowRect.left,
-				wh = gWindowRect.bottom - gWindowRect.top;
+			int	ww = (int) gWindowRect.size.width,
+				wh = (int) gWindowRect.size.height;
 
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
@@ -2737,10 +2233,9 @@ static void S9xPutImageBlitGL2CoreImage(int blit_width, int blit_height)
 		CGLFlushDrawable(glContext);
 	else
 		aglSwapBuffers(agContext);
-#endif
 }
 
-static void GLMakeScreenMesh(GLfloat *vertex3D, int meshx, int meshy)
+static void GLMakeScreenMesh (GLfloat *vertex3D, int meshx, int meshy)
 {
 	GLfloat *v;
 	float   warp;
@@ -2769,7 +2264,7 @@ static void GLMakeScreenMesh(GLfloat *vertex3D, int meshx, int meshy)
 	}
 }
 
-static void GLMakeTextureMesh(GLfloat *vertex2D, int meshx, int meshy, float lx, float ly)
+static void GLMakeTextureMesh (GLfloat *vertex2D, int meshx, int meshy, float lx, float ly)
 {
 	GLfloat *v;
 
@@ -2794,24 +2289,17 @@ static void GLMakeTextureMesh(GLfloat *vertex2D, int meshx, int meshy, float lx,
 	}
 }
 
-void S9xTextMode(void)
+void S9xTextMode (void)
 {
 	return;
 }
 
-void S9xGraphicsMode(void)
+void S9xGraphicsMode (void)
 {
 	return;
 }
 
-void S9xSetPalette(void)
+void S9xSetPalette (void)
 {
-	return;
-}
-
-void SetInfoDlgColor(unsigned char r, unsigned char g, unsigned char b)
-{
-	#pragma unused (r, g, b)
-
 	return;
 }

@@ -159,183 +159,146 @@
 **********************************************************************************/
 
 
-
-
 #ifdef UNZIP_SUPPORT
-/**********************************************************************************************/
-/* Loadzip.CPP                                                                                */
-/* This file contains a function for loading a SNES ROM image from a zip file		      */
-/**********************************************************************************************/
 
-#include <string.h>
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
+#include <assert.h>
 #include <ctype.h>
-
-#ifndef NO_INLINE_SET_GET
-#define NO_INLINE_SET_GET
-#endif
-
+#include "unzip.h"
 #include "snes9x.h"
 #include "memmap.h"
 
-#include "unzip/unzip.h"
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 
-bool8 LoadZip(const char* zipname,
-	      int32 *TotalFileSize,
-	      int32 *headers, uint8* buffer)
+bool8 LoadZip (const char *zipname, int32 *TotalFileSize, int32 *headers, uint8 *buffer)
 {
-    *TotalFileSize = 0;
-    *headers = 0;
+	*TotalFileSize = 0;
+	*headers = 0;
 
-    unzFile file = unzOpen(zipname);
-    if(file == NULL)
-	return (FALSE);
+	unzFile	file = unzOpen(zipname);
+	if (file == NULL)
+		return (FALSE);
 
-    // find largest file in zip file (under MAX_ROM_SIZE)
-    // or a file with extension .1
-    char filename[132];
-    int filesize = 0;
-    int port = unzGoToFirstFile(file);
-    unz_file_info info;
-    while(port == UNZ_OK)
-    {
-	char name[132];
-	unzGetCurrentFileInfo(file, &info, name,128, NULL,0, NULL,0);
+	// find largest file in zip file (under MAX_ROM_SIZE) or a file with extension .1
+	char	filename[132];
+	int		filesize = 0;
+	int		port = unzGoToFirstFile(file);
 
-#if 0
-	int calc_size = info.uncompressed_size / 0x2000;
-	calc_size *= 0x2000;
-	if(!(info.uncompressed_size - calc_size == 512 || info.uncompressed_size == calc_size))
+	unz_file_info	info;
+
+	while (port == UNZ_OK)
 	{
-	    port = unzGoToNextFile(file);
-	    continue;
-	}
-#endif
+		char	name[132];
+		unzGetCurrentFileInfo(file, &info, name, 128, NULL, 0, NULL, 0);
 
-	if(info.uncompressed_size > (CMemory::MAX_ROM_SIZE + 512))
+		if (info.uncompressed_size > CMemory::MAX_ROM_SIZE + 512)
+		{
+			port = unzGoToNextFile(file);
+			continue;
+		}
+
+		if ((int) info.uncompressed_size > filesize)
+		{
+			strcpy(filename, name);
+			filesize = info.uncompressed_size;
+		}
+
+		int	len = strlen(name);
+		if (len > 2 && name[len - 2] == '.' && name[len - 1] == '1')
+		{
+			strcpy(filename, name);
+			filesize = info.uncompressed_size;
+			break;
+		}
+
+		port = unzGoToNextFile(file);
+	}
+
+	if (!(port == UNZ_END_OF_LIST_OF_FILE || port == UNZ_OK) || filesize == 0)
 	{
-	    port = unzGoToNextFile(file);
-	    continue;
+		assert(unzClose(file) == UNZ_OK);
+		return (FALSE);
 	}
 
-	if ((int) info.uncompressed_size > filesize)
+	// find extension
+	char	tmp[2] = { 0, 0 };
+	char	*ext = strrchr(filename, '.');
+	if (ext)
+		ext++;
+	else
+		ext = tmp;
+
+	uint8	*ptr = buffer;
+	bool8	more = FALSE;
+
+	unzLocateFile(file, filename, 1);
+	unzGetCurrentFileInfo(file, &info, filename, 128, NULL, 0, NULL, 0);
+
+	if (unzOpenCurrentFile(file) != UNZ_OK)
 	{
-	    strcpy(filename,name);
-	    filesize = info.uncompressed_size;
+		unzClose(file);
+		return (FALSE);
 	}
-	int len = strlen(name);
-	if(name[len-2] == '.' && name[len-1] == '1')
+
+	do
 	{
-	    strcpy(filename,name);
-	    filesize = info.uncompressed_size;
-	    break;
-	}
-	port = unzGoToNextFile(file);
-    }
-    if( !(port == UNZ_END_OF_LIST_OF_FILE || port == UNZ_OK) || filesize == 0)
-    {
-	assert( unzClose(file) == UNZ_OK );
-	return (FALSE);
-    }
+		assert(info.uncompressed_size <= CMemory::MAX_ROM_SIZE + 512);
 
-    // Find extension
-    char tmp[2];
-    tmp[0] = tmp[1] = 0;
-    char *ext = strrchr(filename,'.');
-    if(ext) ext++;
-    else ext = tmp;
+		int	FileSize = info.uncompressed_size;
+		int	l = unzReadCurrentFile(file, ptr, FileSize);
 
-    uint8 *ptr = buffer;
-    bool8 more = FALSE;
+		if (unzCloseCurrentFile(file) == UNZ_CRCERROR)
+		{
+			unzClose(file);
+			return (FALSE);
+		}
 
-    printf("Using ROM %s in %s\n", filename, zipname);
-    unzLocateFile(file,filename,1);
-    unzGetCurrentFileInfo(file, &info, filename,128, NULL,0, NULL,0);
+		if (l <= 0 || l != FileSize)
+		{
+			unzClose(file);
+			return (FALSE);
+		}
 
-    if( unzOpenCurrentFile(file) != UNZ_OK )
-    {
+		FileSize = (int) Memory.HeaderRemove((uint32) FileSize, *headers, ptr);
+		ptr += FileSize;
+		*TotalFileSize += FileSize;
+
+		int	len;
+
+		if (ptr - Memory.ROM < CMemory::MAX_ROM_SIZE + 512 && (isdigit(ext[0]) && ext[1] == 0 && ext[0] < '9'))
+		{
+			more = TRUE;
+			ext[0]++;
+		}
+		else
+		if (ptr - Memory.ROM < CMemory::MAX_ROM_SIZE + 512)
+		{
+			if (ext == tmp)
+				len = strlen(filename);
+			else
+				len = ext - filename - 1;
+
+			if ((len == 7 || len == 8) && strncasecmp(filename, "sf", 2) == 0 &&
+				isdigit(filename[2]) && isdigit(filename[3]) && isdigit(filename[4]) &&
+				isdigit(filename[5]) && isalpha(filename[len - 1]))
+			{
+				more = TRUE;
+				filename[len - 1]++;
+			}
+		}
+		else
+			more = FALSE;
+
+		if (more)
+		{
+			if (unzLocateFile(file, filename, 1) != UNZ_OK ||
+				unzGetCurrentFileInfo(file, &info, filename, 128, NULL, 0, NULL, 0) != UNZ_OK ||
+				unzOpenCurrentFile(file) != UNZ_OK)
+				break;
+		}
+	} while (more);
+
 	unzClose(file);
-	return (FALSE);
-    }
 
-    do
-    {
-	assert(info.uncompressed_size <= CMemory::MAX_ROM_SIZE + 512);
-	int FileSize = info.uncompressed_size;
-
-	int l = unzReadCurrentFile(file,ptr,FileSize);
-	if(unzCloseCurrentFile(file) == UNZ_CRCERROR)
-	{
-	    unzClose(file);
-	    return (FALSE);
-	}
-
-	if(l <= 0 || l != FileSize)
-	{
-	    unzClose(file);
-	    switch(l)
-	    {
-		case UNZ_ERRNO:
-		    break;
-		case UNZ_EOF:
-		    break;
-		case UNZ_PARAMERROR:
-		    break;
-		case UNZ_BADZIPFILE:
-		    break;
-		case UNZ_INTERNALERROR:
-		    break;
-		case UNZ_CRCERROR:
-		    break;
-	    }
-	    return (FALSE);
-	}
-
-        FileSize = (int)Memory.HeaderRemove((uint32)FileSize, *headers, ptr);
-	ptr += FileSize;
-	(*TotalFileSize) += FileSize;
-
-	int len;
-	if (ptr - Memory.ROM < CMemory::MAX_ROM_SIZE + 0x200 &&
-	    (isdigit (ext [0]) && ext [1] == 0 && ext [0] < '9'))
-	{
-	    more = TRUE;
-	    ext [0]++;
-	}
-        else if (ptr - Memory.ROM < CMemory::MAX_ROM_SIZE + 0x200)
-        {
-            if (ext == tmp) len = strlen (filename);
-            else len = ext - filename - 1;
-            if ((len == 7 || len == 8) &&
-		  strncasecmp (filename, "sf", 2) == 0 &&
-		  isdigit (filename [2]) && isdigit (filename [3]) && isdigit (filename [4]) &&
-		  isdigit (filename [5]) && isalpha (filename [len - 1]))
-            {
-                more = TRUE;
-                filename [len - 1]++;
-            }
-        }
-        else
-            more = FALSE;
-
-	if(more)
-	{
-	    if( unzLocateFile(file,filename,1) != UNZ_OK ||
-		unzGetCurrentFileInfo(file, &info, filename,128, NULL,0, NULL,0) != UNZ_OK ||
-		unzOpenCurrentFile(file) != UNZ_OK)
-		break;
-            printf("  ... and %s in %s\n", filename, zipname);
-	}
-
-    } while(more);
-
-    unzClose(file);
-    return (TRUE);
+	return (TRUE);
 }
-#endif
 
+#endif

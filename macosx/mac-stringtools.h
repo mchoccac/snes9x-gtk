@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,11 +174,8 @@
 #ifndef _mac_stringtools_h_
 #define _mac_stringtools_h_
 
-void ConvertPString(const unsigned char *, char *);
-void ConvertCString(const char *, unsigned char *);
-void JointPStrings(const unsigned char *, const unsigned char *, const unsigned char *, unsigned char *);
-CFStringRef CopyFixNameStrings(const char *, short);
-OSStatus CreateATSUIStyleFromFontFullNameAndSize(Str255, short, ATSUStyle *);
-const char * GetMultiByteCharacters(CFStringRef, int);
+CFStringRef CopyFixNameStrings (const char *, uint8);
+OSStatus CreateATSUIStyleFromFontFullNameAndSize (const char *, int, ATSUStyle *);
+const char * GetMultiByteCharacters (CFStringRef, int);
 
 #endif

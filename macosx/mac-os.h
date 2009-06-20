@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,23 +174,9 @@
 #ifndef _mac_os_h_
 #define _mac_os_h_
 
-void InitGameWindow(void);
-void DeinitGameWindow(void);
-void UpdateGameWindow(void);
-void AddRecentItem(FSRef *);
-void BuildRecentMenu(void);
-void AdjustMenus(void);
-void UpdateMenuCommandStatus(Boolean);
-void ApplyNSRTHeaderControllers(void);
-void QuitWithFatalError(OSStatus, const char *);
-void ChangeInputDevice(void);
-void GetGameScreenPointer(int16 *, int16 *, bool);
-void PostQueueToSubEventLoop(void);
-int PromptFreezeDefrost(Boolean);
-
 enum
 {
-	kDrawingDirect = 1,
+	kDrawingReserved1 = 1, // unused
 	kDrawingOpenGL,
 	kDrawingBlitGL
 };
@@ -232,6 +216,20 @@ enum
 	SNES_MAX_CONTROLLER_OPTIONS
 };
 
+enum
+{
+	VIDEOMODE_BLOCKY,
+	VIDEOMODE_TV,
+	VIDEOMODE_SMOOTH,
+	VIDEOMODE_SUPEREAGLE,
+	VIDEOMODE_2XSAI,
+	VIDEOMODE_SUPER2XSAI,
+	VIDEOMODE_EPX,
+	VIDEOMODE_HQ2X,
+	VIDEOMODE_HQ3X,
+	VIDEOMODE_HQ4X
+};
+
 typedef struct
 {
 	long long	nextTime[12];
@@ -244,64 +242,77 @@ typedef struct
 
 typedef struct
 {
-	bool8	benchmark;
-	bool8	glForceNoTextureRectangle;
-	bool8	glUseClientStrageApple;
-	bool8	glUseTexturePriority;
-	int		glStorageHint;
+	bool8		benchmark;
+	bool8		glForceNoTextureRectangle;
+	bool8		glUseClientStrageApple;
+	bool8		glUseTexturePriority;
+	int			glStorageHint;
 }	ExtraOption;
 
 #define kMacWindowHeight	(SNES_HEIGHT_EXTENDED << 1)
 #define	MAC_MAX_PLAYERS		8
 
-extern volatile bool8		running, s9xthreadrunning;
-extern volatile bool8		eventQueued, windowExtend;
-extern volatile int			windowResizeCount;
-extern uint32				controlPad[MAC_MAX_PLAYERS];
-extern uint8				romDetect, interleaveDetect, videoDetect, headerDetect;
-extern WindowRef			gWindow;
-extern CGrafPtr				gWindowPort;
-extern RgnHandle			gWindowRgn;
-extern Rect					gWindowRect;
-extern int					gWindowBarHeight;
-extern int					glScreenW, glScreenH;
-extern CGRect				glScreenBounds;
-extern Point				windowPos[kWindowCount];
-extern CGSize				windowSize[kWindowCount];
-extern int					macFrameSkip;
-extern int32				skipFrames;
-extern int64				lastFrame;
-extern unsigned long		spcFileCount, pngFileCount;
-extern long					lastDrawingMethod;
-extern long					systemVersion, qtVersion, hiToolboxVersion;
-extern bool8				finished, cartOpen,
-							autofire, hidExist, folderWarning, lockedROMMedia, directDisplay;
-extern bool8				fullscreen, autoRes, doubleSize,
-							tvMode, smoothMode, eagleMode, saiMode, supsaiMode, epxMode, hq2xMode, hq3xMode, hq4xMode,
-							glstretch, gl32bit, vsync, drawoverscan, lastoverscan, screencurvature,
-							multiprocessor, ciFilterEnable;
-extern long					drawingMethod;
-extern float				macSoundPitch;
-extern SInt32				macSoundVolume;
-extern int					macSoundInterval;
-extern uint16				aueffect;
-extern uint8				saveInROMFolder;
-extern int					mac7110Load, mac7110Megs, macSDD1Pack;
-extern int					macCurvatureWarp, macAspectRatio;
-extern int					macFastForwardRate, macFrameAdvanceRate;
-extern int					inactiveMode;
-extern bool8				macQTRecord;
-extern uint16				macRecordFlag, macPlayFlag, macQTMovFlag;
-extern bool8				startopendlog, showtimeinfrz, enabletoggle,
-							savewindowpos, onscreeninfo, minimizecpu;
-extern int					musicboxmode;
-extern bool8				applycheat;
-extern int					padSetting, deviceSetting, deviceSettingMaster;
-extern int					macControllerOption;
-extern CGPoint				unlimitedCursor;
-extern char					npServerIP[256], npName[256];
-extern AutoFireState		autofireRec[MAC_MAX_PLAYERS];
-extern ExtraOption			extraOptions;
-extern CFStringRef			multiCartPath[2];
+extern volatile bool8	running, s9xthreadrunning;
+extern volatile bool8	eventQueued, windowExtend;
+extern volatile int		windowResizeCount;
+extern uint32			controlPad[MAC_MAX_PLAYERS];
+extern uint8			romDetect, interleaveDetect, videoDetect, headerDetect;
+extern WindowRef		gWindow;
+extern HIRect			gWindowRect;
+extern int				glScreenW, glScreenH;
+extern CGRect			glScreenBounds;
+extern Point			windowPos[kWindowCount];
+extern CGSize			windowSize[kWindowCount];
+extern CGImageRef		macIconImage[118];
+extern int				macPadIconIndex, macLegendIconIndex, macMusicBoxIconIndex, macFunctionIconIndex;
+extern int				macFrameSkip;
+extern int32			skipFrames;
+extern int64			lastFrame;
+extern unsigned long	spcFileCount, pngFileCount;
+extern SInt32			systemVersion;
+extern bool8			finished, cartOpen,
+						autofire, hidExist, folderWarning, lockedROMMedia, directDisplay;
+extern bool8			fullscreen, autoRes,
+						glstretch, gl32bit, vsync, drawoverscan, lastoverscan, screencurvature,
+						multiprocessor, ciFilterEnable;
+extern long				drawingMethod;
+extern int				videoMode;
+extern float			macSoundPitch;
+extern SInt32			macSoundVolume;
+extern uint16			aueffect;
+extern uint8			saveInROMFolder;
+extern int				macCurvatureWarp, macAspectRatio;
+extern int				macFastForwardRate, macFrameAdvanceRate;
+extern int				inactiveMode;
+extern bool8			macQTRecord;
+extern uint16			macRecordFlag, macPlayFlag, macQTMovFlag;
+extern bool8			startopendlog, showtimeinfrz, enabletoggle, savewindowpos, onscreeninfo;
+extern int				musicboxmode;
+extern bool8			applycheat;
+extern int				padSetting, deviceSetting, deviceSettingMaster;
+extern int				macControllerOption;
+extern CGPoint			unlimitedCursor;
+extern char				npServerIP[256], npName[256];
+extern AutoFireState	autofireRec[MAC_MAX_PLAYERS];
+extern ExtraOption		extraOptions;
+extern CFStringRef		multiCartPath[2];
+
+#ifdef MAC_PANTHER_SUPPORT
+extern IconRef			macIconRef[118];
+#endif
+
+void InitGameWindow (void);
+void DeinitGameWindow (void);
+void UpdateGameWindow (void);
+void AddRecentItem (FSRef *);
+void BuildRecentMenu (void);
+void AdjustMenus (void);
+void UpdateMenuCommandStatus (Boolean);
+void ApplyNSRTHeaderControllers (void);
+void QuitWithFatalError (OSStatus, const char *);
+void ChangeInputDevice (void);
+void GetGameScreenPointer (int16 *, int16 *, bool);
+void PostQueueToSubEventLoop (void);
+int PromptFreezeDefrost (Boolean);
 
 #endif

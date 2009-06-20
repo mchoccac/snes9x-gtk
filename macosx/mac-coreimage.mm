@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -172,8 +170,6 @@
   (c) Copyright 2004 - 2005  Steven Seeger
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
-
-#ifdef MAC_COREIMAGE_SUPPORT
 
 #import "port.h"
 
@@ -221,35 +217,35 @@ typedef struct {
 	}	u;	
 }	FilterParam;
 
-static NSMutableArray	*ciFilterNameList          = nil;
-static NSMutableArray	*ciFilterLocalizedNameList = nil;
-static NSArray			*ciFilterInputKeys         = nil;
-static CIFilter			*ciFilter                  = nil;
-static CIContext		*ciContext                 = nil;
-static FilterParam		*ciFilterParam             = nil;
-static CFStringRef		ciFilterName               = nil;
-static HIViewRef		ciFilterUIPane             = nil;
-static MenuRef			ciFilterMenu               = nil;
-static CGColorSpaceRef	cgColor                    = nil;
+static NSMutableArray	*ciFilterNameList          = NULL;
+static NSMutableArray	*ciFilterLocalizedNameList = NULL;
+static NSArray			*ciFilterInputKeys         = NULL;
+static CIFilter			*ciFilter                  = NULL;
+static CIContext		*ciContext                 = NULL;
+static FilterParam		*ciFilterParam             = NULL;
+static CFStringRef		ciFilterName               = NULL;
+static HIViewRef		ciFilterUIPane             = NULL;
+static MenuRef			ciFilterMenu               = NULL;
+static CGColorSpaceRef	cgColor                    = NULL;
+static MPSemaphoreID	cisem                      = NULL;
 static bool8			ciFilterHasInputCenter     = false;
 static bool8			ciFilterHasInputImage      = false;
 static int				ciFilterInputKeysCount     = 0;
 
-static void LoadFilterPrefs(void);
-static void SaveFilterPrefs(void);
-static void FilterParamToFilter(void);
-static void FilterToFilterParam(void);
-static void BuildCoreImageFilterListAndMenu(void);
-static void ReleaseCoreImageFilterListAndMenu(void);
-static void ReplaceFilterUI(WindowRef);
-static void FilterUIAddSubviews(WindowRef, HIViewRef);
-static void FilterUISetValues(HIViewRef);
-static bool8 IsCoreImageFilterSupported(CIFilter *);
-static pascal OSStatus CoreImageFilterEventHandler(EventHandlerCallRef, EventRef, void *);
+static void LoadFilterPrefs (void);
+static void SaveFilterPrefs (void);
+static void FilterParamToFilter (void);
+static void FilterToFilterParam (void);
+static void BuildCoreImageFilterListAndMenu (void);
+static void ReleaseCoreImageFilterListAndMenu (void);
+static void ReplaceFilterUI (WindowRef);
+static void FilterUIAddSubviews (WindowRef, HIViewRef);
+static void FilterUISetValues (HIViewRef);
+static bool8 IsCoreImageFilterSupported (CIFilter *);
+static pascal OSStatus CoreImageFilterEventHandler (EventHandlerCallRef, EventRef, void *);
 
-static MPSemaphoreID	cisem = nil;
 
-void InitCoreImage(void)
+void InitCoreImage (void)
 {
 	OSStatus			err;
 	NSAutoreleasePool	*pool;
@@ -267,7 +263,7 @@ void InitCoreImage(void)
 	[pool release];
 }
 
-void DeinitCoreImage(void)
+void DeinitCoreImage (void)
 {
 	OSStatus			err;
 	NSAutoreleasePool	*pool;
@@ -285,7 +281,7 @@ void DeinitCoreImage(void)
 	[pool release];
 }	
 
-void InitCoreImageFilter(void)
+void InitCoreImageFilter (void)
 {
 	NSAutoreleasePool	*pool;
 	
@@ -308,7 +304,7 @@ void InitCoreImageFilter(void)
 	[pool release];
 }
 
-void DeinitCoreImageFilter(void)
+void DeinitCoreImageFilter (void)
 {
 	NSAutoreleasePool	*pool;
 
@@ -329,7 +325,7 @@ void DeinitCoreImageFilter(void)
 	[pool release];
 }
 
-static void LoadFilterPrefs(void)
+static void LoadFilterPrefs (void)
 {
 	CFDataRef	data;
 	int			n = sizeof(FilterParam) * ciFilterInputKeysCount;
@@ -349,7 +345,7 @@ static void LoadFilterPrefs(void)
 	FilterToFilterParam();
 }
 
-static void SaveFilterPrefs(void)
+static void SaveFilterPrefs (void)
 {
 	CFDataRef	data;
 	int			n = sizeof(FilterParam) * ciFilterInputKeysCount;
@@ -362,7 +358,7 @@ static void SaveFilterPrefs(void)
 	}
 }
 
-static void FilterParamToFilter(void)
+static void FilterParamToFilter (void)
 {
 	NSString	*key;
 	NSNumber	*num;
@@ -398,7 +394,7 @@ static void FilterParamToFilter(void)
 	}
 }
 
-static void FilterToFilterParam(void)
+static void FilterToFilterParam (void)
 {
 	NSDictionary	*attr;
 	NSString		*key, *label, *className, *typeName;
@@ -481,7 +477,7 @@ static void FilterToFilterParam(void)
     }
 }
 
-static void BuildCoreImageFilterListAndMenu(void)
+static void BuildCoreImageFilterListAndMenu (void)
 {
 	NSArray		*categories, *filterNames;
 	OSStatus	err;
@@ -512,20 +508,20 @@ static void BuildCoreImageFilterListAndMenu(void)
 			
 			[ciFilterLocalizedNameList addObject: localName];
 			
-			err = AppendMenuItemTextWithCFString(ciFilterMenu, (CFStringRef) localName, 0, kCommandFilterMenuBase + m, nil);
+			err = AppendMenuItemTextWithCFString(ciFilterMenu, (CFStringRef) localName, 0, kCommandFilterMenuBase + m, NULL);
 			m++;
 		}
 	}
 }
 
-static void ReleaseCoreImageFilterListAndMenu(void)
+static void ReleaseCoreImageFilterListAndMenu (void)
 {
-	ReleaseMenu(ciFilterMenu);
+	CFRelease(ciFilterMenu);
 	[ciFilterLocalizedNameList release];
 	[ciFilterNameList release];
 }
 
-static bool8 IsCoreImageFilterSupported(CIFilter *filter)
+static bool8 IsCoreImageFilterSupported (CIFilter *filter)
 {
 	NSDictionary	*attr;
 	NSArray			*inputKeys;
@@ -568,10 +564,10 @@ static bool8 IsCoreImageFilterSupported(CIFilter *filter)
 	if (hasInputImage == false)
 		result = false;
 	
-	return result;
+	return (result);
 }
 
-void ConfigureCoreImageFilter(void)
+void ConfigureCoreImageFilter (void)
 {
 	NSAutoreleasePool	*pool;
 	OSStatus			err;
@@ -597,7 +593,7 @@ void ConfigureCoreImageFilter(void)
 			Rect			rct;
 			int				value;
 			
-			ciFilterUIPane = nil;
+			ciFilterUIPane = NULL;
 			
 			FilterToFilterParam();
 			
@@ -608,16 +604,16 @@ void ConfigureCoreImageFilter(void)
 			rct.top    = 20;
 			rct.right  = 74 + 279;
 			rct.bottom = 20 +  20;
-			err = CreatePopupButtonControl(window, &rct, nil, -12345, false, 0, 0, 0, &ctl);
+			err = CreatePopupButtonControl(window, &rct, NULL, -12345, false, 0, 0, 0, &ctl);
 			HIViewSetID(ctl, cid);
 			int	n = CountMenuItems(ciFilterMenu);
 			SetControlPopupMenuHandle(ctl, ciFilterMenu);
-			SetControl32BitMaximum(ctl, n);
+			HIViewSetMaximum(ctl, n);
 			for (int i = 1; i <= n; i++)
 				CheckMenuItem(ciFilterMenu, i, false);
 			value = [ciFilterNameList indexOfObject: (NSString *) ciFilterName];
 			CheckMenuItem(ciFilterMenu, value + 1, true);
-			SetControl32BitValue(ctl, value + 1);
+			HIViewSetValue(ctl, value + 1);
 			
 			ReplaceFilterUI(window);
 			
@@ -635,7 +631,7 @@ void ConfigureCoreImageFilter(void)
 			
 			FilterParamToFilter();
 			
-			ReleaseWindow(window);
+			CFRelease(window);
 		}
 		
 		DisposeNibReference(nibRef);
@@ -644,7 +640,7 @@ void ConfigureCoreImageFilter(void)
 	[pool release];
 }
 
-static void ReplaceFilterUI(WindowRef window)
+static void ReplaceFilterUI (WindowRef window)
 {
 	OSStatus	err;
 	HIRect		frame;
@@ -654,7 +650,7 @@ static void ReplaceFilterUI(WindowRef window)
 	{
 		HIViewSetVisible(ciFilterUIPane, false);
 		DisposeControl(ciFilterUIPane);
-		ciFilterUIPane = nil;
+		ciFilterUIPane = NULL;
 	}
 	
 	GetWindowBounds(window, kWindowStructureRgn, &bounds);
@@ -674,7 +670,7 @@ static void ReplaceFilterUI(WindowRef window)
 	HIViewSetVisible(ciFilterUIPane, true);
 }
 
-static void FilterUIAddSubviews(WindowRef window, HIViewRef parent)
+static void FilterUIAddSubviews (WindowRef window, HIViewRef parent)
 {
 	OSStatus			err;
 	CFMutableStringRef	label;
@@ -722,23 +718,23 @@ static void FilterUIAddSubviews(WindowRef window, HIViewRef parent)
 			case kCITypeScalar:
 			{
 				CFStringAppend(label, CFSTR(" :"));
-				err = CreateStaticTextControl(window, &rct, label, nil, &ctl);
+				err = CreateStaticTextControl(window, &rct, label, NULL, &ctl);
 				SetStaticTextTrunc(ctl, truncEnd, true);
 				err = HIViewAddSubview(parent, ctl);
-				frame.origin.x = 7.0;
+				frame.origin.x = 5.0;
 				frame.origin.y = (float) (m * 28);
 				frame.size.width  = 120.0;
 				frame.size.height = 20.0;
 				err = HIViewSetFrame(ctl, &frame);
 				
 				value = (SInt32) ((ciFilterParam[i].u.s.cur - ciFilterParam[i].u.s.min) / (ciFilterParam[i].u.s.max - ciFilterParam[i].u.s.min) * (float) FIXEDRANGE);
-				err = CreateSliderControl(window, &rct, value, 0, FIXEDRANGE, kControlSliderDoesNotPoint, 0, false, nil, &ctl);
+				err = CreateSliderControl(window, &rct, value, 0, FIXEDRANGE, kControlSliderDoesNotPoint, 0, false, NULL, &ctl);
 				SetHIViewID(&cid, kCommandSliderBase + i, i);
 				HIViewSetID(ctl, cid);
 				HIViewSetCommandID(ctl, cid.signature);
 				err = HIViewAddSubview(parent, ctl);
 				frame.origin.x = 135.0;
-				frame.origin.y = (float) (m * 28);
+				frame.origin.y = (float) (m * 28) - 1.0;
 				frame.size.width  = bounds.size.width - 140.0;
 				frame.size.height = 20.0;
 				err = HIViewSetFrame(ctl, &frame);
@@ -755,9 +751,9 @@ static void FilterUIAddSubviews(WindowRef window, HIViewRef parent)
 				HIViewSetID(ctl, cid);
 				HIViewSetCommandID(ctl, cid.signature);
 				err = HIViewAddSubview(parent, ctl);
-				frame.origin.x = bounds.size.width - 125.0;
+				frame.origin.x = bounds.size.width - 180.0;
 				frame.origin.y = (float) (m * 28);
-				frame.size.width  = 120.0;
+				frame.size.width  = 175.0;
 				frame.size.height = 20.0;
 				err = HIViewSetFrame(ctl, &frame);
 				m++;
@@ -794,7 +790,7 @@ static void FilterUIAddSubviews(WindowRef window, HIViewRef parent)
 	err = HIViewSetFrame(parent, &bounds);
 }
 
-static void FilterUISetValues(HIViewRef parent)
+static void FilterUISetValues (HIViewRef parent)
 {
 	HIViewRef	ctl;
 	HIViewID	cid;
@@ -807,14 +803,14 @@ static void FilterUISetValues(HIViewRef parent)
 			case kCITypeBoolean:
 				SetHIViewID(&cid, kCommandCheckBoxBase + i, i);
 				HIViewFindByID(parent, cid, &ctl);
-				SetControl32BitValue(ctl, ciFilterParam[i].u.b.cur);
+				HIViewSetValue(ctl, ciFilterParam[i].u.b.cur);
 				break;
 				
 			case kCITypeScalar:
 				value = (SInt32) ((ciFilterParam[i].u.s.cur - ciFilterParam[i].u.s.min) / (ciFilterParam[i].u.s.max - ciFilterParam[i].u.s.min) * (float) FIXEDRANGE);
 				SetHIViewID(&cid, kCommandSliderBase + i, i);
 				HIViewFindByID(parent, cid, &ctl);
-				SetControl32BitValue(ctl, value);
+				HIViewSetValue(ctl, value);
 				break;
 				
 			default:
@@ -823,10 +819,8 @@ static void FilterUISetValues(HIViewRef parent)
 	}
 }
 
-static pascal OSStatus CoreImageFilterEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus CoreImageFilterEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	#pragma unused (inHandlerRef)
-	
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	window = (WindowRef) inUserData;
 	
@@ -848,7 +842,7 @@ static pascal OSStatus CoreImageFilterEventHandler(EventHandlerCallRef inHandler
 				HICommandExtended	tHICommand;
 
 				case kEventCommandUpdateStatus:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommandExtended), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommandExtended), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(true);
@@ -858,7 +852,7 @@ static pascal OSStatus CoreImageFilterEventHandler(EventHandlerCallRef inHandler
 					break;
 
 				case kEventCommandProcess:
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommandExtended), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommandExtended), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						err = MPWaitOnSemaphore(cisem, kDurationForever);
@@ -899,7 +893,7 @@ static pascal OSStatus CoreImageFilterEventHandler(EventHandlerCallRef inHandler
 								case kCommandSliderBase:
 									SInt32	value;
 									
-									value = GetControl32BitValue(tHICommand.source.control);
+									value = HIViewGetValue(tHICommand.source.control);
 									ciFilterParam[i].u.s.cur = ciFilterParam[i].u.s.min + (ciFilterParam[i].u.s.max - ciFilterParam[i].u.s.min) * (float) value / (float) FIXEDRANGE;
 									FilterParamToFilter();
 									result = noErr;
@@ -937,10 +931,10 @@ static pascal OSStatus CoreImageFilterEventHandler(EventHandlerCallRef inHandler
 			}
 	}
 	
-	return result;
+	return (result);
 }
 
-void InitCoreImageContext(CGLContextObj cglctx, CGLPixelFormatObj cglpix)
+void InitCoreImageContext (CGLContextObj cglctx, CGLPixelFormatObj cglpix)
 {
 	NSAutoreleasePool	*pool;
 	
@@ -949,12 +943,12 @@ void InitCoreImageContext(CGLContextObj cglctx, CGLPixelFormatObj cglpix)
 	FilterToFilterParam();
 	
 	cgColor = CGColorSpaceCreateDeviceRGB();
-	ciContext = [[CIContext contextWithCGLContext: cglctx pixelFormat: cglpix options: nil] retain];
+	ciContext = [[CIContext contextWithCGLContext: cglctx pixelFormat: cglpix options: NULL] retain];
 	
 	[pool release];
 }
 
-void DeinitCoreImageContext(void)
+void DeinitCoreImageContext (void)
 {
 	NSAutoreleasePool	*pool;
 	
@@ -966,7 +960,7 @@ void DeinitCoreImageContext(void)
 	[pool release];
 }
 
-void DrawWithCoreImageFilter(CGRect src, CGImageRef img)
+void DrawWithCoreImageFilter (CGRect src, CGImageRef img)
 {
 	OSStatus			err;
 	NSAutoreleasePool	*pool;
@@ -997,5 +991,3 @@ void DrawWithCoreImageFilter(CGRect src, CGImageRef img)
 	
 	[pool release];
 }
-
-#endif

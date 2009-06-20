@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,8 +171,8 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
-#include "gfx.h"
-#include "ppu.h"
+#include "snes9x.h"
+#include "memmap.h"
 #include "screenshot.h"
 
 #include <QuickTime/QuickTime.h>
@@ -186,84 +184,16 @@
 #include "mac-render.h"
 #include "mac-screenshot.h"
 
-static void ExportCGImageToPNGFile(CGImageRef, const char *);
-static Handle GetScreenAsRawHandle(int, int);
+static Handle GetScreenAsRawHandle (int, int);
+static void ExportCGImageToPNGFile (CGImageRef, const char *);
 
-#ifdef MAC_QT6_SUPPORT
-PicHandle GetScreenAsPicHandle(int width, int height, int destWidth, int destHeight)
-{
-	PicHandle	myPicture;
-	Rect		drawSize, scaleSize;
-	GWorldPtr	drawWorld, scaleWorld;
-	Byte		*graphicsIn, *graphicsOut;
-	int			row, graphicsRowBytes;
 
-	SetRect(&drawSize,  0, 0, width,     height);
-	SetRect(&scaleSize, 0, 0, destWidth, destHeight);
-
-	InitGWorld(&drawWorld,  &drawSize,  16);
-	InitGWorld(&scaleWorld, &scaleSize, 16);
-
-	graphicsIn  = (Byte *) GFX.Screen;
-	graphicsOut = (Byte *) GetPixBaseAddr(GetGWorldPixMap(drawWorld));
-	graphicsRowBytes = GetPixRowBytes(GetGWorldPixMap(drawWorld));
-
-	for (row = 0; row < height; row++)
-	{
-		memcpy(graphicsOut, graphicsIn, width * 2);
-
-		if (directDisplay)
-		{
-			if (drawingMethod != kDrawingOpenGL)
-				graphicsIn += 512 * 2;
-			else
-				graphicsIn += width * 2;
-		}
-		else
-		{
-			if (lastDrawingMethod != kDrawingOpenGL)
-				graphicsIn += 512 * 2;
-			else
-				graphicsIn += width * 2;
-		}
-
-		graphicsOut += graphicsRowBytes;
-	}
-
-	if ((scaleSize.right * scaleSize.bottom) < (drawSize.right * drawSize.bottom))
-	{
-		PrepareForGDrawing(drawWorld);
-		CopyBits(GetPortBitMapForCopyBits(drawWorld),  GetPortBitMapForCopyBits(scaleWorld), &drawSize,  &scaleSize, srcCopy | ditherCopy, nil);
-		FinishGDrawing(drawWorld);
-
-		PrepareForGDrawing(scaleWorld);
-		myPicture = OpenPicture(&scaleSize);
-		CopyBits(GetPortBitMapForCopyBits(scaleWorld), GetPortBitMapForCopyBits(scaleWorld), &scaleSize, &scaleSize, srcCopy, nil);
-		ClosePicture();
-		FinishGDrawing(scaleWorld);
-	}
-	else
-	{
-		PrepareForGDrawing(scaleWorld);
-		myPicture = OpenPicture(&scaleSize);
-		CopyBits(GetPortBitMapForCopyBits(drawWorld),  GetPortBitMapForCopyBits(scaleWorld), &drawSize,  &scaleSize, srcCopy, nil);
-		ClosePicture();
-		FinishGDrawing(scaleWorld);
-	}
-
-	DisposeGWorld(drawWorld);
-	DisposeGWorld(scaleWorld);
-
-	return myPicture;
-}
-#endif
-
-static Handle GetScreenAsRawHandle(int destWidth, int destHeight)
+static Handle GetScreenAsRawHandle (int destWidth, int destHeight)
 {
 	CGContextRef	ctx;
 	CGColorSpaceRef	color;
 	CGImageRef		image;
-	Handle			data = nil;
+	Handle			data = NULL;
 
 	image = CreateGameScreenCGImage();
 	if (image)
@@ -295,7 +225,7 @@ static Handle GetScreenAsRawHandle(int destWidth, int destHeight)
 	return (data);
 }
 
-void WriteThumbnailToResourceFork(FSRef *ref, int destWidth, int destHeight)
+void WriteThumbnailToResourceFork (FSRef *ref, int destWidth, int destHeight)
 {
 	OSStatus		err;
 	HFSUniStr255	fork;
@@ -326,7 +256,7 @@ void WriteThumbnailToResourceFork(FSRef *ref, int destWidth, int destHeight)
 	}
 }
 
-static void ExportCGImageToPNGFile(CGImageRef image, const char *path)
+static void ExportCGImageToPNGFile (CGImageRef image, const char *path)
 {
 	OSStatus				err;
 	GraphicsExportComponent	exporter;
@@ -352,7 +282,7 @@ static void ExportCGImageToPNGFile(CGImageRef image, const char *path)
 					{
 						err = GraphicsExportSetOutputDataReference(exporter, dataRef, dataRefType);
 						if (err == noErr)
-							err = GraphicsExportDoExport(exporter, nil);
+							err = GraphicsExportDoExport(exporter, NULL);
 					}
 
 					CloseComponent(exporter);
@@ -368,22 +298,22 @@ static void ExportCGImageToPNGFile(CGImageRef image, const char *path)
 	}
 }
 
-CGImageRef CreateGameScreenCGImage(void)
+CGImageRef CreateGameScreenCGImage (void)
 {
 	CGDataProviderRef	prov;
 	CGColorSpaceRef		color;
-	CGImageRef			image = nil;
+	CGImageRef			image = NULL;
 	int					rowbytes;
 
-	rowbytes = (((directDisplay ? drawingMethod : lastDrawingMethod) == kDrawingOpenGL) ? IPPU.RenderedScreenWidth : 512) * 2;
+	rowbytes = IPPU.RenderedScreenWidth * 2;
 
-	prov = CGDataProviderCreateWithData(nil, GFX.Screen, 512 * 2 * 478, nil);
+	prov = CGDataProviderCreateWithData(NULL, GFX.Screen, 512 * 2 * 478, NULL);
 	if (prov)
 	{
 		color = CGColorSpaceCreateDeviceRGB();
 		if (color)
 		{
-			image = CGImageCreate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 5, 16, rowbytes, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Host : 0), prov, nil, 1, kCGRenderingIntentDefault);
+			image = CGImageCreate(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, 5, 16, rowbytes, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Host : 0), prov, NULL, 1, kCGRenderingIntentDefault);
 			CGColorSpaceRelease(color);
 		}
 
@@ -393,19 +323,19 @@ CGImageRef CreateGameScreenCGImage(void)
 	return (image);
 }
 
-CGImageRef CreateBlitScreenCGImage(int width, int height, int rowbytes, uint8 *buffer)
+CGImageRef CreateBlitScreenCGImage (int width, int height, int rowbytes, uint8 *buffer)
 {
 	CGDataProviderRef	prov;
 	CGColorSpaceRef		color;
-	CGImageRef			image = nil;
+	CGImageRef			image = NULL;
 
-	prov = CGDataProviderCreateWithData(nil, buffer, rowbytes * height, nil);
+	prov = CGDataProviderCreateWithData(NULL, buffer, rowbytes * height, NULL);
 	if (prov)
 	{
 		color = CGColorSpaceCreateDeviceRGB();
 		if (color)
 		{
-			image = CGImageCreate(width, height, 5, 16, rowbytes, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Host : 0), prov, nil, 1, kCGRenderingIntentDefault);
+			image = CGImageCreate(width, height, 5, 16, rowbytes, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Host : 0), prov, NULL, 1, kCGRenderingIntentDefault);
 			CGColorSpaceRelease(color);
 		}
 
@@ -415,7 +345,7 @@ CGImageRef CreateBlitScreenCGImage(int width, int height, int rowbytes, uint8 *b
 	return (image);
 }
 
-void DrawThumbnailResource(FSRef *ref, CGContextRef ctx, CGRect bounds)
+void DrawThumbnailResource (FSRef *ref, CGContextRef ctx, CGRect bounds)
 {
 	OSStatus			err;
 	CGDataProviderRef	prov;
@@ -444,7 +374,7 @@ void DrawThumbnailResource(FSRef *ref, CGContextRef ctx, CGRect bounds)
 				HLock(pict);
 
 				size = GetHandleSize(pict);
-				prov = CGDataProviderCreateWithData(nil, (void *) *pict, size, nil);
+				prov = CGDataProviderCreateWithData(NULL, (void *) *pict, size, NULL);
 				if (prov)
 				{
 					qdpr = QDPictCreateWithProvider(prov);
@@ -468,13 +398,13 @@ void DrawThumbnailResource(FSRef *ref, CGContextRef ctx, CGRect bounds)
 					HLock(pict);
 
 					size = GetHandleSize(pict);
-					prov = CGDataProviderCreateWithData(nil, (void *) *pict, size, nil);
+					prov = CGDataProviderCreateWithData(NULL, (void *) *pict, size, NULL);
 					if (prov)
 					{
 						color = CGColorSpaceCreateDeviceRGB();
 						if (color)
 						{
-							image = CGImageCreate(128, 120, 5, 16, 256, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Big : 0), prov, nil, 0, kCGRenderingIntentDefault);
+							image = CGImageCreate(128, 120, 5, 16, 256, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Big : 0), prov, NULL, 0, kCGRenderingIntentDefault);
 							if (image)
 							{
 								CGContextDrawImage(ctx, bounds, image);
@@ -499,31 +429,69 @@ void DrawThumbnailResource(FSRef *ref, CGContextRef ctx, CGRect bounds)
 	CGContextRestoreGState(ctx);
 }
 
-bool8 S9xDoScreenshot(int width, int height)
+bool8 S9xDoScreenshot (int width, int height)
 {
-	CGImageRef	image, resizedImage;
-	CGSize		size;
-	Boolean		r;
-	void		*bitmap;
-
 	Settings.TakeScreenshot = false;
 
-	size = CGSizeMake((float) (width * ((width <= SNES_WIDTH) ? 2 : 1)), (float) (height * ((height <= SNES_HEIGHT_EXTENDED) ? 2 : 1)));
+	uint16	*data;
 
-	image = CreateGameScreenCGImage();
-	if (image)
+	data = (uint16 *) malloc(512 * 478 * 2);
+	if (data)
 	{
-		r = CreateResizedBitmapAndCGImage(image, &resizedImage, &bitmap, size, (CGImageAlphaInfo) (kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0)), 16, false);
-		if (r)
-		{
-			ExportCGImageToPNGFile(resizedImage, S9xGetPNGFilename());
+		uint16	*sp, *dp;
 
-			CGImageRelease(resizedImage);
-			free(bitmap);
+		if (width > 256 && height > 239)
+		{
+			for (int y = 0; y < height; y++)
+			{
+				sp = GFX.Screen + y * GFX.RealPPL;
+				dp = data + y * 512;
+
+				for (int x = 0; x < width; x++)
+					*dp++ = *sp++;
+			}
+		}
+		else
+		if (width > 256)
+		{
+			for (int y = 0; y < height; y++)
+			{
+				sp = GFX.Screen + y * GFX.RealPPL;
+				dp = data + y * 2 * 512;
+
+				for (int x = 0; x < width; x++)
+				{
+					*dp = *(dp + 512) = *sp++;
+					dp++;
+				}
+			}
+		}
+		else
+		{
+			for (int y = 0; y < height; y++)
+			{
+				sp = GFX.Screen + y * GFX.RealPPL;
+				dp = data + y * 2 * 512;
+
+				for (int x = 0; x < width; x++)
+				{
+					*dp = *(dp + 1) = *(dp + 512) = *(dp + 512 + 1) = *sp++;
+					dp += 2;
+				}
+			}
 		}
 
-		CGImageRelease(image);
+		CGImageRef	image;
+
+		image = CreateBlitScreenCGImage(512, (height > 239) ? height : (height * 2), 1024, (uint8 *) data);
+		if (image)
+		{
+			ExportCGImageToPNGFile(image, S9xGetPNGFilename());
+			CGImageRelease(image);
+		}
+
+		free(data);
 	}
 
-	return true;
+	return (true);
 }

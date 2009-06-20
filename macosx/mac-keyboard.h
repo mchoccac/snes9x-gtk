@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,11 +174,9 @@
 #ifndef _mac_keyboard_h_
 #define _mac_keyboard_h_
 
-void InitKeyboard(void);
-void DeinitKeyboard(void);
-void ConfigureKeyboard(void);
-
 #define	kKeys	39
+
+extern uint8   keyCode[kKeys];
 
 enum
 {
@@ -227,6 +223,8 @@ enum
 	kKeyTC
 };
 
-extern	uint8   keyCode[kKeys];
+void InitKeyboard (void);
+void DeinitKeyboard (void);
+void ConfigureKeyboard (void);
 
 #endif

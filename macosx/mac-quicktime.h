@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,9 +174,9 @@
 #ifndef _mac_quicktime_h_
 #define _mac_quicktime_h_
 
-void MacQTStartRecording(char *);
-void MacQTStopRecording(void);
-void MacQTRecordFrame(int, int);
-void MacQTVideoConfig(WindowRef);
+void MacQTStartRecording (char *);
+void MacQTStopRecording (void);
+void MacQTRecordFrame (int, int);
+void MacQTVideoConfig (WindowRef);
 
 #endif

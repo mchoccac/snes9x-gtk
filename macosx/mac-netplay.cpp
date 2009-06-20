@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -173,20 +171,11 @@
   (c) Copyright 2005         Ryan Vogt
 **********************************************************************************/
 
-#ifdef MAC_NETPLAY_SUPPORT
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-
-#include "snes9x.h"
-
 #include "mac-prefix.h"
 #include "mac-netplay.h"
 
-int socket_read(int fd, unsigned char *buf, int size)
+
+int socket_read (int fd, unsigned char *buf, int size)
 {
 	int	l, n = 0;
 
@@ -201,7 +190,7 @@ int socket_read(int fd, unsigned char *buf, int size)
 	return (n);
 }
 
-int socket_write(int fd, unsigned char *buf, int size)
+int socket_write (int fd, unsigned char *buf, int size)
 {
 	int	l, n = 0;
 
@@ -216,12 +205,12 @@ int socket_write(int fd, unsigned char *buf, int size)
 	return (n);
 }
 
-void NPError(char *s, int err)
+void NPError (const char *s, int err)
 {
 	printf("ERROR! %d: %s\n", err, s);
 }
 
-void NPNotification(char *s, int c)
+void NPNotification (const char *s, int c)
 {
 	if (c != -1)
 		printf(s, c);
@@ -230,5 +219,3 @@ void NPNotification(char *s, int c)
 
 	printf("\n");
 }
-
-#endif

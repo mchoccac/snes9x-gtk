@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,9 +174,9 @@
 #ifndef _mac_prefs_h_
 #define _mac_prefs_h_
 
-void LoadPrefs(void);
-void SavePrefs(void);
-void ConfigurePreferences(void);
-void ConfigureExtraOptions(void);
+void LoadPrefs (void);
+void SavePrefs (void);
+void ConfigurePreferences (void);
+void ConfigureExtraOptions (void);
 
 #endif

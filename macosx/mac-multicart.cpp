@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -181,18 +179,19 @@
 #include "mac-os.h"
 #include "mac-multicart.h"
 
-static pascal OSStatus MultiCartEventHandler(EventHandlerCallRef, EventRef, void *);
-static pascal OSStatus MultiCartPaneEventHandler(EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus MultiCartEventHandler (EventHandlerCallRef, EventRef, void *);
+static pascal OSStatus MultiCartPaneEventHandler (EventHandlerCallRef, EventRef, void *);
 
 static int		multiCartDragHilite;
 static Boolean	multiCartDialogResult;
 
-void InitMultiCart(void)
+
+void InitMultiCart (void)
 {
 	CFStringRef	keyRef, pathRef;
 	char		key[32];
 
-	multiCartPath[0] = multiCartPath[1] = nil;
+	multiCartPath[0] = multiCartPath[1] = NULL;
 
 	for (int i = 0; i < 2; i++)
 	{
@@ -209,7 +208,7 @@ void InitMultiCart(void)
 	}
 }
 
-void DeinitMultiCart(void)
+void DeinitMultiCart (void)
 {
 	CFStringRef	keyRef;
 	char		key[32];
@@ -226,7 +225,7 @@ void DeinitMultiCart(void)
 				CFRelease(multiCartPath[i]);
 			}
 			else
-				CFPreferencesSetAppValue(keyRef, nil, kCFPreferencesCurrentApplication);
+				CFPreferencesSetAppValue(keyRef, NULL, kCFPreferencesCurrentApplication);
 
 			CFRelease(keyRef);
 		}
@@ -235,7 +234,7 @@ void DeinitMultiCart(void)
 	CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
 }
 
-Boolean MultiCartDialog(void)
+Boolean MultiCartDialog (void)
 {
 	OSStatus	err;
 	IBNibRef	nibRef;
@@ -314,7 +313,7 @@ Boolean MultiCartDialog(void)
 			err = RemoveEventHandler(wRef);
 			DisposeEventHandlerUPP(wUPP);
 
-			ReleaseWindow(window);
+			CFRelease(window);
 		}
 
 		DisposeNibReference(nibRef);
@@ -323,7 +322,7 @@ Boolean MultiCartDialog(void)
 	return (multiCartDialogResult);
 }
 
-static pascal OSStatus MultiCartEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus MultiCartEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
 	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	window = (WindowRef) inUserData;
@@ -339,7 +338,7 @@ static pascal OSStatus MultiCartEventHandler(EventHandlerCallRef inHandlerRef, E
 
 				case kEventCommandUpdateStatus:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr && tHICommand.commandID == 'clos')
 					{
 						UpdateMenuCommandStatus(false);
@@ -351,7 +350,7 @@ static pascal OSStatus MultiCartEventHandler(EventHandlerCallRef inHandlerRef, E
 
 				case kEventCommandProcess:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, nil, sizeof(HICommand), nil, &tHICommand);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &tHICommand);
 					if (err == noErr)
 					{
 						HIViewRef	ctl, root;
@@ -367,7 +366,7 @@ static pascal OSStatus MultiCartEventHandler(EventHandlerCallRef inHandlerRef, E
 							case 'Cho1':
 							{
 								index = (tHICommand.commandID & 0xFF) - '0';
-								r = NavBeginOpenROMImageSheet(window, nil);
+								r = NavBeginOpenROMImageSheet(window, NULL);
 								result = noErr;
 								break;
 							}
@@ -410,7 +409,7 @@ static pascal OSStatus MultiCartEventHandler(EventHandlerCallRef inHandlerRef, E
 								if (multiCartPath[index])
 								{
 									CFRelease(multiCartPath[index]);
-									multiCartPath[index] = nil;
+									multiCartPath[index] = NULL;
 								}
 
 								index = -1;
@@ -472,17 +471,21 @@ static pascal OSStatus MultiCartEventHandler(EventHandlerCallRef inHandlerRef, E
 		}
 	}
 
-	return result;
+	return (result);
 }
 
-static pascal OSStatus MultiCartPaneEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+static pascal OSStatus MultiCartPaneEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
 {
-	OSStatus	err, result = eventNotHandledErr;
-	HIViewRef	view;
-	DragRef		drag;
-	DragItemRef	item;
-	UInt16		numItems, numFlavors;
-	int			index = *((int *) inUserData);
+	OSStatus			err, result = eventNotHandledErr;
+	HIViewRef			view;
+	DragRef				drag;
+	PasteboardRef		pasteboard;
+	PasteboardItemID	itemID;
+	CFArrayRef			array;
+	CFStringRef			flavorType;
+	CFIndex				numFlavors;
+	ItemCount			numItems;
+	int					index = *((int *) inUserData);
 
 	switch (GetEventClass(inEvent))
 	{
@@ -492,12 +495,12 @@ static pascal OSStatus MultiCartPaneEventHandler(EventHandlerCallRef inHandlerRe
 			{
 				case kEventControlDraw:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, nil, sizeof(ControlRef), nil, &view);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &view);
 					if (err == noErr)
 					{
 						CGContextRef	ctx;
 
-						err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, nil, sizeof(CGContextRef), nil, &ctx);
+						err = GetEventParameter(inEvent, kEventParamCGContextRef, typeCGContextRef, NULL, sizeof(CGContextRef), NULL, &ctx);
 						if (err == noErr)
 						{
 							HIThemeFrameDrawInfo	info;
@@ -508,18 +511,15 @@ static pascal OSStatus MultiCartPaneEventHandler(EventHandlerCallRef inHandlerRe
 							CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
 							CGContextFillRect(ctx, bounds);
 
-							if (systemVersion >= 0x1030)
-							{
-								info.version   = 0;
-								info.kind      = kHIThemeFrameTextFieldSquare;
-								info.state     = kThemeStateInactive;
-								info.isFocused = false;
-								err = HIThemeDrawFrame(&bounds, &info, ctx, kHIThemeOrientationNormal);
-							}
+							info.version   = 0;
+							info.kind      = kHIThemeFrameTextFieldSquare;
+							info.state     = kThemeStateInactive;
+							info.isFocused = false;
+							err = HIThemeDrawFrame(&bounds, &info, ctx, kHIThemeOrientationNormal);
 
 							if (multiCartDragHilite == index && systemVersion >= 0x1040)
 							{
-								err = HIThemeSetStroke(kThemeBrushDragHilite, nil, ctx, kHIThemeOrientationNormal);
+								err = HIThemeSetStroke(kThemeBrushDragHilite, NULL, ctx, kHIThemeOrientationNormal);
 								frame = CGRectInset(bounds, 1, 1);
 								CGContextBeginPath(ctx);
 								CGContextAddRect(ctx, frame);
@@ -534,38 +534,43 @@ static pascal OSStatus MultiCartPaneEventHandler(EventHandlerCallRef inHandlerRe
 
 				case kEventControlDragEnter:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, nil, sizeof(ControlRef), nil, &view);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &view);
 					if (err == noErr)
 					{
-						err = GetEventParameter(inEvent, kEventParamDragRef, typeDragRef, nil, sizeof(DragRef), nil, &drag);
+						err = GetEventParameter(inEvent, kEventParamDragRef, typeDragRef, NULL, sizeof(DragRef), NULL, &drag);
 						if (err == noErr)
 						{
-							err = CountDragItems(drag, &numItems);
-							if (err == noErr && numItems == 1)
+							err = GetDragPasteboard(drag, &pasteboard);
+							if (err == noErr)
 							{
-								err = GetDragItemReferenceNumber(drag, 1, &item);
-								if (err == noErr)
+								err = PasteboardGetItemCount(pasteboard, &numItems);
+								if (err == noErr && numItems == 1)
 								{
-									err = CountDragItemFlavors(drag, item, &numFlavors);
+									err = PasteboardGetItemIdentifier(pasteboard, 1, &itemID);
 									if (err == noErr)
 									{
-										for (int i = 1; i <= numFlavors; i++)
+										err = PasteboardCopyItemFlavors(pasteboard, itemID, &array);
+										if (err == noErr)
 										{
-											FlavorType	ftype;
-
-											err = GetFlavorType(drag, item, i, &ftype);
-											if (err == noErr && ftype == typeFileURL)
+											numFlavors = CFArrayGetCount(array);
+											for (CFIndex i = 0; i < numFlavors; i++)
 											{
-												Boolean	accept = true;
-
-												err = SetEventParameter(inEvent, kEventParamControlWouldAcceptDrop, typeBoolean, sizeof(Boolean), &accept);
-												if (err == noErr)
+												flavorType = (CFStringRef) CFArrayGetValueAtIndex(array, i);
+												if (UTTypeConformsTo(flavorType, CFSTR("public.file-url")))
 												{
-													multiCartDragHilite = index;
-													HIViewSetNeedsDisplay(view, true);
-													result = noErr;
+													Boolean	accept = true;
+
+													err = SetEventParameter(inEvent, kEventParamControlWouldAcceptDrop, typeBoolean, sizeof(Boolean), &accept);
+													if (err == noErr)
+													{
+														multiCartDragHilite = index;
+														HIViewSetNeedsDisplay(view, true);
+														result = noErr;
+													}
 												}
 											}
+
+											CFRelease(array);
 										}
 									}
 								}
@@ -584,7 +589,7 @@ static pascal OSStatus MultiCartPaneEventHandler(EventHandlerCallRef inHandlerRe
 
 				case kEventControlDragLeave:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, nil, sizeof(ControlRef), nil, &view);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &view);
 					if (err == noErr)
 					{
 						multiCartDragHilite = -1;
@@ -597,54 +602,74 @@ static pascal OSStatus MultiCartPaneEventHandler(EventHandlerCallRef inHandlerRe
 
 				case kEventControlDragReceive:
 				{
-					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, nil, sizeof(ControlRef), nil, &view);
+					err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &view);
 					if (err == noErr)
 					{
-						err = GetEventParameter(inEvent, kEventParamDragRef, typeDragRef, nil, sizeof(DragRef), nil, &drag);
+						err = GetEventParameter(inEvent, kEventParamDragRef, typeDragRef, NULL, sizeof(DragRef), NULL, &drag);
 						if (err == noErr)
 						{
 							multiCartDragHilite = -1;
 							HIViewSetNeedsDisplay(view, true);
 
-							err = GetDragItemReferenceNumber(drag, 1, &item);
+							err = GetDragPasteboard(drag, &pasteboard);
 							if (err == noErr)
 							{
-								Size	dataSize;
-
-								err = GetFlavorDataSize(drag, item, typeFileURL, &dataSize);
+								err = PasteboardGetItemIdentifier(pasteboard, 1, &itemID);
 								if (err == noErr)
 								{
-									UInt8	*data;
-
-									data = (UInt8 *) malloc(dataSize);
-									if (data)
+									err = PasteboardCopyItemFlavors(pasteboard, itemID, &array);
+									if (err == noErr)
 									{
-										err = GetFlavorData(drag, item, typeFileURL, data, &dataSize, 0);
-										if (err == noErr)
+										numFlavors = CFArrayGetCount(array);
+										for (CFIndex i = 0; i < numFlavors; i++)
 										{
-											HIViewRef	ctl;
-											HIViewID	cid;
-											CFStringRef	str;
-											CFURLRef	url;
+											flavorType = (CFStringRef) CFArrayGetValueAtIndex(array, i);
+											if (UTTypeConformsTo(flavorType, CFSTR("public.file-url")))
+											{
+												CFDataRef	flavorData;
 
-											GetControlID(view, &cid);
-											cid.signature = 'MNAM';
-											HIViewFindByID(view, cid, &ctl);
+												err = PasteboardCopyItemFlavorData(pasteboard, itemID, flavorType, &flavorData);
+												if (err == noErr)
+												{
+													CFIndex	dataSize;
+													UInt8	*data;
 
-											url = CFURLCreateWithBytes(kCFAllocatorDefault, data, dataSize, MAC_PATH_ENCODING, nil);
-											str = CFURLCopyLastPathComponent(url);
-											SetStaticTextCFString(ctl, str, true);
-											CFRelease(str);
-											str = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
-											if (multiCartPath[cid.id])
-												CFRelease(multiCartPath[cid.id]);
-											multiCartPath[cid.id] = str;
-											CFRelease(url);
+													dataSize = CFDataGetLength(flavorData);
+													data = (UInt8 *) malloc(dataSize);
+													if (data)
+													{
+														CFDataGetBytes(flavorData, CFRangeMake(0, dataSize), data);
 
-											result = noErr;
+														HIViewRef	ctl;
+														HIViewID	cid;
+														CFStringRef	str;
+														CFURLRef	url;
+
+														GetControlID(view, &cid);
+														cid.signature = 'MNAM';
+														HIViewFindByID(view, cid, &ctl);
+
+														url = CFURLCreateWithBytes(kCFAllocatorDefault, data, dataSize, MAC_PATH_ENCODING, NULL);
+														str = CFURLCopyLastPathComponent(url);
+														SetStaticTextCFString(ctl, str, true);
+														CFRelease(str);
+														str = CFURLCopyFileSystemPath(url, kCFURLPOSIXPathStyle);
+														if (multiCartPath[cid.id])
+															CFRelease(multiCartPath[cid.id]);
+														multiCartPath[cid.id] = str;
+														CFRelease(url);
+
+														result = noErr;
+
+														free(data);
+													}
+
+													CFRelease(flavorData);
+												}
+											}
 										}
 
-										free(data);
+										CFRelease(array);
 									}
 								}
 							}

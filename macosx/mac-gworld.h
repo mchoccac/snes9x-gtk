@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,11 +174,8 @@
 #ifndef _mac_gworld_h_
 #define _mac_gworld_h_
 
-void FinishGDrawing(GWorldPtr);
-void PrepareForGDrawing(GWorldPtr);
-void InitGWorld(GWorldPtr *, const Rect *, short);
-void DrawSubCGImage(CGContextRef, CGImageRef, CGRect, CGRect);
-CGImageRef CreateCGImageFromGWorld(GWorldPtr);
-Boolean CreateResizedBitmapAndCGImage(const CGImageRef, CGImageRef *, void **, CGSize, CGImageAlphaInfo, int, Boolean);
+void DrawSubCGImage (CGContextRef, CGImageRef, CGRect, CGRect);
+void CreateIconImages (void);
+void ReleaseIconImages (void);
 
 #endif

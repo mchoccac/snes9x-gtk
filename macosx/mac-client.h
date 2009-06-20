@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -176,14 +174,14 @@
 #ifndef _mac_client_h_
 #define _mac_client_h_
 
-void NPClientInit(void);
-void NPClientDisconnect(void);
-void NPClientStoreConfig(void);
-void NPClientRestoreConfig(void);
-void NPClientDetachNetPlayThread(void);
-void NPClientStopNetPlayThread(void);
-void NPClientProcessInput(void);
-bool8 NPClientNetPlayWaitStart(void);
-bool8 NPClientDialog(void);
+void NPClientInit (void);
+void NPClientDisconnect (void);
+void NPClientStoreConfig (void);
+void NPClientRestoreConfig (void);
+void NPClientDetachNetPlayThread (void);
+void NPClientStopNetPlayThread (void);
+void NPClientProcessInput (void);
+bool8 NPClientNetPlayWaitStart (void);
+bool8 NPClientDialog (void);
 
 #endif

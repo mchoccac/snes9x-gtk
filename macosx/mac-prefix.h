@@ -158,8 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
 /**********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
@@ -182,7 +180,7 @@
 
 #define kMacS9XCFString		CFSTR("Snes9x")
 
-#define	MAC_VERSION			"85"
+#define	MAC_VERSION			"100"
 
 #include <Carbon/Carbon.h>
 

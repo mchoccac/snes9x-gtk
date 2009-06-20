@@ -162,7 +162,9 @@
 #ifndef _SNES9X_H_
 #define _SNES9X_H_
 
+#ifndef VERSION
 #define VERSION	"1.52"
+#endif
 
 #include "port.h"
 #include "65c816.h"

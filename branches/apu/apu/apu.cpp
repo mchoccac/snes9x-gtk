@@ -213,7 +213,6 @@ EightBitize (uint8 *buffer, int sample_count)
 {
     uint8 *buf8 = (uint8 *) buffer;
     int16 *buf16 = (int16 *) buffer;
-    uint16 s;
 
     for (int i = 0; i < sample_count; i++)
     {

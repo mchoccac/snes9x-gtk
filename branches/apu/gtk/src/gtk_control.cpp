@@ -322,6 +322,12 @@ S9xProcessEvents (bool8 block)
     }
 #endif
 
+    if (Settings.TakeSPCShapshot)
+    {
+        top_level->save_spc_dialog ();
+        Settings.TakeSPCShapshot = FALSE;
+    }
+
     return;
 }
 

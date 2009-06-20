@@ -2210,11 +2210,9 @@ static void UnfreezeStructFromCopy (void *sbase, FreezeData *fields, int num_fie
 }
 
 bool8 S9xSPCDump (const char *filename)
-{/*
-	FILE		*fs;
-	struct tm	*lt;
-	time_t		t;
-	uint8		buf[256];
+{
+	FILE  *fs;
+	uint8 buf[SNES_SPC::spc_file_size];
 
 	fs = fopen(filename, "wb");
 	if (!fs)
@@ -2222,43 +2220,17 @@ bool8 S9xSPCDump (const char *filename)
 
 	S9xSetSoundMute(TRUE);
 
-	t = time(NULL);
-	lt = localtime(&t);
+	spc_core->init_header (buf);
+	spc_core->save_spc (buf);
 
-	ZeroMemory(buf, sizeof(buf));
-
-	strcpy((char *) buf + 0x00, "SNES-SPC700 Sound File Data v0.30");
-	buf[0x21] = 26;
-	buf[0x22] = 26;
-	buf[0x23] = 26;
-	buf[0x24] = 30;
-	buf[0x25] =  APURegisters.PC       & 0xff;
-	buf[0x26] = (APURegisters.PC >> 8) & 0xff;
-	buf[0x27] = APURegisters.YA.B.A;
-	buf[0x28] = APURegisters.X;
-	buf[0x29] = APURegisters.YA.B.Y;
-	buf[0x2a] = APURegisters.P;
-	buf[0x2b] = APURegisters.S;
-	strcpy((char *) buf + 0x4e, Memory.ROMName);
-	buf[0x9e] = lt->tm_mday;
-	buf[0x9f] = lt->tm_mon + 1;
-	buf[0xa0] =  (lt->tm_year + 1900)       & 0xff;
-	buf[0xa1] = ((lt->tm_year + 1900) >> 8) & 0xff;
-	buf[0xd0] = 0;
-	buf[0xd1] = 2;
-
-	fwrite(buf, 1, 256, fs);
-
-	ZeroMemory(buf, sizeof(buf));
-
-	fwrite(IAPU.RAM,     1, 0x10000, fs);
-	fwrite(APU.DSP,      1,     128, fs);
-	fwrite(buf,          1,      64, fs);
-	fwrite(APU.ExtraRAM, 1,      64, fs);
+	if (fwrite (buf, SNES_SPC::spc_file_size, 1, fs) == 0)
+	{
+	    /* Do Nothing */
+	}
 
 	fclose(fs);
 
 	S9xSetSoundMute(FALSE);
-*/
+
 	return (TRUE);
 }

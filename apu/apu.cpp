@@ -385,12 +385,12 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
                 spc::buffer_size = 4096;
             }
 
-            delete spc::landing_buffer;
-            delete spc::shrink_buffer;
+            delete[] spc::landing_buffer;
+            delete[] spc::shrink_buffer;
             delete spc::buffer;
 
             spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
-            spc::shrink_buffer  = new unsigned char[spc::buffer_size];
+            spc::shrink_buffer  = new unsigned char[spc::buffer_size * so.playback_rate / so.input_rate + 16];
 
             spc::buffer = new ring_buffer (spc::buffer_size);
 
@@ -425,6 +425,8 @@ S9xSetPlaybackRate (uint32 playback_rate)
     }
 
     spc::resampler->time_ratio (((double) so.input_rate) / ((double) so.playback_rate));
+    delete[] spc::shrink_buffer;
+    spc::shrink_buffer  = new unsigned char[spc::buffer_size * so.playback_rate / so.input_rate + 16];
 
     return;
 }
@@ -454,7 +456,7 @@ S9xInitAPU (void)
     spc_core->init_rom (APUROM);
 
     spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
-    spc::shrink_buffer = new unsigned char[spc::buffer_size];
+    spc::shrink_buffer = new unsigned char[spc::buffer_size * 2];
 
     spc::buffer = new ring_buffer (spc::buffer_size);
 
@@ -530,9 +532,9 @@ S9xDeinitAPU (void)
     delete spc::buffer;
     spc::buffer = NULL;
 
-    delete spc::landing_buffer;
+    delete[] spc::landing_buffer;
     spc::landing_buffer = NULL;
-    delete spc::shrink_buffer;
+    delete[] spc::shrink_buffer;
     spc::shrink_buffer = NULL;
 
     return;

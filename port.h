@@ -300,7 +300,7 @@ void _makepath (char *, const char *, const char *, const char *, const char *);
 #define TITLE "Snes9x"
 #endif
 
-#if defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__x86_64__) || defined(__alpha__)
+#if defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__x86_64__) || defined(__alpha__) || defined(__MIPSEL__)
 #define LSB_FIRST
 #define FAST_LSB_WORD_ACCESS
 #else

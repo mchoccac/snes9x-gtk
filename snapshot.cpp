@@ -543,104 +543,224 @@ static FreezeData	SnapDMA[] =
 	O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7)
 #undef O
 };
-/*
-#undef STRUCT
-#define STRUCT struct SAPU
 
-static FreezeData	SnapAPU[] =
+/* Begin old APU 1.51 sound structures */
+
+struct SOldAPU
 {
-	OBSOLETE_INT_ENTRY(1, 6, SAPU_OldCycles),
-	INT_ENTRY(1, ShowROM),
-	OBSOLETE_INT_ENTRY(1, 2, SAPU_Flags),
-	INT_ENTRY(2, Flags),
-	INT_ENTRY(1, Internal_KON),
-	ARRAY_ENTRY(1, OutPorts, 4, uint8_ARRAY_V),
-	ARRAY_ENTRY(1, DSP, 0x80, uint8_ARRAY_V),
-	ARRAY_ENTRY(1, ExtraRAM, 64, uint8_ARRAY_V),
-	ARRAY_ENTRY(1, Timer, 3, uint16_ARRAY_V),
-	ARRAY_ENTRY(1, TimerTarget, 3, uint16_ARRAY_V),
-	ARRAY_ENTRY(1, TimerEnabled, 3, uint8_ARRAY_V),
-	DELETED_ARRAY_ENTRY(1, 6, TimerValueWritten, 3, uint8_ARRAY_V),
-	INT_ENTRY(4, Cycles),
-	INT_ENTRY(5, NextAPUTimerPos),
-	INT_ENTRY(5, APUTimerCounter),
-	INT_ENTRY(6, OUTX_ENVX_pos),
-	INT_ENTRY(6, OUTX_ENVX_samples),
-	INT_ENTRY(6, OUTX_ENVX_counter),
-	INT_ENTRY(6, OUTX_ENVX_counter_max),
-#define O(N) \
-	ARRAY_ENTRY(6, OUTX_buffer[N], MAX_OUTX_ENVX_BUFFER, uint8_ARRAY_V), \
-	ARRAY_ENTRY(6, ENVX_buffer[N], MAX_OUTX_ENVX_BUFFER, uint8_ARRAY_V)
-	O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7)
-#undef O
+    int32  OldCycles; // unused
+    bool8  ShowROM;
+    uint32 Flags;
+    uint8  KeyedChannels;
+    uint8  OutPorts [4];
+    uint8  DSP [0x80];
+    uint8  ExtraRAM [64];
+    uint16 Timer [3];
+    uint16 TimerTarget [3];
+    bool8  TimerEnabled [3];
+    bool8  TimerValueWritten [3];
+    int32  Cycles;
+};
+
+typedef union
+{
+#ifdef LSB_FIRST
+    struct { uint8 A, Y; } B;
+#else
+    struct { uint8 Y, A; } B;
+#endif
+    uint16 W;
+} OldYAndA;
+
+struct SOldAPURegisters
+{
+    uint8  P;
+    OldYAndA YA;
+    uint8  X;
+    uint8  S;
+    uint16  PC;
+};
+
+// For backward compatibility ------------------------------
+
+typedef struct
+{
+    int32   state;
+    int32   type;
+    int16   volume_left;
+    int16   volume_right;
+    uint32  hertz;
+    uint32  frequency;
+    uint32  count;
+    bool8   loop;
+    int32   envx;
+    int16   left_vol_level;
+    int16   right_vol_level;
+    int16   envx_target;
+    uint32  env_error;
+    uint32  erate;
+    int32   direction;
+    uint32  attack_rate;
+    uint32  decay_rate;
+    uint32  sustain_rate;
+    uint32  release_rate;
+    uint32  sustain_level;
+    int16   sample;
+    int16   decoded[16];
+    int16   previous16[2];
+    int16   *block;
+    uint16  sample_number;
+    bool8   last_block;
+    bool8   needs_decode;
+    uint32  block_pointer;
+    uint32  sample_pointer;
+    int32   *echo_buf_ptr;
+    int32   mode;
+    int32   envxx;
+    int16   next_sample;
+    int32   interpolate;
+    int32   previous[2];
+    uint32  dummy[8];
+    int32   nb_index;
+    int16   nb_sample[4];
+    int16   out_sample;
+    int32   xenvx;
+    int32   xenvx_target;
+    int32   xenv_count;
+    int32   xenv_rate;
+    int32   xsmp_count;
+    int32   xattack_rate;
+    int32   xdecay_rate;
+    int32   xsustain_rate;
+    int32   xsustain_level;
+}   OldCh;
+
+typedef struct
+{
+    int16   master_volume_left;
+    int16   master_volume_right;
+    int16   echo_volume_left;
+    int16   echo_volume_right;
+    int32   echo_enable;
+    int32   echo_feedback;
+    int32   echo_ptr;
+    int32   echo_buffer_size;
+    int32   echo_write_enabled;
+    int32   echo_channel_enable;
+    int32   pitch_mod;
+    uint32  dummy[3];
+    OldCh   channels[8];
+    bool8   no_filter;
+    int32   master_volume[2];
+    int32   echo_volume[2];
+    int32   noise_hertz;
+    int32   noise_count;
+    int32   noise_rate;
+}   SOldSoundData;
+
+struct SOldAPU DummyAPU;
+struct SOldAPURegisters DummyAPURegisters;
+
+#undef STRUCT
+#define STRUCT struct SOldAPU
+
+static FreezeData SnapOldAPU [] = {
+    INT_ENTRY(1, OldCycles),
+    INT_ENTRY(1, ShowROM),
+    OBSOLETE_INT_ENTRY(1,2, SAPU_Flags),
+    INT_ENTRY(2, Flags),
+    INT_ENTRY(1, KeyedChannels),
+    ARRAY_ENTRY(1, OutPorts, 4, uint8_ARRAY_V),
+    ARRAY_ENTRY(1, DSP, 0x80, uint8_ARRAY_V),
+    ARRAY_ENTRY(1, ExtraRAM, 64, uint8_ARRAY_V),
+    ARRAY_ENTRY(1, Timer, 3, uint16_ARRAY_V),
+    ARRAY_ENTRY(1, TimerTarget, 3, uint16_ARRAY_V),
+    ARRAY_ENTRY(1, TimerEnabled, 3, uint8_ARRAY_V),
+    ARRAY_ENTRY(1, TimerValueWritten, 3, uint8_ARRAY_V),
+    INT_ENTRY(4, Cycles),
 };
 
 #undef STRUCT
-#define STRUCT struct SAPURegisters
+#define STRUCT struct SOldAPURegisters
 
-static FreezeData	SnapAPURegisters[] =
-{
-	INT_ENTRY(1, P),
-	INT_ENTRY(1, YA.W),
-	INT_ENTRY(1, X),
-	INT_ENTRY(1, S),
-	INT_ENTRY(1, PC)
+static FreezeData SnapOldAPURegisters [] = {
+    INT_ENTRY(1, P),
+    INT_ENTRY(1, YA.W),
+    INT_ENTRY(1, X),
+    INT_ENTRY(1, S),
+    INT_ENTRY(1, PC),
 };
 
 #undef STRUCT
-#define STRUCT SSoundData
+#define STRUCT SOldSoundData
 
-static FreezeData	SnapSoundData[] =
+static FreezeData   SnapOldSoundData[] =
 {
+    INT_ENTRY(1, master_volume_left),
+    INT_ENTRY(1, master_volume_right),
+    INT_ENTRY(1, echo_volume_left),
+    INT_ENTRY(1, echo_volume_right),
+    INT_ENTRY(1, echo_enable),
+    INT_ENTRY(1, echo_feedback),
+    INT_ENTRY(1, echo_ptr),
+    INT_ENTRY(1, echo_buffer_size),
+    INT_ENTRY(1, echo_write_enabled),
+    INT_ENTRY(1, echo_channel_enable),
+    INT_ENTRY(1, pitch_mod),
+    ARRAY_ENTRY(1, dummy, 3, uint32_ARRAY_V),
 #define O(N) \
-	INT_ENTRY(6, channels[N].state), \
-	INT_ENTRY(6, channels[N].type), \
-	INT_ENTRY(6, channels[N].volume_left), \
-	INT_ENTRY(6, channels[N].volume_right), \
-	INT_ENTRY(6, channels[N].pitch), \
-	INT_ENTRY(6, channels[N].frequency), \
-	INT_ENTRY(6, channels[N].needs_decode), \
-	INT_ENTRY(6, channels[N].last_block), \
-	INT_ENTRY(6, channels[N].loop), \
-	ARRAY_ENTRY(6, channels[N].decoded, 16, uint16_ARRAY_V), \
-	ARRAY_ENTRY(6, channels[N].previous, 2, uint32_ARRAY_V), \
-	INT_ENTRY(6, channels[N].block_pointer), \
-	INT_ENTRY(6, channels[N].sample_pointer), \
-	INT_ENTRY(6, channels[N].sample), \
-	ARRAY_ENTRY(6, channels[N].nb_sample, 4, uint16_ARRAY_V), \
-	INT_ENTRY(6, channels[N].nb_index), \
-	INT_ENTRY(6, channels[N].sample_number), \
-	INT_ENTRY(6, channels[N].xenvx), \
-	INT_ENTRY(6, channels[N].xenvx_target), \
-	INT_ENTRY(6, channels[N].xenv_count), \
-	INT_ENTRY(6, channels[N].xenv_rate), \
-	INT_ENTRY(6, channels[N].xsmp_count), \
-	INT_ENTRY(6, channels[N].xattack_rate), \
-	INT_ENTRY(6, channels[N].xdecay_rate), \
-	INT_ENTRY(6, channels[N].xsustain_rate), \
-	INT_ENTRY(6, channels[N].xsustain_level)
-	O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7),
+    INT_ENTRY(1, channels[N].state), \
+    INT_ENTRY(1, channels[N].type), \
+    INT_ENTRY(1, channels[N].volume_left), \
+    INT_ENTRY(1, channels[N].volume_right), \
+    INT_ENTRY(1, channels[N].hertz), \
+    INT_ENTRY(1, channels[N].count), \
+    INT_ENTRY(1, channels[N].loop), \
+    INT_ENTRY(1, channels[N].envx), \
+    INT_ENTRY(1, channels[N].left_vol_level), \
+    INT_ENTRY(1, channels[N].right_vol_level), \
+    INT_ENTRY(1, channels[N].envx_target), \
+    INT_ENTRY(1, channels[N].env_error), \
+    INT_ENTRY(1, channels[N].erate), \
+    INT_ENTRY(1, channels[N].direction), \
+    INT_ENTRY(1, channels[N].attack_rate), \
+    INT_ENTRY(1, channels[N].decay_rate), \
+    INT_ENTRY(1, channels[N].sustain_rate), \
+    INT_ENTRY(1, channels[N].release_rate), \
+    INT_ENTRY(1, channels[N].sustain_level), \
+    INT_ENTRY(1, channels[N].sample), \
+    ARRAY_ENTRY(1, channels[N].decoded, 16, uint16_ARRAY_V), \
+    ARRAY_ENTRY(1, channels[N].previous16, 2, uint16_ARRAY_V), \
+    INT_ENTRY(1, channels[N].sample_number), \
+    INT_ENTRY(1, channels[N].last_block), \
+    INT_ENTRY(1, channels[N].needs_decode), \
+    INT_ENTRY(1, channels[N].block_pointer), \
+    INT_ENTRY(1, channels[N].sample_pointer), \
+    INT_ENTRY(1, channels[N].mode)
+    O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7),
 #undef O
-	ARRAY_ENTRY(6, master_volume, 2, uint32_ARRAY_V),
-	ARRAY_ENTRY(6, echo_volume, 2, uint32_ARRAY_V),
-	INT_ENTRY(6, echo_feedback),
-	INT_ENTRY(6, echo_ring_pointer),
-	INT_ENTRY(6, echo_ring_size),
-	ARRAY_ENTRY(6, alt_echo_ring, 24000, uint16_ARRAY_V),
-	INT_ENTRY(6, echo_write_enabled),
-	INT_ENTRY(6, fir_index),
-	ARRAY_ENTRY(6, fir_tap, 8, uint32_ARRAY_V),
-	ARRAY_ENTRY(6, fir_buffer, 16, uint32_ARRAY_V),
-	INT_ENTRY(6, no_filter),
-	INT_ENTRY(6, noise_count),
-	INT_ENTRY(6, noise_rate),
-	INT_ENTRY(6, noise_seed),
-	INT_ENTRY(6, mute),
-	INT_ENTRY(6, stereo),
-	INT_ENTRY(6, sixteen_bit),
-	INT_ENTRY(6, disable_echo),
-	INT_ENTRY(6, playback_rate)
-}; */
+    INT_ENTRY(2, noise_rate),
+#define O(N) \
+    INT_ENTRY(2, channels[N].out_sample), \
+    INT_ENTRY(2, channels[N].xenvx), \
+    INT_ENTRY(2, channels[N].xenvx_target), \
+    INT_ENTRY(2, channels[N].xenv_count), \
+    INT_ENTRY(2, channels[N].xenv_rate), \
+    INT_ENTRY(2, channels[N].xattack_rate), \
+    INT_ENTRY(2, channels[N].xdecay_rate), \
+    INT_ENTRY(2, channels[N].xsustain_rate), \
+    INT_ENTRY(2, channels[N].xsustain_level)
+    O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7),
+#undef O
+    INT_ENTRY(4, noise_count),
+    INT_ENTRY(4, no_filter),
+    INT_ENTRY(4, echo_volume[0]),
+    INT_ENTRY(4, echo_volume[1]),
+    INT_ENTRY(4, master_volume[0]),
+    INT_ENTRY(4, master_volume[1]),
+};
+
+/* End old APU structures */
 
 #undef STRUCT
 #define STRUCT struct STimings
@@ -939,77 +1059,6 @@ static FreezeData	SnapScreenshot[] =
 	INT_ENTRY(4, Interlaced)
 };
 
-// for backward compatibility
-/*
-#undef STRUCT
-#define STRUCT SOldSoundData
-
-static FreezeData	SnapOldSoundData[] =
-{
-	INT_ENTRY(1, master_volume_left),
-	INT_ENTRY(1, master_volume_right),
-	INT_ENTRY(1, echo_volume_left),
-	INT_ENTRY(1, echo_volume_right),
-	INT_ENTRY(1, echo_enable),
-	INT_ENTRY(1, echo_feedback),
-	INT_ENTRY(1, echo_ptr),
-	INT_ENTRY(1, echo_buffer_size),
-	INT_ENTRY(1, echo_write_enabled),
-	INT_ENTRY(1, echo_channel_enable),
-	INT_ENTRY(1, pitch_mod),
-	ARRAY_ENTRY(1, dummy, 3, uint32_ARRAY_V),
-#define O(N) \
-	INT_ENTRY(1, channels[N].state), \
-	INT_ENTRY(1, channels[N].type), \
-	INT_ENTRY(1, channels[N].volume_left), \
-	INT_ENTRY(1, channels[N].volume_right), \
-	INT_ENTRY(1, channels[N].hertz), \
-	INT_ENTRY(1, channels[N].count), \
-	INT_ENTRY(1, channels[N].loop), \
-	INT_ENTRY(1, channels[N].envx), \
-	INT_ENTRY(1, channels[N].left_vol_level), \
-	INT_ENTRY(1, channels[N].right_vol_level), \
-	INT_ENTRY(1, channels[N].envx_target), \
-	INT_ENTRY(1, channels[N].env_error), \
-	INT_ENTRY(1, channels[N].erate), \
-	INT_ENTRY(1, channels[N].direction), \
-	INT_ENTRY(1, channels[N].attack_rate), \
-	INT_ENTRY(1, channels[N].decay_rate), \
-	INT_ENTRY(1, channels[N].sustain_rate), \
-	INT_ENTRY(1, channels[N].release_rate), \
-	INT_ENTRY(1, channels[N].sustain_level), \
-	INT_ENTRY(1, channels[N].sample), \
-	ARRAY_ENTRY(1, channels[N].decoded, 16, uint16_ARRAY_V), \
-	ARRAY_ENTRY(1, channels[N].previous16, 2, uint16_ARRAY_V), \
-	INT_ENTRY(1, channels[N].sample_number), \
-	INT_ENTRY(1, channels[N].last_block), \
-	INT_ENTRY(1, channels[N].needs_decode), \
-	INT_ENTRY(1, channels[N].block_pointer), \
-	INT_ENTRY(1, channels[N].sample_pointer), \
-	INT_ENTRY(1, channels[N].mode)
-	O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7),
-#undef O
-	INT_ENTRY(2, noise_rate),
-#define O(N) \
-	INT_ENTRY(2, channels[N].out_sample), \
-	INT_ENTRY(2, channels[N].xenvx), \
-	INT_ENTRY(2, channels[N].xenvx_target), \
-	INT_ENTRY(2, channels[N].xenv_count), \
-	INT_ENTRY(2, channels[N].xenv_rate), \
-	INT_ENTRY(2, channels[N].xattack_rate), \
-	INT_ENTRY(2, channels[N].xdecay_rate), \
-	INT_ENTRY(2, channels[N].xsustain_rate), \
-	INT_ENTRY(2, channels[N].xsustain_level)
-	O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7),
-#undef O
-	INT_ENTRY(4, noise_count),
-	INT_ENTRY(4, no_filter),
-	INT_ENTRY(4, echo_volume[0]),
-	INT_ENTRY(4, echo_volume[1]),
-	INT_ENTRY(4, master_volume[0]),
-	INT_ENTRY(4, master_volume[1]),
-};
-*/
 // deleted blocks
 static FreezeData	SnapIPPU[] =
 {
@@ -1184,11 +1233,16 @@ void S9xFreezeToStream (STREAM stream)
 
 	FreezeBlock(stream, "FIL", Memory.FillRAM, 0x8000);
 
-	/* FreezeStruct(stream, "APU", &APU, SnapAPU, COUNT(SnapAPU));
+	/* Obsoleted */
+	FreezeStruct(stream, "APU", &DummyAPU, SnapOldAPU, COUNT(SnapOldAPU));
 
-	FreezeStruct(stream, "ARE", &APURegisters, SnapAPURegisters, COUNT(SnapAPURegisters));
+	FreezeStruct(stream, "ARE", &DummyAPURegisters, SnapOldAPURegisters, COUNT(SnapOldAPURegisters));
 
-	FreezeBlock(stream, "ARA", IAPU.RAM, 0x10000); */
+	unsigned char zeroblock[0x10000];
+	memset (zeroblock, 0, 0x10000);
+	FreezeBlock(stream, "ARA", zeroblock, 0x10000);
+
+	/* End obsoleted */
 
 	struct SControlSnapshot ctl_snap;
 	S9xControlPreSaveState(&ctl_snap);
@@ -1275,6 +1329,13 @@ void S9xFreezeToStream (STREAM stream)
 
 		delete ssi;
 	}
+
+/* Replaced new 1.52 block with new apu block */
+
+	unsigned char soundsnapshot[SPC_SAVE_STATE_BLOCK_SIZE];
+	S9xAPUSaveState (soundsnapshot);
+	FreezeBlock (stream, "SND", soundsnapshot, SPC_SAVE_STATE_BLOCK_SIZE);
+
 /*
 	S9xSoundPreSaveState();
 	FreezeStruct(stream, "SND", &SoundData, SnapSoundData, COUNT(SnapSoundData));
@@ -1385,12 +1446,12 @@ int S9xUnfreezeFromStream (STREAM stream)
 		result = UnfreezeBlockCopy(stream, "FIL", &local_fillram, 0x8000);
 		if (result != SUCCESS)
 			break;
-/*
-		result = UnfreezeStructCopy(stream, "APU", &local_apu, SnapAPU, COUNT(SnapAPU), version);
+
+		result = UnfreezeStructCopy(stream, "APU", &local_apu, SnapOldAPU, COUNT(SnapOldAPU), version);
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeStructCopy(stream, "ARE", &local_apu_registers, SnapAPURegisters, COUNT(SnapAPURegisters), version);
+		result = UnfreezeStructCopy(stream, "ARE", &local_apu_registers, SnapOldAPURegisters, COUNT(SnapOldAPURegisters), version);
 		if (result != SUCCESS)
 			break;
 
@@ -1401,7 +1462,7 @@ int S9xUnfreezeFromStream (STREAM stream)
 		// sound DSP snapshot older than 1.52
 		result = UnfreezeStructCopy(stream, "SOU", &local_apu_oldsound, SnapOldSoundData, COUNT(SnapOldSoundData), version);
 		if (result != SUCCESS && version <= 4)
-			break; */
+			break;
 
 		result = UnfreezeStructCopy(stream, "CTL", &local_control_data, SnapControls, COUNT(SnapControls), version);
 		if (result != SUCCESS && version >= 2)
@@ -1474,11 +1535,11 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		result = UnfreezeStructCopy(stream, "SHO", &local_screenshot, SnapScreenshot, COUNT(SnapScreenshot), version);
 
-		// sound DSP snapshot from 1.52
-		/*
-		result = UnfreezeStructCopy(stream, "SND", &local_apu_sound, SnapSoundData, COUNT(SnapSoundData), version);
+		// Changed to new APU
+
+		result = UnfreezeBlockCopy(stream, "SND", &local_apu_sound, SPC_SAVE_STATE_BLOCK_SIZE);
 		if (result != SUCCESS && version >= 6)
-			break; */
+			break;
 
 		// SPC7110 and SRTC snapshot from 1.52, incompatible with 1.51.
 		result = UnfreezeStructCopy(stream, "S71", &local_spc7110, SnapSPC7110Snap, COUNT(SnapSPC7110Snap), version);
@@ -1527,14 +1588,15 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		UnfreezeStructFromCopy(&APURegisters, SnapAPURegisters, COUNT(SnapAPURegisters), local_apu_registers, version);
 
-		memcpy(IAPU.RAM, local_apu_ram, 0x10000);
+		memcpy(IAPU.RAM, local_apu_ram, 0x10000); */
 
 		if (local_apu_sound)
-			UnfreezeStructFromCopy(&SoundData, SnapSoundData, COUNT(SnapSoundData), local_apu_sound, version);
+		    S9xAPULoadState (local_apu_sound);
+		// UnfreezeStructFromCopy(&SoundData, SnapSoundData, COUNT(SnapSoundData), local_apu_sound, version);
 
-		if (local_apu_oldsound)
-			UnfreezeStructFromCopy(&OldSoundData, SnapOldSoundData, COUNT(SnapOldSoundData), local_apu_oldsound, version);
-        */
+		/* if (local_apu_oldsound)
+			UnfreezeStructFromCopy(&DummySoundData, SnapOldSoundData, COUNT(SnapOldSoundData), local_apu_oldsound, version); */
+
 		struct SControlSnapshot ctl_snap;
 		if (local_control_data)
 			UnfreezeStructFromCopy(&ctl_snap, SnapControls, COUNT(SnapControls), local_control_data, version);
@@ -2214,7 +2276,7 @@ bool8 S9xSPCDump (const char *filename)
 	FILE  *fs;
 	uint8 buf[SNES_SPC::spc_file_size];
 
-	fs = fopen(filename, "wb");
+	fs = fopen (filename, "wb");
 	if (!fs)
 		return (FALSE);
 

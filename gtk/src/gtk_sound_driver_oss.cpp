@@ -187,7 +187,7 @@ S9xOSSSoundDriver::mixer_thread (void)
 {
     int samples_to_mix = (2 * so.playback_rate) / 1000 << (so.stereo ? 1 : 0);
     int bytes_to_write = samples_to_mix << (so.sixteen_bit ? 1 : 0);
-    unsigned int bytes_written;
+    int bytes_written;
 
     while (!thread_die && !mixer->is_ready ())
         usleep (100);

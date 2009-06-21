@@ -190,13 +190,15 @@ typedef struct
 
 extern SoundStatus so;
 
-typedef void (samples_available_callback) (void *);
+typedef void (*samples_available_callback) (void *);
 
 #define APU_FRAME_CLOCKS_NTSC (1024000.0 / 60.0)
 #define APU_FRAME_CLOCKS_PAL  20480.0
 
 #define CPU_CLOCK_TO_APU_CLOCK_NTSC(cpuclock) ((int) (((cpuclock) * 1024000.0) / 21477272.0))
 #define CPU_CLOCK_TO_APU_CLOCK_PAL(cpuclock) ((int) (((cpuclock) * 1024000.0) / 21281370.0))
+
+#define SPC_SAVE_STATE_BLOCK_SIZE (SNES_SPC::state_size + sizeof (double))
 
 bool8 S9xInitAPU (void);
 void S9xDeinitAPU (void);
@@ -213,11 +215,12 @@ void S9xAPUBeginFrame (void);
 void S9xAPUFinishFrame (void);
 int S9xAPUGetClock (int cpucycles);
 void S9xAPUAddCycles (int cpucycles);
-double S9xAPUGetClockSkew (void);
-void S9xAPUSetClockSkew (double skew);
+
+void S9xAPULoadState (unsigned char *block);
+void S9xAPUSaveState (unsigned char *block);
 
 void S9xFinalizeSamples (void);
-void S9xSetSamplesAvailableCallback (samples_available_callback *callback, void *data);
+void S9xSetSamplesAvailableCallback (samples_available_callback callback, void *data);
 
 extern SNES_SPC *spc_core;
 

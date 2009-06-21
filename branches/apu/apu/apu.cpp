@@ -189,7 +189,7 @@ namespace spc
         0, 8000, 11025, 16000, 22050, 32000, 44100, 48000
     };
 
-    static samples_available_callback *sa_callback = NULL;
+    static samples_available_callback sa_callback = NULL;
     static void *extra_data = NULL;
 
     static int buffer_size = 8192;
@@ -283,12 +283,15 @@ S9xMixSamples (uint8 *buffer, int sample_count)
         }
         else
         {
+            memset (buffer, 0, sample_count << (so.sixteen_bit ? 1 : 0));
             return FALSE;
         }
     }
 
     else if (!spc::buffer->pull (dest, sample_count << 1))
     {
+        memset (buffer, 0, sample_count << (so.sixteen_bit ? 1 : 0));
+
         return FALSE;
     }
 
@@ -349,7 +352,7 @@ S9xLandSamples (void)
 }
 
 void
-S9xSetSamplesAvailableCallback (samples_available_callback *callback, void *data)
+S9xSetSamplesAvailableCallback (samples_available_callback callback, void *data)
 {
     spc::sa_callback = callback;
     spc::extra_data = data;
@@ -390,7 +393,6 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
             spc::shrink_buffer  = new unsigned char[spc::buffer_size];
 
             spc::buffer = new ring_buffer (spc::buffer_size);
-            spc::buffer->cache_silence ();
 
             spc::resampler->buffer_size (spc::buffer_size);
 
@@ -517,18 +519,6 @@ S9xAPUFinishFrame (void)
 }
 
 void
-S9xAPUSetClockSkew (double skew)
-{
-    spc::clock_skew = skew;
-}
-
-double
-S9xAPUGetClockSkew (void)
-{
-    return spc::clock_skew;
-}
-
-void
 S9xDeinitAPU (void)
 {
     delete spc_core;
@@ -558,9 +548,44 @@ S9xResetAPU (void)
                           spc::buffer_size);
 
     spc::buffer->clear ();
-    spc::buffer->cache_silence ();
     spc::resampler->clear ();
-
-
-    return;
+    spc::buffer->cache_silence ();
 }
+
+/* State saving functions */
+static void
+from_apu_to_state (unsigned char **buf, void *var, size_t size)
+{
+    memcpy (*buf, var, size);
+
+    *buf += size;
+}
+
+static void
+to_apu_from_state (unsigned char **buf, void *var, size_t size)
+{
+    memcpy (var, *buf, size);
+
+    *buf += size;
+}
+
+void
+S9xAPUSaveState (unsigned char *block)
+{
+    unsigned char *ptr = block;
+
+    spc_core->copy_state (&ptr, from_apu_to_state);
+    memcpy (ptr, &(spc::clock_skew), sizeof (double));
+}
+
+void
+S9xAPULoadState (unsigned char *block)
+{
+    unsigned char *ptr = block;
+    S9xResetAPU ();
+
+    spc_core->copy_state (&ptr, to_apu_from_state);
+
+    memcpy (&(spc::clock_skew), ptr, sizeof (double));
+}
+

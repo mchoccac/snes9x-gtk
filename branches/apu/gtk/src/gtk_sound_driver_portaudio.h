@@ -6,7 +6,6 @@
 
 #include "gtk_sound.h"
 #include "gtk_sound_driver.h"
-#include "gtk_audio_mixer.h"
 
 class S9xPortAudioSoundDriver : public S9xSoundDriver
 {

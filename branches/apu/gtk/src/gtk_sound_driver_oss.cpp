@@ -6,20 +6,16 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
-gpointer
-oss_thread (gpointer data)
+static void
+oss_samples_available (void *data)
 {
-    ((S9xOSSSoundDriver *) data)->mixer_thread ();
-    return NULL;
+    ((S9xOSSSoundDriver *) data)->samples_available ();
 }
 
 S9xOSSSoundDriver::S9xOSSSoundDriver (void)
 {
     filedes = -1;
     sound_buffer = NULL;
-    thread_die = 0;
-    thread = NULL;
-    mixer = NULL;
 
     return;
 }
@@ -35,15 +31,11 @@ S9xOSSSoundDriver::terminate (void)
 {
     stop ();
 
+    S9xSetSamplesAvailableCallback (NULL, NULL);
+
     if (filedes >= 0)
     {
         close (filedes);
-    }
-
-    if (mixer)
-    {
-        delete mixer;
-        mixer = NULL;
     }
 
     if (sound_buffer)
@@ -58,30 +50,12 @@ S9xOSSSoundDriver::terminate (void)
 void
 S9xOSSSoundDriver::start (void)
 {
-    if (mixer != NULL && !thread)
-    {
-        thread_die = 0;
-        mixer->start ();
-        thread = g_thread_create (oss_thread,
-                                  (gpointer) this,
-                                  TRUE,
-                                  NULL);
-    }
-
     return;
 }
 
 void
 S9xOSSSoundDriver::stop (void)
 {
-    if (thread != NULL)
-    {
-        mixer->stop ();
-        thread_die = 1;
-        g_thread_join (thread);
-        thread = NULL;
-    }
-
     return;
 }
 
@@ -94,7 +68,7 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("    --> (Device: /dev/dsp)...");
 
-    filedes = open ("/dev/dsp", O_WRONLY);
+    filedes = open ("/dev/dsp", O_WRONLY | O_NONBLOCK);
 
     if (filedes < 0)
         goto fail;
@@ -160,9 +134,9 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
-    sound_buffer = (uint8 *) malloc ((((2 * so.playback_rate) / 1000) << (so.stereo ? 1 : 0)) << (so.sixteen_bit ? 1 : 0));
+    sound_buffer = (uint8 *) malloc (so.buffer_size);
 
-    mixer = new GtkAudioMixer (so.buffer_size);
+    S9xSetSamplesAvailableCallback (oss_samples_available, this);
 
     return TRUE;
 
@@ -183,28 +157,37 @@ S9xOSSSoundDriver::mix (void)
 }
 
 void
-S9xOSSSoundDriver::mixer_thread (void)
+S9xOSSSoundDriver::samples_available (void)
 {
-    int samples_to_mix = (2 * so.playback_rate) / 1000 << (so.stereo ? 1 : 0);
-    int bytes_to_write = samples_to_mix << (so.sixteen_bit ? 1 : 0);
+    audio_buf_info info;
+    int samples_to_write;
+    int bytes_to_write;
     int bytes_written;
 
-    while (!thread_die && !mixer->is_ready ())
-        usleep (100);
+    S9xFinalizeSamples ();
 
-    while (!thread_die)
+    ioctl (filedes, SNDCTL_DSP_GETOSPACE, &info);
+
+    samples_to_write = MIN (info.bytes >> (so.sixteen_bit ? 1 : 0),
+                            S9xGetSampleCount ());
+
+    S9xMixSamples (sound_buffer, samples_to_write);
+
+    bytes_written = 0;
+    bytes_to_write = samples_to_write << (so.sixteen_bit ? 1 : 0);
+
+    while (bytes_to_write > bytes_written)
     {
-        if (mixer->write (sound_buffer, bytes_to_write))
-        {
-            bytes_written = 0;
+        int result;
 
-            while (bytes_written < bytes_to_write)
-            {
-                bytes_written += write (filedes,
-                                        ((char *) sound_buffer) + bytes_written,
-                                        bytes_to_write - bytes_written);
-            }
-        }
+        result = write (filedes,
+                        ((char *) sound_buffer) + bytes_written,
+                        bytes_to_write - bytes_written);
+
+        if (result < 0)
+            break;
+
+        bytes_written += result;
     }
 
     return;

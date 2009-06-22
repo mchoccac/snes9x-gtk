@@ -3,7 +3,6 @@
 
 #include "gtk_sound.h"
 #include "gtk_sound_driver.h"
-#include "gtk_audio_mixer.h"
 
 #define OSSTHREAD_OK 0
 #define OSSTHREAD_DIE 1
@@ -18,17 +17,12 @@ class S9xOSSSoundDriver : public S9xSoundDriver
         void start (void);
         void stop (void);
         void mix (void);
+        void samples_available (void);
 
     private:
-        void mixer_thread (void);
         int filedes;
         uint8 *sound_buffer;
-        GThread *thread;
-        int thread_die;
-        GtkAudioMixer *mixer;
-
-
-    friend gpointer oss_thread (gpointer data);
+        GMutex *mutex;
 };
 
 

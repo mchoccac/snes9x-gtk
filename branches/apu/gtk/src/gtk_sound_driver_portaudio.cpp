@@ -110,7 +110,6 @@ S9xPortAudioSoundDriver::stop (void)
 bool8
 S9xPortAudioSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 {
-    int                 sample_count;
     PaStreamParameters  param;
     const PaDeviceInfo  *device_info;
     const PaHostApiInfo *hostapi_info;

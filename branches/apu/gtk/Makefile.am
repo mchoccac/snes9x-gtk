@@ -20,8 +20,6 @@ CLEANFILES = \
     src/sourcify
 
 snes9x_gtk_SOURCES = \
-    src/gtk_audio_mixer.h \
-    src/gtk_audio_mixer.cpp \
     src/gtk_sound_driver.h \
     ../filter/2xsai.cpp \
     ../filter/2xsai.h \

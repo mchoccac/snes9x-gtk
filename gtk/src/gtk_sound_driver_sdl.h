@@ -5,7 +5,6 @@
 
 #include "gtk_sound.h"
 #include "gtk_sound_driver.h"
-#include "gtk_audio_mixer.h"
 
 class S9xSDLSoundDriver : public S9xSoundDriver
 {
@@ -21,7 +20,6 @@ class S9xSDLSoundDriver : public S9xSoundDriver
 
     private:
         SDL_AudioSpec *audiospec;
-        GtkAudioMixer *mixer;
 
 };
 

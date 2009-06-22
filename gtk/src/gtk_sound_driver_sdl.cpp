@@ -9,13 +9,22 @@ sdl_audio_callback (void *userdata, Uint8 *stream, int len)
     return;
 }
 
+static void
+samples_available (void *data)
+{
+    SDL_LockAudio ();
+    S9xFinalizeSamples ();
+    SDL_UnlockAudio ();
+
+    return;
+}
+
 void
 S9xSDLSoundDriver::mix (unsigned char *output, int bytes)
 {
-    mixer->write (output, bytes >> 2);
-    mixer->write (output + (bytes >> 2), (bytes >> 2));
-    mixer->write (output + ((bytes >> 2) << 1), (bytes >> 2));
-    mixer->write (output + (bytes >> 2) * 3, bytes - (bytes >> 2) * 3);
+    SDL_LockAudio ();
+    S9xMixSamples (output, bytes >> (so.sixteen_bit ? 1 : 0));
+    SDL_UnlockAudio ();
 
     return;
 }
@@ -23,7 +32,6 @@ S9xSDLSoundDriver::mix (unsigned char *output, int bytes)
 S9xSDLSoundDriver::S9xSDLSoundDriver (void)
 {
     audiospec = NULL;
-    mixer = NULL;
 
     return;
 }
@@ -41,12 +49,11 @@ S9xSDLSoundDriver::terminate (void)
 {
     stop ();
 
-    if (mixer)
+    if (audiospec)
     {
         SDL_CloseAudio ();
         free (audiospec);
-        delete mixer;
-        mixer = NULL;
+        audiospec = NULL;
     }
 
     SDL_QuitSubSystem (SDL_INIT_AUDIO);
@@ -59,9 +66,8 @@ S9xSDLSoundDriver::start (void)
 {
     if (!gui_config->mute_sound)
     {
-        if (mixer)
+        if (audiospec)
         {
-            mixer->start ();
             SDL_PauseAudio (0);
         }
     }
@@ -72,9 +78,8 @@ S9xSDLSoundDriver::start (void)
 void
 S9xSDLSoundDriver::stop (void)
 {
-    if (mixer)
+    if (audiospec)
     {
-        mixer->stop ();
         SDL_PauseAudio (1);
     }
 
@@ -90,8 +95,9 @@ S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     audiospec->channels = so.stereo ? 2 : 1;
     audiospec->format = so.sixteen_bit ? AUDIO_S16SYS : AUDIO_U8;
     audiospec->samples = gui_config->sound_buffer_size * audiospec->freq / 1000;
-    audiospec->samples = powerof2 (base2log (audiospec->samples));
-    so.buffer_size = (audiospec->samples << (so.stereo ? 1 : 0)) << (so.sixteen_bit ? 1 : 0);
+    /* Note: divide samples by 2 because SDL thinks it needs a whole buffer on
+     * every callback. :-P */
+    audiospec->samples = powerof2 (base2log (audiospec->samples)) >> 1;
     audiospec->callback = sdl_audio_callback;
     audiospec->userdata = this;
 
@@ -112,7 +118,7 @@ S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
-    mixer = new GtkAudioMixer (so.buffer_size);
+    S9xSetSamplesAvailableCallback (samples_available, NULL);
 
     return TRUE;
 }

@@ -268,7 +268,13 @@ S9xMixSamples (uint8 *buffer, int sample_count)
     else
         dest = buffer;
 
-    if (so.playback_rate != so.input_rate)
+
+    if (so.mute_sound)
+    {
+        memset (dest, 0, sample_count << 1);
+    }
+
+    else if (so.playback_rate != so.input_rate)
     {
         int samples_to_write = MIN (spc::buffer->space_filled () >> 1,
                                     spc::resampler->max_write ());
@@ -444,6 +450,7 @@ S9xSetSoundControl (uint8 sound_switch)
 bool8
 S9xSetSoundMute (bool8 mute)
 {
+    so.mute_sound = mute;
 
     return FALSE;
 }
@@ -480,12 +487,6 @@ S9xAPUGetClock (int cpucycles)
 }
 
 void
-S9xAPUBeginFrame (void)
-{
-    spc::apu_clock = 0;
-}
-
-void
 S9xAPUAddCycles (int cpucycles)
 {
     spc::apu_clock += Settings.PAL ?
@@ -517,6 +518,8 @@ S9xAPUFinishFrame (void)
 
     S9xLandSamples ();
 
+    spc::apu_clock = 0;
+
     return;
 }
 
@@ -543,8 +546,10 @@ S9xDeinitAPU (void)
 void
 S9xResetAPU (void)
 {
+    so.mute_sound = FALSE;
     spc::clock_skew = 0;
     so.sound_switch = 0;
+    spc::apu_clock = 0;
     spc_core->reset ();
     spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
                           spc::buffer_size);
@@ -577,7 +582,13 @@ S9xAPUSaveState (unsigned char *block)
     unsigned char *ptr = block;
 
     spc_core->copy_state (&ptr, from_apu_to_state);
+
+    memcpy (ptr, &(spc::apu_clock), sizeof (int));
+
+    ptr += sizeof (int);
+
     memcpy (ptr, &(spc::clock_skew), sizeof (double));
+
 }
 
 void
@@ -587,6 +598,10 @@ S9xAPULoadState (unsigned char *block)
     S9xResetAPU ();
 
     spc_core->copy_state (&ptr, to_apu_from_state);
+
+    memcpy (&(spc::apu_clock), ptr, sizeof (int));
+
+    ptr += sizeof (int);
 
     memcpy (&(spc::clock_skew), ptr, sizeof (double));
 }

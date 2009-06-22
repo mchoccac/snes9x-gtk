@@ -117,11 +117,14 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
+    if (so.buffer_size < 4096)
+        so.buffer_size = 4096;
+
     /* OSS requires a power-of-two buffer size, first 16 bits are the number
      * of fragments to generate, second 16 are the respective power-of-two. */
-    temp = (4 << 16) | ((base2log (so.buffer_size / 4)));
+    temp = (2 << 16) | (base2log (so.buffer_size));
 
-    so.buffer_size = powerof2 (temp & 0xffff) * 4;
+    so.buffer_size = powerof2 (temp & 0xffff);
 
     printf ("    --> (Buffer size: %d bytes, %dms latency)...",
             so.buffer_size,

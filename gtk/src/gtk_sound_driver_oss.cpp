@@ -174,6 +174,11 @@ S9xOSSSoundDriver::samples_available (void)
     samples_to_write = MIN (info.bytes >> (so.sixteen_bit ? 1 : 0),
                             S9xGetSampleCount ());
 
+    if (sizeof (sound_buffer) < (samples_to_write << (so.sixteen_bit ? 1 : 0)))
+    {
+        sound_buffer = (uint8 *) realloc (sound_buffer, samples_to_write << (so.sixteen_bit ? 1 : 0));
+    }
+
     S9xMixSamples (sound_buffer, samples_to_write);
 
     bytes_written = 0;

@@ -173,8 +173,6 @@
 
 void S9xMainLoop (void)
 {
-    S9xAPUBeginFrame ();
-
 	for (;;)
 	{
 		if (CPU.Flags)
@@ -299,8 +297,6 @@ void S9xMainLoop (void)
 		while (CPU.Cycles >= CPU.NextEvent)
 			S9xDoHEventProcessing();
     }
-
-	S9xAPUFinishFrame ();
 
     S9xPackStatus();
 
@@ -432,6 +428,8 @@ void S9xDoHEventProcessing (void)
 				ICPU.Frame++;
 				PPU.HVBeamCounterLatched = 0;
 				CPU.Flags |= SCAN_KEYS_FLAG;
+
+				S9xAPUFinishFrame ();
 			}
 
 			// From byuu:

@@ -198,7 +198,7 @@ typedef void (*samples_available_callback) (void *);
 #define CPU_CLOCK_TO_APU_CLOCK_NTSC(cpuclock) ((int) (((cpuclock) * 1024000.0) / 21477272.0))
 #define CPU_CLOCK_TO_APU_CLOCK_PAL(cpuclock) ((int) (((cpuclock) * 1024000.0) / 21281370.0))
 
-#define SPC_SAVE_STATE_BLOCK_SIZE (SNES_SPC::state_size + sizeof (double))
+#define SPC_SAVE_STATE_BLOCK_SIZE (SNES_SPC::state_size + sizeof (int) + sizeof (double))
 
 bool8 S9xInitAPU (void);
 void S9xDeinitAPU (void);
@@ -211,7 +211,6 @@ void S9xSetPlaybackRate (uint32);
 bool8 S9xSetSoundMute (bool8);
 bool8 S9xOpenSoundDevice (int, bool8, int);
 
-void S9xAPUBeginFrame (void);
 void S9xAPUFinishFrame (void);
 int S9xAPUGetClock (int cpucycles);
 void S9xAPUAddCycles (int cpucycles);

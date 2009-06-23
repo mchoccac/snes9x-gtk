@@ -158,7 +158,7 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
+#include <math.h>
 #include "snes9x.h"
 #include "apu.h"
 #include "display.h"
@@ -201,7 +201,7 @@ namespace spc
 
     static Fir_Resampler<4> *resampler = NULL;
 
-    static int apu_clock;
+    static double apu_clock;
     static int last_clock_time;
     static double clock_skew;
 }
@@ -260,6 +260,12 @@ S9xMixSamples (uint8 *buffer, int sample_count)
 
     if (!so.sixteen_bit || !so.stereo)
     {
+        if (sizeof (spc::shrink_buffer) < (sample_count << (so.sixteen_bit ? 1 : 0)))
+        {
+            delete[] spc::shrink_buffer;
+            spc::shrink_buffer = new unsigned char[sample_count << (so.sixteen_bit ? 1 : 0)];
+        }
+
         dest = spc::shrink_buffer;
 
         if (!so.stereo)
@@ -321,6 +327,19 @@ S9xMixSamples (uint8 *buffer, int sample_count)
     }
 
     return TRUE;
+}
+
+int
+S9xGetSampleCount (void)
+{
+    int samples = spc::buffer->space_filled () >> 1;
+
+    samples >>= (so.stereo ? 0 : 1);
+
+    samples *= so.playback_rate;
+    samples /= so.input_rate;
+
+    return samples;
 }
 
 void
@@ -396,7 +415,7 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
             delete spc::buffer;
 
             spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
-            spc::shrink_buffer  = new unsigned char[spc::buffer_size * so.playback_rate / so.input_rate + 16];
+            spc::shrink_buffer  = new unsigned char[spc::buffer_size * 2];
 
             spc::buffer = new ring_buffer (spc::buffer_size);
 
@@ -479,9 +498,9 @@ int
 S9xAPUGetClock (int cpucycles)
 {
     if (Settings.PAL)
-        spc::last_clock_time = spc::apu_clock + CPU_CLOCK_TO_APU_CLOCK_PAL (cpucycles);
+        spc::last_clock_time = (int) (spc::apu_clock + CPU_CLOCK_TO_APU_CLOCK_PAL (cpucycles));
     else
-        spc::last_clock_time = spc::apu_clock + CPU_CLOCK_TO_APU_CLOCK_NTSC (cpucycles);
+        spc::last_clock_time = (int) (spc::apu_clock + CPU_CLOCK_TO_APU_CLOCK_NTSC (cpucycles));
 
     return spc::last_clock_time;
 }
@@ -501,7 +520,7 @@ S9xAPUFinishFrame (void)
 {
     double desired_clock = Settings.PAL ? APU_FRAME_CLOCKS_PAL : APU_FRAME_CLOCKS_NTSC;
 
-    spc::clock_skew += (double) spc::last_clock_time - desired_clock;
+    spc::clock_skew += spc::last_clock_time - desired_clock;
 
     if (spc::clock_skew >= 0.0)
     {
@@ -518,7 +537,7 @@ S9xAPUFinishFrame (void)
 
     S9xLandSamples ();
 
-    spc::apu_clock = 0;
+    spc::apu_clock = 0.0;
 
     return;
 }

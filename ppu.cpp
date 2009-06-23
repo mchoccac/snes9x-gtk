@@ -1277,40 +1277,9 @@ uint8 S9xGetPPU (uint16 Address)
 	if ((Address & 0xffc0) == 0x2140)
 	{
 		// APUIO0, APUIO1, APUIO2, APUIO3
-		if (Settings.APUEnabled)
-		    // return (APU.OutPorts[Address & 3]);
             return (spc_core->read_port (S9xAPUGetClock (CPU.Cycles), Address & 3));
 
-		switch (Settings.SoundSkipMethod)
-		{
-			case 0:
-			case 1:
-			case 3:
-				CPU.BranchSkip = TRUE;
-				break;
-			case 2:
-				break;
-		}
 
-		if ((Address & 3) < 2)
-		{
-			int r = rand();
-			if (r & 2)
-			{
-				if (r & 4)
-					return ((Address & 3) == 1 ? 0xaa : 0xbb);
-				else
-					return ((r >> 3) & 0xff);
-			}
-		}
-		else
-		{
-			int r = rand();
-			if (r & 2)
-				return ((r >> 3) & 0xff);
-		}
-
-		return (Memory.FillRAM[Address]);
 	}
 	else
 	if (Address <= 0x2183)

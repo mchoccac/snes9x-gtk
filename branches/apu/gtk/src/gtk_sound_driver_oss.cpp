@@ -117,6 +117,7 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
+    /* Make sure there's at least enough for one frame of sound */
     if (so.buffer_size < 4096)
         so.buffer_size = 4096;
 
@@ -174,7 +175,7 @@ S9xOSSSoundDriver::samples_available (void)
     samples_to_write = MIN (info.bytes >> (so.sixteen_bit ? 1 : 0),
                             S9xGetSampleCount ());
 
-    if (sizeof (sound_buffer) < (samples_to_write << (so.sixteen_bit ? 1 : 0)))
+    if (sizeof (sound_buffer) < ((unsigned int) samples_to_write << (so.sixteen_bit ? 1 : 0)))
     {
         sound_buffer = (uint8 *) realloc (sound_buffer, samples_to_write << (so.sixteen_bit ? 1 : 0));
     }

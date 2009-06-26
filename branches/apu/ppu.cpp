@@ -482,8 +482,8 @@ void S9xSetPPU (uint8 Byte, uint16 Address)
 	if ((Address & 0xffc0) == 0x2140)
 	{
 		// APUIO0, APUIO1, APUIO2, APUIO3
-/*		IAPU.RAM[(Address & 3) + 0xf4] = Byte; */
-	    spc_core->write_port (S9xAPUGetClock (CPU.Cycles), (Address & 3), Byte);
+	    // write_port will run the APU until given clock before writing value
+	    S9xAPUWritePort (Address & 3, Byte);
 	}
 	else
 	if (Address <= 0x2183)
@@ -1277,8 +1277,8 @@ uint8 S9xGetPPU (uint16 Address)
 	if ((Address & 0xffc0) == 0x2140)
 	{
 		// APUIO0, APUIO1, APUIO2, APUIO3
-            return (spc_core->read_port (S9xAPUGetClock (CPU.Cycles), Address & 3));
-
+	    // read_port will run the APU until given APU time before reading value
+            return S9xAPUReadPort (Address & 3);
 
 	}
 	else

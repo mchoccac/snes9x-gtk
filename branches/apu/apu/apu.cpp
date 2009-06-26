@@ -201,8 +201,7 @@ namespace spc
 
     static Fir_Resampler<4> *resampler = NULL;
 
-    static double apu_clock;
-    static int last_clock_time;
+    static int reference_time;
     static double clock_skew;
 }
 
@@ -260,7 +259,7 @@ S9xMixSamples (uint8 *buffer, int sample_count)
 
     if (!so.sixteen_bit || !so.stereo)
     {
-        if (sizeof (spc::shrink_buffer) < (sample_count << (so.sixteen_bit ? 1 : 0)))
+        if ((int) sizeof (spc::shrink_buffer) < (sample_count << (so.sixteen_bit ? 1 : 0)))
         {
             delete[] spc::shrink_buffer;
             spc::shrink_buffer = new unsigned char[sample_count << (so.sixteen_bit ? 1 : 0)];
@@ -494,50 +493,47 @@ S9xInitAPU (void)
     return TRUE;
 }
 
-int
+double
 S9xAPUGetClock (int cpucycles)
 {
     if (Settings.PAL)
-        spc::last_clock_time = (int) (spc::apu_clock + CPU_CLOCK_TO_APU_CLOCK_PAL (cpucycles));
+        return (CPU_CLOCK_TO_APU_CLOCK_PAL (cpucycles - spc::reference_time) + spc::clock_skew);
     else
-        spc::last_clock_time = (int) (spc::apu_clock + CPU_CLOCK_TO_APU_CLOCK_NTSC (cpucycles));
+        return (CPU_CLOCK_TO_APU_CLOCK_NTSC (cpucycles - spc::reference_time) + spc::clock_skew);
+}
 
-    return spc::last_clock_time;
+int
+S9xAPUReadPort (int port)
+{
+    return spc_core->read_port ((int) S9xAPUGetClock (CPU.Cycles), port);
 }
 
 void
-S9xAPUAddCycles (int cpucycles)
+S9xAPUWritePort (int port, int byte)
 {
-    spc::apu_clock += Settings.PAL ?
-                        CPU_CLOCK_TO_APU_CLOCK_PAL (cpucycles) :
-                        CPU_CLOCK_TO_APU_CLOCK_NTSC (cpucycles);
+    spc_core->write_port ((int) S9xAPUGetClock (CPU.Cycles), port, byte);
+}
+
+void
+S9xAPUSetReferenceTime (int cpucycles)
+{
+    spc::reference_time = cpucycles;
 
     return;
 }
 
 void
-S9xAPUFinishFrame (void)
+S9xAPUEndScanline (int cpucycles)
 {
-    double desired_clock = Settings.PAL ? APU_FRAME_CLOCKS_PAL : APU_FRAME_CLOCKS_NTSC;
+    /* Accumulate partial APU cycles */
+    double desired_clock = S9xAPUGetClock (cpucycles);
+    int attained_clock = (int) desired_clock;
 
-    spc::clock_skew += spc::last_clock_time - desired_clock;
+    spc::clock_skew = desired_clock - (double) attained_clock;
 
-    if (spc::clock_skew >= 0.0)
-    {
-        spc_core->end_frame (spc::last_clock_time);
-    }
-    else
-    {
-        int extra_cycles = (int) (spc::clock_skew * -1.0);
-
-        spc_core->end_frame (spc::last_clock_time + extra_cycles);
-
-        spc::clock_skew += (double) (extra_cycles);
-    }
+    spc_core->end_frame (attained_clock);
 
     S9xLandSamples ();
-
-    spc::apu_clock = 0.0;
 
     return;
 }
@@ -566,9 +562,9 @@ void
 S9xResetAPU (void)
 {
     so.mute_sound = FALSE;
+    spc::reference_time = 0;
     spc::clock_skew = 0;
     so.sound_switch = 0;
-    spc::apu_clock = 0;
     spc_core->reset ();
     spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
                           spc::buffer_size);
@@ -602,7 +598,7 @@ S9xAPUSaveState (unsigned char *block)
 
     spc_core->copy_state (&ptr, from_apu_to_state);
 
-    memcpy (ptr, &(spc::apu_clock), sizeof (int));
+    memcpy (ptr, &(spc::reference_time), sizeof (int));
 
     ptr += sizeof (int);
 
@@ -618,7 +614,7 @@ S9xAPULoadState (unsigned char *block)
 
     spc_core->copy_state (&ptr, to_apu_from_state);
 
-    memcpy (&(spc::apu_clock), ptr, sizeof (int));
+    memcpy (&(spc::reference_time), ptr, sizeof (int));
 
     ptr += sizeof (int);
 

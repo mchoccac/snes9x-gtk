@@ -192,9 +192,6 @@ extern SoundStatus so;
 
 typedef void (*samples_available_callback) (void *);
 
-#define APU_FRAME_CLOCKS_NTSC (1024000.0 / 60.0)
-#define APU_FRAME_CLOCKS_PAL  20480.0
-
 #define CPU_CLOCK_TO_APU_CLOCK_NTSC(cpuclock) (((cpuclock) * 1024000.0) / 21477272.0)
 #define CPU_CLOCK_TO_APU_CLOCK_PAL(cpuclock) (((cpuclock) * 1024000.0) / 21281370.0)
 
@@ -211,10 +208,12 @@ void S9xSetPlaybackRate (uint32);
 bool8 S9xSetSoundMute (bool8);
 bool8 S9xOpenSoundDevice (int, bool8, int);
 
-void S9xAPUFinishFrame (void);
-int S9xAPUGetClock (int cpucycles);
-void S9xAPUAddCycles (int cpucycles);
+void S9xAPUEndScanline (int cpucycles);
+double S9xAPUGetClock (int cpucycles);
+void S9xAPUSetReferenceTime (int cpucycles);
 
+int S9xAPUReadPort (int port);
+void S9xAPUWritePort (int port, int byte);
 void S9xAPULoadState (unsigned char *block);
 void S9xAPUSaveState (unsigned char *block);
 

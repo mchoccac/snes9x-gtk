@@ -387,9 +387,9 @@ void S9xDoHEventProcessing (void)
 /*
 			if (Settings.SoundSync)
 				S9xGenerateSound() */
-			S9xAPUAddCycles (Timings.H_Max);
-
+			S9xAPUEndScanline (CPU.Cycles);
 			CPU.Cycles -= Timings.H_Max;
+			S9xAPUSetReferenceTime (CPU.Cycles);
 
 /*
             APU.NextAPUTimerPos -= (Timings.H_Max << SNES_APU_ACCURACY);
@@ -428,8 +428,6 @@ void S9xDoHEventProcessing (void)
 				ICPU.Frame++;
 				PPU.HVBeamCounterLatched = 0;
 				CPU.Flags |= SCAN_KEYS_FLAG;
-
-				S9xAPUFinishFrame ();
 			}
 
 			// From byuu:

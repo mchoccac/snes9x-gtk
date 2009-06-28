@@ -505,13 +505,13 @@ S9xAPUGetClock (int cpucycles)
 int
 S9xAPUReadPort (int port)
 {
-    return spc_core->read_port ((int) S9xAPUGetClock (CPU.Cycles), port);
+    return spc_core->read_port (0, port);
 }
 
 void
 S9xAPUWritePort (int port, int byte)
 {
-    spc_core->write_port ((int) S9xAPUGetClock (CPU.Cycles), port, byte);
+    spc_core->write_port (0, port, byte);
 }
 
 void
@@ -523,15 +523,23 @@ S9xAPUSetReferenceTime (int cpucycles)
 }
 
 void
-S9xAPUEndScanline (int cpucycles)
+S9xAPUExecute (void)
 {
     /* Accumulate partial APU cycles */
-    double desired_clock = S9xAPUGetClock (cpucycles);
+    double desired_clock = S9xAPUGetClock (CPU.Cycles);
     int attained_clock = (int) desired_clock;
 
     spc::clock_skew = desired_clock - (double) attained_clock;
 
+    S9xAPUSetReferenceTime (CPU.Cycles);
+
     spc_core->end_frame (attained_clock);
+}
+
+void
+S9xAPUEndScanline (void)
+{
+    S9xAPUExecute ();
 
     S9xLandSamples ();
 

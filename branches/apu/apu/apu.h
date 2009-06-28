@@ -208,8 +208,9 @@ void S9xSetPlaybackRate (uint32);
 bool8 S9xSetSoundMute (bool8);
 bool8 S9xOpenSoundDevice (int, bool8, int);
 
-void S9xAPUEndScanline (int cpucycles);
+void S9xAPUEndScanline (void);
 double S9xAPUGetClock (int cpucycles);
+void S9xAPUExecute (void);
 void S9xAPUSetReferenceTime (int cpucycles);
 
 int S9xAPUReadPort (int port);

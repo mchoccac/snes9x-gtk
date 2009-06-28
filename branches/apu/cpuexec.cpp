@@ -384,17 +384,9 @@ void S9xDoHEventProcessing (void)
 			S9xSuperFXExec();
 		#endif
 
-/*
-			if (Settings.SoundSync)
-				S9xGenerateSound() */
-			S9xAPUEndScanline (CPU.Cycles);
+			S9xAPUEndScanline ();
 			CPU.Cycles -= Timings.H_Max;
 			S9xAPUSetReferenceTime (CPU.Cycles);
-
-/*
-            APU.NextAPUTimerPos -= (Timings.H_Max << SNES_APU_ACCURACY);
-			APU.Cycles -= (Timings.H_Max << SNES_APU_ACCURACY);
-*/
 
 			if ((Timings.NMITriggerPos != 0xffff) && (Timings.NMITriggerPos >= Timings.H_Max))
 				Timings.NMITriggerPos -= Timings.H_Max;
@@ -531,7 +523,7 @@ void S9xDoHEventProcessing (void)
 		#endif
 			S9xCheckMissingHTimerHalt(Timings.WRAMRefreshPos, SNES_WRAM_REFRESH_CYCLES);
 			CPU.Cycles += SNES_WRAM_REFRESH_CYCLES;
-			/* S9xAPUExecute(); */
+			S9xAPUExecute();
 
 			S9xCheckMissingHTimerPosition(Timings.WRAMRefreshPos);
 

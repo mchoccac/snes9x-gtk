@@ -184,6 +184,7 @@ static inline bool8 addCyclesInDMA (uint8 dma_channel)
 	// Add 8 cycles per byte, sync APU, and do HC related events.
 	// If HDMA was done in S9xDoHEventProcessing(), check if it used the same channel as DMA.
 	CPU.Cycles += SLOW_ONE_CYCLE;
+	S9xAPUExecute ();
 	while (CPU.Cycles >= CPU.NextEvent)
 		S9xDoHEventProcessing();
 
@@ -1416,6 +1417,8 @@ void S9xStartHDMA (void)
 			DMA[i].DoTransfer = FALSE;
 	}
 
+	S9xAPUExecute ();
+
 	CPU.InHDMA = FALSE;
 	CPU.InDMAorHDMA = CPU.InDMA;
 	CPU.HDMARanInDMA = CPU.InDMA ? PPU.HDMA : 0;
@@ -1739,6 +1742,8 @@ uint8 S9xDoHDMA (uint8 byte)
 				CPU.Cycles += SLOW_ONE_CYCLE;
 		}
 	}
+
+	S9xAPUExecute ();
 
 	CPU.InHDMA = FALSE;
 	CPU.InDMAorHDMA = CPU.InDMA;

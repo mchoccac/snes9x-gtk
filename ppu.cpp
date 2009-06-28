@@ -483,6 +483,7 @@ void S9xSetPPU (uint8 Byte, uint16 Address)
 	{
 		// APUIO0, APUIO1, APUIO2, APUIO3
 	    // write_port will run the APU until given clock before writing value
+	    S9xAPUExecute ();
 	    S9xAPUWritePort (Address & 3, Byte);
 	}
 	else
@@ -1278,7 +1279,8 @@ uint8 S9xGetPPU (uint16 Address)
 	{
 		// APUIO0, APUIO1, APUIO2, APUIO3
 	    // read_port will run the APU until given APU time before reading value
-            return S9xAPUReadPort (Address & 3);
+	    S9xAPUExecute ();
+        return S9xAPUReadPort (Address & 3);
 
 	}
 	else

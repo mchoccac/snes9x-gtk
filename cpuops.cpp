@@ -176,6 +176,7 @@
 #define AddCycles(n)	CPU.Cycles += n
 #endif
 
+#include "apu/apu.h"
 #include "cpuaddr.h"
 #include "cpuops.h"
 #include "cpumacro.h"
@@ -1608,7 +1609,7 @@ inline void CPUShutdown (void)
 				S9xSA1ExecuteDuringSleep();
 			CPU.Cycles = CPU.NextEvent;
 			ICPU.CPUExecuting = FALSE;
-			/* S9xAPUExecute(); */
+			S9xAPUExecute();
 			ICPU.CPUExecuting = TRUE;
 		}
 		else
@@ -3632,7 +3633,7 @@ static void OpCB (void)
 		{
 			CPU.Cycles = CPU.NextEvent;
 			ICPU.CPUExecuting = FALSE;
-			/* S9xAPUExecute(); */
+			S9xAPUExecute();
 			ICPU.CPUExecuting = TRUE;
 		}
 		else

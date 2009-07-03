@@ -8,7 +8,6 @@ void S9xSoundStart (void);
 void S9xSoundStop (void);
 
 int base2log (int num);
-int powerof2 (int num);
 
 extern int playback_rates[8];
 extern int buffer_sizes[8];

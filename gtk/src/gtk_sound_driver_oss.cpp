@@ -147,7 +147,7 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
      * of fragments to generate, second 16 are the respective power-of-two. */
     temp = (4 << 16) | ((base2log (so.buffer_size / 4)));
 
-    so.buffer_size = powerof2 (temp & 0xffff) * 4;
+    so.buffer_size = (1 << (temp & 0xffff)) * 4;
 
     printf ("    --> (Buffer size: %d bytes, %dms latency)...",
             so.buffer_size,

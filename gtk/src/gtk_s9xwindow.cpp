@@ -1438,6 +1438,8 @@ Snes9xWindow::enter_fullscreen_mode (void)
 
     gtk_window_fullscreen (GTK_WINDOW (window));
 
+    gdk_window_raise (GTK_WIDGET (window)->window);
+
     S9xSoundStart ();
 
     config->fullscreen = 1;

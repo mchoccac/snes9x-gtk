@@ -12,7 +12,7 @@ sdl_audio_callback (void *userdata, Uint8 *stream, int len)
 void
 S9xSDLSoundDriver::mix (unsigned char *output, int bytes)
 {
-    mixer->write (output, bytes >> 2);
+    mixer->write (output, bytes);
     mixer->write (output + (bytes >> 2), (bytes >> 2));
     mixer->write (output + ((bytes >> 2) << 1), (bytes >> 2));
     mixer->write (output + (bytes >> 2) * 3, bytes - (bytes >> 2) * 3);
@@ -90,7 +90,7 @@ S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     audiospec->channels = so.stereo ? 2 : 1;
     audiospec->format = so.sixteen_bit ? AUDIO_S16SYS : AUDIO_U8;
     audiospec->samples = gui_config->sound_buffer_size * audiospec->freq / 1000;
-    audiospec->samples = powerof2 (base2log (audiospec->samples));
+    audiospec->samples = (1 << (base2log (audiospec->samples)));
     so.buffer_size = (audiospec->samples << (so.stereo ? 1 : 0)) << (so.sixteen_bit ? 1 : 0);
     audiospec->callback = sdl_audio_callback;
     audiospec->userdata = this;
@@ -112,7 +112,7 @@ S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
-    mixer = new GtkAudioMixer (so.buffer_size);
+    mixer = new GtkAudioMixer (so.buffer_size * 2);
 
     return TRUE;
 }

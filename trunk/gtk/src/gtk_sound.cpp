@@ -43,12 +43,6 @@ base2log (int num)
     return power;
 }
 
-int
-powerof2 (int num)
-{
-    return (1 << num);
-}
-
 void
 S9xPortSoundInit (void)
 {

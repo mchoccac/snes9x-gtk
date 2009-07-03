@@ -113,9 +113,7 @@ S9xPortAudioSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
         audio_stream = NULL;
     }
-
-    sample_count = buffer_size;
-
+    
     param.channelCount = Settings.Stereo ? 2 : 1;
     param.sampleFormat = Settings.SixteenBitSound ? paInt16 : paUInt8;
     param.hostApiSpecificStreamInfo = NULL;
@@ -156,7 +154,7 @@ S9xPortAudioSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
                              NULL,
                              &param,
                              d_playback_rates[Settings.SoundPlaybackRate],
-                             sample_count,
+                             so.buffer_size >> 2,
                              paNoFlag,
                              port_audio_callback,
                              this);

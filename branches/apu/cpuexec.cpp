@@ -171,25 +171,8 @@
 #include "missing.h"
 #endif
 
-int cycle_count;
-int refcycles;
-int average_cycles = 0;
-
-static void
-DoCycleCountThing (void)
-{
-    cycle_count += CPU.Cycles - refcycles;
-    refcycles = CPU.Cycles;
-    average_cycles = ((average_cycles * 3) >> 2) + (cycle_count >> 2);
-    //printf ("Cycles: %d Average: %d\n", cycle_count, average_cycles);
-    cycle_count = 0;
-}
-
 void S9xMainLoop (void)
 {
-        cycle_count = 0;
-        refcycles = CPU.Cycles;
-
 	for (;;)
 	{
 		if (CPU.Flags)
@@ -402,7 +385,6 @@ void S9xDoHEventProcessing (void)
 		#endif
 
 			S9xAPUEndScanline ();
-                        cycle_count += Timings.H_Max;
 			CPU.Cycles -= Timings.H_Max;
 			S9xAPUSetReferenceTime (CPU.Cycles);
 
@@ -412,8 +394,6 @@ void S9xDoHEventProcessing (void)
 			CPU.V_Counter++;
 			if (CPU.V_Counter >= Timings.V_Max)	// V ranges from 0 to Timings.V_Max - 1
 			{
-                                DoCycleCountThing ();
-
 				CPU.V_Counter = 0;
 				Timings.InterlaceField ^= 1;
 
@@ -432,7 +412,7 @@ void S9xDoHEventProcessing (void)
 				Memory.FillRAM[0x213F] ^= 0x80;
 				PPU.RangeTimeOver = 0;
 
-				// FIXME: reading $4210 will wait 2 cycles, then perform reading, then wait 4 more cycles.'
+				// FIXME: reading $4210 will wait 2 cycles, then perform reading, then wait 4 more cycles.
 				Memory.FillRAM[0x4210] = Model->_5A22;
 				CPU.Flags &= ~NMI_FLAG;
 				Timings.NMITriggerPos = 0xffff;
@@ -497,8 +477,6 @@ void S9xDoHEventProcessing (void)
 				}
 
 				// FIXME: writing to $4210 will wait 6 cycles.
-                                CPU.Cycles += ONE_CYCLE;
-
 				Memory.FillRAM[0x4210] = 0x80 | Model->_5A22;
 				if (Memory.FillRAM[0x4200] & 0x80)
 				{

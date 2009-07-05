@@ -162,7 +162,7 @@
 #include "snes9x.h"
 #include "apu.h"
 #include "display.h"
-#include "Fir_Resampler.h"
+#include "resampler.h"
 #include "ring_buffer.h"
 
 #undef MIN
@@ -182,6 +182,9 @@ static uint8 APUROM[64] =
 
 SNES_SPC *spc_core = NULL;
 
+static int cyclesran;
+static double running_average;
+
 namespace spc
 {
     static int playback_rates[8] =
@@ -199,7 +202,7 @@ namespace spc
 
     static ring_buffer *buffer = NULL;
 
-    static Fir_Resampler<4> *resampler = NULL;
+    static Resampler *resampler = NULL;
 
     static int reference_time;
     static double clock_skew;
@@ -289,7 +292,7 @@ S9xMixSamples (uint8 *buffer, int sample_count)
 
         if (spc::resampler->avail () >= sample_count)
         {
-            spc::resampler->read ((Fir_Resampler<4>::sample_t *) dest,
+            spc::resampler->read ((short *) dest,
                                   sample_count);
         }
         else
@@ -426,7 +429,6 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
     }
 
     spc::resampler->time_ratio (((double) so.input_rate) / ((double) so.playback_rate));
-    spc::resampler->clear ();
 
     S9xOpenSoundDevice (mode, so.stereo, spc::buffer_size);
 
@@ -485,7 +487,7 @@ S9xInitAPU (void)
 
     spc::buffer = new ring_buffer (spc::buffer_size);
 
-    spc::resampler = new Fir_Resampler<4>;
+    spc::resampler = new Resampler (spc::buffer_size);
     spc::resampler->buffer_size (spc::buffer_size);
 
     so.input_rate = 32000;
@@ -496,6 +498,8 @@ S9xInitAPU (void)
 double
 S9xAPUGetClock (int cpucycles)
 {
+    cyclesran += (cpucycles - spc::reference_time);
+
     if (Settings.PAL)
         return (CPU_CLOCK_TO_APU_CLOCK_PAL (cpucycles - spc::reference_time) + spc::clock_skew);
     else
@@ -542,6 +546,8 @@ S9xAPUEndScanline (void)
     S9xAPUExecute ();
 
     S9xLandSamples ();
+
+    cyclesran = 0;
 
     return;
 }

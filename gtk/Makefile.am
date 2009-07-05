@@ -114,7 +114,6 @@ snes9x_gtk_SOURCES += \
     ../apu/SNES_SPC_state.cpp \
     ../apu/SPC_DSP.cpp \
     ../apu/SPC_Filter.cpp \
-    ../apu/Fir_Resampler.cpp
 
 # DSP
 snes9x_gtk_SOURCES += \

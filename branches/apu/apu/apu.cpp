@@ -182,9 +182,6 @@ static uint8 APUROM[64] =
 
 SNES_SPC *spc_core = NULL;
 
-static int cyclesran;
-static double running_average;
-
 namespace spc
 {
     static int playback_rates[8] =
@@ -498,8 +495,6 @@ S9xInitAPU (void)
 double
 S9xAPUGetClock (int cpucycles)
 {
-    cyclesran += (cpucycles - spc::reference_time);
-
     if (Settings.PAL)
         return (CPU_CLOCK_TO_APU_CLOCK_PAL (cpucycles - spc::reference_time) + spc::clock_skew);
     else
@@ -546,8 +541,6 @@ S9xAPUEndScanline (void)
     S9xAPUExecute ();
 
     S9xLandSamples ();
-
-    cyclesran = 0;
 
     return;
 }

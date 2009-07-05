@@ -10,7 +10,7 @@
 #undef CLAMP
 #undef short_clamp
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-#define short_clamp(n) CLAMP((n), -32768, 32767)
+#define short_clamp(n) ((short) CLAMP((n), -32768, 32767))
 
 class Resampler
 {
@@ -92,10 +92,10 @@ class Resampler
         void
         read (short *data, int size)
         {
-            int i_position;
+            int i_position = 0;
             int o_position = 0;
 
-            for (i_position = 0; o_position < size;)
+            while (o_position < size && i_position < filled)
             {
                 int s_left = internal_buffer[i_position];
                 int s_right = internal_buffer[i_position + 1];
@@ -122,11 +122,8 @@ class Resampler
 
                 while (r_frac <= 1.0 && o_position < size)
                 {
-                    int output_left  = short_clamp (hermite (r_frac, r_left [0], r_left [1], r_left [2], r_left [3]));
-                    int output_right = short_clamp (hermite (r_frac, r_right[0], r_right[1], r_right[2], r_right[3]));
-
-                    data[o_position] = (short) output_left;
-                    data[o_position + 1] = (short) output_right;
+                    data[o_position]     = short_clamp (hermite (r_frac, r_left [0], r_left [1], r_left [2], r_left [3]));
+                    data[o_position + 1] = short_clamp (hermite (r_frac, r_right[0], r_right[1], r_right[2], r_right[3]));
 
                     o_position += 2;
 
@@ -139,8 +136,6 @@ class Resampler
                     i_position += 2;
                 }
             }
-
-            fflush (stdout);
 
             memmove (internal_buffer,
                      internal_buffer + i_position,
@@ -163,7 +158,8 @@ class Resampler
             clear ();
         }
 
-        int avail (void)
+        int
+        avail (void)
         {
             int size = 0;
             double temp_pos = r_frac;

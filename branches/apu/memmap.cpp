@@ -3536,8 +3536,8 @@ void CMemory::ApplyROMFixes (void)
         // This game cannot work well anyway
         if (match_id("AVCJ"))                                      // Rendering Ranger R2
         {
-                S9xAPUTimingSetSpeedup (1.0029);
-                printf("APU speedup hack: 1.0029\n");
+                S9xAPUTimingSetSpeedup (1.004);
+                printf("APU speedup hack: 1.004\n");
         }
 
         // XXX: All Quintet games?
@@ -3545,8 +3545,8 @@ void CMemory::ApplyROMFixes (void)
             match_id("JG  ")                                    || // Illusion of Gaia
             match_id("CQ  "))                                      // Stunt Race FX
         {
-                S9xAPUTimingSetSpeedup (1.00238);
-                printf("APU speedup hack: 1.00238\n");
+                S9xAPUTimingSetSpeedup (1.0029);
+                printf("APU speedup hack: 1.0029\n");
         }
 
         if (match_na("SOULBLADER - 1")                          || // Soul Blader
@@ -3581,8 +3581,8 @@ void CMemory::ApplyROMFixes (void)
             match_na("HEIWA Parlor!Mini8")                      || // Parlor mini 8
             match_nn("SANKYO Fever! \xCC\xA8\xB0\xCA\xDE\xB0!"))   // SANKYO Fever! Fever!
         {
-                S9xAPUTimingSetSpeedup (1.0025);
-                printf("APU speedup hack: 1.0025\n");
+                S9xAPUTimingSetSpeedup (1.003);
+                printf("APU speedup hack: 1.003\n");
         }
 
         //// DMA/HDMA timing hacks :(

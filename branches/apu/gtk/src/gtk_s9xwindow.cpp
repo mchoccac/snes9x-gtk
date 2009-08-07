@@ -631,6 +631,7 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
     recent_menu            = NULL;
     fullscreen_state       = 0;
     maximized_state        = 0;
+    focused                = 1;
     paused_from_focus_loss = 0;
 
     splash = gdk_pixbuf_new_from_inline (-1, image_splash, FALSE, NULL);
@@ -680,6 +681,8 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
 void
 Snes9xWindow::focus_notify (int state)
 {
+    focused = state ? 1 : 0;
+
     if (!state && config->pause_emulation_on_switch)
     {
         sys_pause++;
@@ -1373,6 +1376,9 @@ Snes9xWindow::set_mouseable_area (int x, int y, int width, int height)
 void
 Snes9xWindow::reset_screensaver (void)
 {
+    if (!focused)
+        return;
+
     Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
 
     XTestFakeKeyEvent (display, 255, True, 0);
@@ -1437,6 +1443,8 @@ Snes9xWindow::enter_fullscreen_mode (void)
     gdk_display_sync (gdk_display_get_default ());
 
     gtk_window_fullscreen (GTK_WINDOW (window));
+
+    gdk_window_raise (GTK_WIDGET (window)->window);
 
     S9xSoundStart ();
 

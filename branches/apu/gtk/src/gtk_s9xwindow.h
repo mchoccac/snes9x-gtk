@@ -75,6 +75,7 @@ class Snes9xWindow : public GladeWindow
         int            nfs_width, nfs_height, nfs_x, nfs_y;
         int            fullscreen_state;
         int            maximized_state;
+        int            focused;
         int            paused_from_focus_loss;
         uint16         mouse_loc_x, mouse_loc_y;
         GdkPixbuf      *icon, *splash;

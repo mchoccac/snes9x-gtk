@@ -16,9 +16,11 @@ Binding::Binding (void)
 
 Binding::Binding (GdkEventKey *event)
 {
-    value = BINDING_KEY | (event->keyval & BINDING_KEY_MASK);
-
-    value |= (BINDING_KEY_MASK & event->keyval);
+    /* Make keypress lower-case */
+    if (event->keyval >= GDK_A && event->keyval <= GDK_Z)
+        value = BINDING_KEY | ((event->keyval - GDK_A + GDK_a) & BINDING_KEY_MASK);
+    else
+        value = BINDING_KEY | (event->keyval & BINDING_KEY_MASK);
 
     if (event->state & GDK_SHIFT_MASK)
         value |= BINDING_SHIFT;

@@ -128,6 +128,10 @@ event_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
         return FALSE;
     }
 
+    /* Make keypress lower-case */
+    if (event->keyval >= GDK_A && event->keyval <= GDK_Z)
+        event->keyval = event->keyval - GDK_A + GDK_a;
+
     key_binding = Binding (event->keyval,
                            event->state & GDK_CONTROL_MASK,
                            event->state & GDK_SHIFT_MASK,

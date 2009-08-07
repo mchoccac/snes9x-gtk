@@ -555,12 +555,19 @@ Snes9xPreferences::get_settings_from_dialog (void)
         config->fullscreen)
     {
         top_level->leave_fullscreen_mode ();
-        config->xrr_index                 = get_combo ("resolution_combo");
+        config->xrr_index = get_combo ("resolution_combo");
+        config->xrr_width = config->xrr_sizes[config->xrr_index].width;
+        config->xrr_height = config->xrr_sizes[config->xrr_index].height;
         config->change_display_resolution = get_check ("change_display_resolution");
         top_level->enter_fullscreen_mode ();
     }
+    else
+    {
+        config->xrr_index = get_combo ("resolution_combo");
+        config->xrr_width = config->xrr_sizes[config->xrr_index].width;
+        config->xrr_height = config->xrr_sizes[config->xrr_index].height;
+    }
 
-    config->xrr_index                 = get_combo ("resolution_combo");
     config->change_display_resolution = get_check ("change_display_resolution");
 
     if (config->multithreading != get_check ("multithreading"))
@@ -769,8 +776,14 @@ Snes9xPreferences::show (void)
 
         combo = get_widget ("resolution_combo");
 
+        config->xrr_index = 0;
+
         for (int i = 0; i < config->xrr_num_sizes; i++)
         {
+            if (config->xrr_width == config->xrr_sizes[i].width &&
+                config->xrr_height == config->xrr_sizes[i].height)
+                config->xrr_index = i;
+
             snprintf (size_string,
                       256,
                       "%dx%d",

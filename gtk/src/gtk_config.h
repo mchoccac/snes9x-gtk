@@ -53,6 +53,8 @@ class Snes9xConfig
         unsigned char default_esc_behavior;
         unsigned char prevent_screensaver;
         unsigned int  xrr_index;
+        int           xrr_width;
+        int           xrr_height;
         unsigned char scale_to_fit;
         unsigned char maintain_aspect_ratio;
         int           aspect_ratio;

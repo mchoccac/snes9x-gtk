@@ -1418,18 +1418,36 @@ Snes9xWindow::enter_fullscreen_mode (void)
 #ifdef USE_XRANDR
     if (config->change_display_resolution)
     {
-        gtk_widget_hide (window);
+        int mode = -1;
 
-        Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
-        GdkScreen *screen = gtk_widget_get_screen (window);
-        GdkWindow *root = gdk_screen_get_root_window (screen);
+        for (int i = 0; i < config->xrr_num_sizes; i++)
+        {
+            if (config->xrr_sizes[i].width == config->xrr_width &&
+                config->xrr_sizes[i].height == config->xrr_height)
+            {
+                mode = i;
+            }
+        }
 
-        XRRSetScreenConfig (display,
-                            config->xrr_config,
-                            GDK_WINDOW_XWINDOW (root),
-                            (SizeID) config->xrr_index,
-                            config->xrr_rotation,
-                            CurrentTime);
+        if (mode < 0)
+        {
+            config->change_display_resolution = 0;
+        }
+        else
+        {
+            gtk_widget_hide (window);
+
+            Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
+            GdkScreen *screen = gtk_widget_get_screen (window);
+            GdkWindow *root = gdk_screen_get_root_window (screen);
+
+            XRRSetScreenConfig (display,
+                                config->xrr_config,
+                                GDK_WINDOW_XWINDOW (root),
+                                (SizeID) mode,
+                                config->xrr_rotation,
+                                CurrentTime);
+        }
     }
 #endif
 

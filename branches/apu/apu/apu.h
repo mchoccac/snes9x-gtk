@@ -208,7 +208,7 @@ void S9xSetPlaybackRate (uint32);
 bool8 S9xSetSoundMute (bool8);
 bool8 S9xOpenSoundDevice (int, bool8, int);
 
-void S9xAPUTimingSetSpeedup (double ratio);
+void S9xAPUTimingSetSpeedup (int ticks);
 
 void S9xAPUEndScanline (void);
 double S9xAPUGetClock (int cpucycles);

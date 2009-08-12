@@ -548,9 +548,14 @@ S9xAPUEndScanline (void)
 }
 
 void
-S9xAPUTimingSetSpeedup (double ratio)
+S9xAPUTimingSetSpeedup (int ticks)
 {
-    spc::timing_hack_speedup = ratio;
+    if (ticks != 0)
+        printf("APU speedup hack: %d\n", ticks);
+
+    spc_core->set_tempo (SNES_SPC::tempo_unit - ticks);
+
+    spc::timing_hack_speedup = (double) SNES_SPC::tempo_unit / (SNES_SPC::tempo_unit - ticks);
 
     return;
 }

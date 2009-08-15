@@ -350,11 +350,10 @@ S9xFinalizeSamples (void)
 {
     if (!spc::buffer->push (spc::landing_buffer, spc_core->sample_count () << 1))
     {
+        spc::sound_in_sync = 0;
+
         if (Settings.SoundSync)
-        {
-            spc::sound_in_sync = 0;
             return;
-        }
     }
 
     spc::sound_in_sync = 1;

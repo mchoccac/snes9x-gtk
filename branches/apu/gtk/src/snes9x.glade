@@ -5,12 +5,12 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_EXPOSURE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="window_state_event" handler="main_window_state_event"/>
+    <signal name="delete_event" handler="main_window_delete_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
     <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
+    <signal name="window_state_event" handler="main_window_state_event"/>
     <signal name="key_release_event" handler="main_window_key_release_event"/>
-    <signal name="delete_event" handler="main_window_delete_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -1873,6 +1873,21 @@ RGB</property>
                                       </packing>
                                     </child>
                                     <child>
+                                      <widget class="GtkCheckButton" id="sync_sound">
+                                        <property name="label" translatable="yes">Sync sound</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="tooltip" translatable="yes">Wait to ensure all sound is played</property>
+                                        <property name="draw_indicator">True</property>
+                                      </widget>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">False</property>
+                                        <property name="position">1</property>
+                                      </packing>
+                                    </child>
+                                    <child>
                                       <widget class="GtkCheckButton" id="mute_sound_check">
                                         <property name="label" translatable="yes">Mute sound output</property>
                                         <property name="visible">True</property>
@@ -1885,7 +1900,7 @@ RGB</property>
                                       <packing>
                                         <property name="expand">False</property>
                                         <property name="fill">False</property>
-                                        <property name="position">1</property>
+                                        <property name="position">2</property>
                                       </packing>
                                     </child>
                                     <child>
@@ -1901,7 +1916,7 @@ RGB</property>
                                       <packing>
                                         <property name="expand">False</property>
                                         <property name="fill">False</property>
-                                        <property name="position">2</property>
+                                        <property name="position">3</property>
                                       </packing>
                                     </child>
                                     <child>
@@ -1917,7 +1932,7 @@ RGB</property>
                                       <packing>
                                         <property name="expand">False</property>
                                         <property name="fill">False</property>
-                                        <property name="position">3</property>
+                                        <property name="position">4</property>
                                       </packing>
                                     </child>
                                     <child>
@@ -1933,7 +1948,7 @@ RGB</property>
                                       <packing>
                                         <property name="expand">False</property>
                                         <property name="fill">False</property>
-                                        <property name="position">4</property>
+                                        <property name="position">5</property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2062,7 +2077,7 @@ RGB</property>
                                       </widget>
                                       <packing>
                                         <property name="expand">False</property>
-                                        <property name="position">5</property>
+                                        <property name="position">6</property>
                                       </packing>
                                     </child>
                                   </widget>

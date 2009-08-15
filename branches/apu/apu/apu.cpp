@@ -352,7 +352,7 @@ S9xFinalizeSamples (void)
     {
         spc::sound_in_sync = 0;
 
-        if (Settings.SoundSync)
+        if (Settings.SoundSync && !Settings.TurboMode)
             return;
     }
 

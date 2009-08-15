@@ -429,6 +429,12 @@ S9xSyncSpeedFinish (void)
         unsigned time_left = (next_frame_time.tv_sec  - now.tv_sec) * 1000000 +
                               next_frame_time.tv_usec - now.tv_usec;
 
+        if (time_left > 500000)
+        {
+            next_frame_time = now;
+            break;
+        }
+
         usleep (time_left);
 
         gettimeofday (&now, NULL);
@@ -529,17 +535,6 @@ S9xSyncSpeed (void)
         {
             IPPU.RenderThisFrame = 1;
             IPPU.SkippedFrames = 0;
-        }
-    }
-
-    if (timercmp (&next_frame_time, &now, <))
-    {
-        lag = (now.tv_sec  - next_frame_time.tv_sec) * 1000000 +
-        now.tv_usec - next_frame_time.tv_usec;
-
-        if (lag >= 500000)
-        {
-            next_frame_time = now;
         }
     }
 

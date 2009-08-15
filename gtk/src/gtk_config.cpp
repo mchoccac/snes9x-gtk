@@ -210,6 +210,7 @@ Snes9xConfig::load_defaults (void)
     Settings.FrameTimePAL = 20000;
     Settings.FrameTime = Settings.FrameTimeNTSC;
     Settings.BlockInvalidVRAMAccess = TRUE;
+    Settings.SoundSync = 1;
 
 #ifdef NETPLAY_SUPPORT
     Settings.NetPlay = FALSE;

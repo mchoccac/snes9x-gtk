@@ -205,6 +205,8 @@ namespace spc
     static double clock_skew;
 
     static double timing_hack_speedup = 1.0;
+
+    static int sound_in_sync = 1;
 }
 
 SoundStatus so;
@@ -346,18 +348,16 @@ S9xGetSampleCount (void)
 void
 S9xFinalizeSamples (void)
 {
-    static int wait_count = 0;
-
     if (!spc::buffer->push (spc::landing_buffer, spc_core->sample_count () << 1))
     {
-        wait_count++;
-        if (wait_count < 2)
+        if (Settings.SoundSync)
         {
+            spc::sound_in_sync = 0;
             return;
         }
     }
 
-    wait_count = 0;
+    spc::sound_in_sync = 1;
 
     spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
                           spc::buffer_size);
@@ -368,13 +368,23 @@ S9xFinalizeSamples (void)
 void
 S9xLandSamples (void)
 {
-
     if (spc::sa_callback != NULL)
         spc::sa_callback (spc::extra_data);
     else
         S9xFinalizeSamples ();
 
     return;
+}
+
+int
+S9xSyncSound (void)
+{
+    if (!Settings.SoundSync || spc::sound_in_sync)
+        return TRUE;
+
+    S9xLandSamples ();
+
+    return spc::sound_in_sync;
 }
 
 void

@@ -420,6 +420,8 @@ S9xSyncSpeedFinish (void)
     if (!syncing)
         return;
 
+    while (!S9xSyncSound ()) {} ;
+
     gettimeofday (&now, NULL);
 
     while (timercmp (&next_frame_time, &now, >))
@@ -439,8 +441,6 @@ S9xSyncSpeedFinish (void)
         next_frame_time.tv_sec += next_frame_time.tv_usec / 1000000;
         next_frame_time.tv_usec %= 1000000;
     }
-
-    while (!S9xSyncSound ()) {} ;
 
     syncing = 0;
 

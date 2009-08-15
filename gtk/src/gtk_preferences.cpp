@@ -448,6 +448,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_check ("mute_sound_check",          config->mute_sound);
     set_spin  ("sound_buffer_size",         config->sound_buffer_size);
     set_slider ("sound_input_rate",         config->sound_input_rate);
+    set_check ("sync_sound",                Settings.SoundSync);
 
     int num_sound_drivers = 0;
 #ifdef USE_PORTAUDIO
@@ -607,6 +608,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
     Settings.SoundPlaybackRate        = 7 - (get_combo ("playback_combo"));
     config->sound_buffer_size         = get_spin ("sound_buffer_size");
     config->sound_input_rate          = get_slider ("sound_input_rate");
+    Settings.SoundSync                = get_check ("sync_sound");
     Settings.APUEnabled = Settings.NextAPUEnabled = TRUE;
     config->mute_sound                = get_check ("mute_sound_check");
 

@@ -440,6 +440,8 @@ S9xSyncSpeedFinish (void)
         next_frame_time.tv_usec %= 1000000;
     }
 
+    while (!S9xSyncSound ()) {} ;
+
     syncing = 0;
 
     return;

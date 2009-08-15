@@ -223,6 +223,7 @@ void S9xAPUSaveState (unsigned char *block);
 void S9xFinalizeSamples (void);
 void S9xSetSamplesAvailableCallback (samples_available_callback callback, void *data);
 int S9xGetSampleCount (void);
+int S9xSyncSound (void);
 
 extern SNES_SPC *spc_core;
 

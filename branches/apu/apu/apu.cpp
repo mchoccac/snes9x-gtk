@@ -398,15 +398,6 @@ S9xSetSamplesAvailableCallback (samples_available_callback callback, void *data)
 bool8
 S9xInitSound (int mode, bool8 stereo, int buffer_size)
 {
-    if (mode <= 7)
-    {
-        so.playback_rate = spc::playback_rates[mode];
-    }
-    else
-    {
-        so.playback_rate = mode;
-    }
-
     so.stereo = stereo;
 
     if (spc::buffer_size != buffer_size)
@@ -436,7 +427,7 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
         }
     }
 
-    spc::resampler->time_ratio (((double) so.input_rate) / ((double) so.playback_rate));
+    S9xSetPlaybackRate (so.playback_rate);
 
     S9xOpenSoundDevice (mode, so.stereo, spc::buffer_size);
 
@@ -458,7 +449,8 @@ S9xSetPlaybackRate (uint32 playback_rate)
         so.playback_rate = playback_rate;
     }
 
-    spc::resampler->time_ratio (((double) so.input_rate) / ((double) so.playback_rate));
+    spc::resampler->time_ratio (((double) so.input_rate) * spc::timing_hack_speedup / ((double) so.playback_rate));
+
     delete[] spc::shrink_buffer;
     spc::shrink_buffer  = new unsigned char[spc::buffer_size * so.playback_rate / so.input_rate + 16];
 
@@ -565,6 +557,8 @@ S9xAPUTimingSetSpeedup (int ticks)
     spc_core->set_tempo (SNES_SPC::tempo_unit - ticks);
 
     spc::timing_hack_speedup = (double) SNES_SPC::tempo_unit / (SNES_SPC::tempo_unit - ticks);
+
+    S9xSetPlaybackRate (so.playback_rate);
 
     return;
 }

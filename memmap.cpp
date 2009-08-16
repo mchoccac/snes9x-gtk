@@ -3536,7 +3536,7 @@ void CMemory::ApplyROMFixes (void)
         // This game cannot work well anyway
         if (match_id("AVCJ"))                                      // Rendering Ranger R2
         {
-                S9xAPUTimingSetSpeedup (2);
+                S9xAPUTimingSetSpeedup (4);
         }
 
         // XXX: All Quintet games?

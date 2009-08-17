@@ -905,7 +905,7 @@ void S9xSelectTileConverter(int depth, bool8 hires, bool8 sub, bool8 mosaic){
 //   We define Z1/Z2 to either be constant 5 or to vary depending on the
 //     'priority' portion of the pixel.
 
-#define CLIP_10_BIT_SIGNED(a) (((a)&0x2000)?((a)|~0x3ff):((a)&0x3ff))
+#define CLIP_10_BIT_SIGNED(a) (((a) & 0x2000) ? ((a) | ~0x3ff) : ((a) & 0x3ff))
 
 extern struct SLineMatrixData LineMatrixData [240];
 

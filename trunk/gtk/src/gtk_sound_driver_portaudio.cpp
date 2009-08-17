@@ -154,7 +154,7 @@ S9xPortAudioSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
                              NULL,
                              &param,
                              d_playback_rates[Settings.SoundPlaybackRate],
-                             so.buffer_size >> 2,
+                             so.buffer_size >> 4,
                              paNoFlag,
                              port_audio_callback,
                              this);

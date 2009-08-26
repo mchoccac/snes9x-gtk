@@ -144,7 +144,7 @@ Snes9xConfig::load_defaults (void)
     fullscreen = FALSE;
     ui_visible = TRUE;
     statusbar_visible = TRUE;
-    default_esc_behavior = TRUE;
+    default_esc_behavior = 1;
     prevent_screensaver = FALSE;
     sound_driver = 0;
     sound_buffer_size = 32;

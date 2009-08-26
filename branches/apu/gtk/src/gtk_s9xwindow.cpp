@@ -189,8 +189,10 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
     /* Provide escape key to get out of fullscreen */
     if (event->keyval == GDK_Escape && event->type == GDK_KEY_RELEASE)
     {
-        if (window->config->default_esc_behavior)
+        if (window->config->default_esc_behavior == ESC_EXIT_FULLSCREEN)
             window->leave_fullscreen_mode ();
+        else if (window->config->default_esc_behavior == ESC_EXIT_SNES9X)
+            S9xExit ();
         else
             window->toggle_ui ();
     }
@@ -1308,7 +1310,7 @@ Snes9xWindow::configure_widgets (void)
                    Settings.NetPlayServer);
 #endif
 
-    if (config->default_esc_behavior)
+    if (config->default_esc_behavior != ESC_TOGGLE_MENUBAR)
     {
         enable_widget ("fullscreen_item", config->rom_loaded);
 

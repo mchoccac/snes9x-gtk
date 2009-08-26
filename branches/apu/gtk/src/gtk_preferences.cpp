@@ -434,7 +434,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_check ("speedhacks_check",          Settings.ShutdownMaster);
     set_check ("block_invalid_vram_access", Settings.BlockInvalidVRAMAccess);
     set_check ("upanddown",                 Settings.UpAndDown);
-    set_check ("default_esc_behavior",      config->default_esc_behavior);
+    set_combo ("default_esc_behavior",      config->default_esc_behavior);
     set_check ("prevent_screensaver",       config->prevent_screensaver);
     set_check ("force_inverted_byte_order", config->force_inverted_byte_order);
     set_check ("hdma_check",                !(Settings.DisableHDMA));
@@ -623,7 +623,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->scanline_filter_intensity = get_combo ("scanline_filter_intensity");
     config->hw_accel                  = hw_accel_value (get_combo ("hw_accel"));
     config->num_threads               = get_spin ("num_threads");
-    config->default_esc_behavior      = get_check ("default_esc_behavior");
+    config->default_esc_behavior      = get_combo ("default_esc_behavior");
     config->prevent_screensaver       = get_check ("prevent_screensaver");
 
 #ifdef USE_JOYSTICK
@@ -680,7 +680,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
 
     top_level->configure_widgets ();
 
-    if (config->default_esc_behavior)
+    if (config->default_esc_behavior != ESC_TOGGLE_MENUBAR)
         top_level->leave_fullscreen_mode ();
 
     return;

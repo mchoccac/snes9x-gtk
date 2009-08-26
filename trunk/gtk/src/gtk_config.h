@@ -17,6 +17,10 @@
 #define HWA_OPENGL              1
 #define HWA_XV                  2
 
+#define ESC_TOGGLE_MENUBAR      0
+#define ESC_EXIT_FULLSCREEN     1
+#define ESC_EXIT_SNES9X         2
+
 class Snes9xConfig
 {
     public:

@@ -144,7 +144,7 @@ Snes9xConfig::load_defaults (void)
     fullscreen = FALSE;
     ui_visible = TRUE;
     statusbar_visible = TRUE;
-    default_esc_behavior = TRUE;
+    default_esc_behavior = 1;
     prevent_screensaver = FALSE;
     sound_driver = 0;
     sound_buffer_size = 32;
@@ -299,7 +299,7 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "num_threads", num_threads);
     xml_out_int (xml, "default_esc_behavior", default_esc_behavior);
     xml_out_int (xml, "prevent_screensaver", prevent_screensaver);
-    if (default_esc_behavior)
+    if (default_esc_behavior != ESC_TOGGLE_MENUBAR)
         xml_out_int (xml, "fullscreen", 0);
     else
         xml_out_int (xml, "fullscreen", fullscreen);

@@ -1443,6 +1443,7 @@ Snes9xWindow::enter_fullscreen_mode (void)
             GdkScreen *screen = gtk_widget_get_screen (window);
             GdkWindow *root = gdk_screen_get_root_window (screen);
 
+            gdk_display_sync (gdk_display_get_default ());
             XRRSetScreenConfig (display,
                                 config->xrr_config,
                                 GDK_WINDOW_XWINDOW (root),

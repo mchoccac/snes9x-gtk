@@ -1453,17 +1453,19 @@ Snes9xWindow::enter_fullscreen_mode (void)
     }
 #endif
 
+    /* Make sure everything is done synchronously */
 #ifdef USE_XRANDR
     if (config->change_display_resolution)
     {
+        gdk_display_sync (gdk_display_get_default ());
         gtk_widget_show (window);
     }
 #endif
-
+    
     gdk_display_sync (gdk_display_get_default ());
-
     gtk_window_fullscreen (GTK_WINDOW (window));
 
+    gdk_display_sync (gdk_display_get_default ());
     gdk_window_raise (GTK_WIDGET (window)->window);
 
     S9xSoundStart ();

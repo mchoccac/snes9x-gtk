@@ -420,7 +420,14 @@ S9xSyncSpeedFinish (void)
     if (!syncing)
         return;
 
-    while (!S9xSyncSound ()) {} ;
+    if (Settings.SoundSync)
+    {
+        while (!S9xSyncSound ())
+        {
+            usleep (10);
+        }
+        return;
+    }
 
     gettimeofday (&now, NULL);
 
@@ -506,18 +513,27 @@ S9xSyncSpeed (void)
         ++next_frame_time.tv_usec;
     }
 
-    if (Settings.SkipFrames == AUTO_FRAMERATE)
+    if (Settings.SkipFrames == AUTO_FRAMERATE && !Settings.SoundSync)
     {
         lag = (now.tv_sec  - next_frame_time.tv_sec) * 1000000 +
                now.tv_usec - next_frame_time.tv_usec;
 
         /* We compensate for the frame time by a frame in case it's just a CPU
          * discrepancy. We can recover lost time in the next frame anyway. */
-        if (lag > (int) (Settings.FrameTime / 2))
+        if (lag > (int) (Settings.FrameTime))
         {
+            if (lag > (int) Settings.FrameTime * 10)
+            {
+                /* Running way too slowly */
+                next_frame_time = now;
+                IPPU.RenderThisFrame = 1;
+                IPPU.SkippedFrames = 0;
+            }
+
             IPPU.RenderThisFrame = 0;
             IPPU.SkippedFrames++;
         }
+
         else
         {
             IPPU.RenderThisFrame = 1;
@@ -526,7 +542,7 @@ S9xSyncSpeed (void)
     }
     else
     {
-        limit = Settings.SkipFrames + 1;
+        limit = Settings.SoundSync ? 1 : Settings.SkipFrames + 1;
 
         IPPU.SkippedFrames++;
         IPPU.RenderThisFrame = 0;

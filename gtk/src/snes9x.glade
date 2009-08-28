@@ -5,12 +5,12 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_EXPOSURE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="key_release_event" handler="main_window_key_release_event"/>
+    <signal name="window_state_event" handler="main_window_state_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
     <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
+    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <signal name="delete_event" handler="main_window_delete_event"/>
-    <signal name="window_state_event" handler="main_window_state_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -1874,11 +1874,11 @@ RGB</property>
                                     </child>
                                     <child>
                                       <widget class="GtkCheckButton" id="sync_sound">
-                                        <property name="label" translatable="yes">Sync sound</property>
+                                        <property name="label" translatable="yes">Synchronize with sound</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
-                                        <property name="tooltip" translatable="yes">Wait to ensure all sound is played</property>
+                                        <property name="tooltip" translatable="yes">Base emulation speed on the rate sound is output</property>
                                         <property name="draw_indicator">True</property>
                                       </widget>
                                       <packing>

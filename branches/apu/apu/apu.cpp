@@ -507,13 +507,13 @@ S9xAPUGetClock (int cpucycles)
 int
 S9xAPUReadPort (int port)
 {
-    return spc_core->read_port (0, port);
+    return spc_core->read_port (S9xAPUGetClock (CPU.Cycles), port);
 }
 
 void
 S9xAPUWritePort (int port, int byte)
 {
-    spc_core->write_port (0, port, byte);
+    spc_core->write_port (S9xAPUGetClock (CPU.Cycles), port, byte);
 }
 
 void

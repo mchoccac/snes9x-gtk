@@ -521,7 +521,6 @@ void S9xDoHEventProcessing (void)
 		#endif
 			S9xCheckMissingHTimerHalt(Timings.WRAMRefreshPos, SNES_WRAM_REFRESH_CYCLES);
 			CPU.Cycles += SNES_WRAM_REFRESH_CYCLES;
-			S9xAPUExecute();
 
 			S9xCheckMissingHTimerPosition(Timings.WRAMRefreshPos);
 

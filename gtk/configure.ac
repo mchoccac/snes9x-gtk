@@ -10,9 +10,9 @@ AC_PROG_RANLIB
 AC_LANG_CPLUSPLUS
 
 AC_PROG_INSTALL
-AM_INIT_AUTOMAKE([subdir-objects silent-rules])
+AM_INIT_AUTOMAKE([subdir-objects])
 
-AM_SILENT_RULES([yes])
+m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AM_PROG_CC_C_O
 AC_PROG_INTLTOOL([0.23])
@@ -25,7 +25,6 @@ AM_GLIB_GNU_GETTEXT
 
 snes9xlocaledir='${prefix}/${DATADIRNAME}/locale'
 AC_SUBST(snes9xlocaledir)
-
 
 AC_ARG_WITH(debug,
   [AS_HELP_STRING([--with(out)-debug],

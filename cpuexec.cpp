@@ -289,8 +289,6 @@ void S9xMainLoop (void)
 		Registers.PCw++;
 		(*Opcodes[Op].S9xOpcode)();
 
-		/* S9xAPUExecute(); */
-
 		if (SA1.Executing)
 			S9xSA1MainLoop();
 

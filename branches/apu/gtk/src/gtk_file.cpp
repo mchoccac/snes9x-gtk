@@ -163,7 +163,10 @@ S9xGetDirectory (enum s9x_getdirtype dirtype)
 
             if (loc == NULL)
             {
-                getcwd (path, PATH_MAX + 1);
+                if (getcwd (path, PATH_MAX + 1) == NULL)
+                {
+                    strcpy (path, getenv ("HOME"));
+                }
             }
             else
             {
@@ -283,8 +286,10 @@ S9xOpenSnapshotFile (const char *fname, bool8 read_only, STREAM *file)
     {
         if ((*file = OPEN_STREAM (filename, "wb")))
         {
-            chown (filename, getuid (), getgid ());
-            return (TRUE);
+            if (chown (filename, getuid (), getgid ()) < 0)
+                return (FALSE);
+            else
+                return (TRUE);
         }
     }
 #else

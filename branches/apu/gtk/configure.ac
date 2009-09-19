@@ -381,7 +381,7 @@ AC_CHECK_HEADER(stdint.h, [
 
 dnl Check SAR
 
-AC_DEFUN(AC_MY_CHECK_SAR,
+AC_DEFUN([AC_MY_CHECK_SAR],
 [
 AC_MSG_CHECKING([if rightshift $1 is arithmetic])
 AC_CACHE_VAL(ac_cv_my_sar_$1,

@@ -1,9 +1,3 @@
-PACKAGE="snes9x-gtk"
-VERSION="1.51"
-
-AC_SUBST(PACKAGE)
-AC_SUBST(VERSION)
-
 AC_INIT([snes9x-gtk], 1.51)
 dnl Set CFLAGS, CXXFLAGS to something 
 dnl before doing AC_PROG_CC, AC_PROG_CXX to avoid default -g
@@ -16,7 +10,9 @@ AC_PROG_RANLIB
 AC_LANG_CPLUSPLUS
 
 AC_PROG_INSTALL
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
+
+m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AM_PROG_CC_C_O
 AC_PROG_INTLTOOL([0.23])
@@ -386,7 +382,7 @@ AC_CHECK_HEADER(stdint.h, [
 
 dnl Check SAR
 
-AC_DEFUN(AC_MY_CHECK_SAR,
+AC_DEFUN([AC_MY_CHECK_SAR],
 [
 AC_MSG_CHECKING([if rightshift $1 is arithmetic])
 AC_CACHE_VAL(ac_cv_my_sar_$1,

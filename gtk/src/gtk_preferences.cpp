@@ -461,9 +461,6 @@ Snes9xPreferences::move_settings_to_dialog (void)
     num_sound_drivers++;
 #endif
 
-#if !defined(USE_PORTAUDIO) || !defined(USE_OSS)
-    config->sound_driver = 0;
-#endif
     if (config->sound_driver >= num_sound_drivers)
         config->sound_driver = 0;
 

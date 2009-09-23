@@ -1,13 +1,9 @@
 [Desktop Entry]
-Version=1.51
-Encoding=UTF-8
 Name=Snes9x
 Comment=Super NES Emulator
 Type=Application
-Categories=Application;Game;Games
+Categories=Game;Emulator;
 MimeType=application/x-snes-rom;
-FilePattern=smc;fig;SMC;FIG;sfc;SFC;
 Exec=snes9x-gtk %F
 TryExec=snes9x-gtk
 Icon=snes9x
-GenericName[en_US]=

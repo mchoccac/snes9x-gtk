@@ -12,24 +12,17 @@ Requirements / Build Notes:
   variety of multiplatform libraries for compatibility. The following
   are the required libraries for this port:
 
-    Library             Required Version
+    Library                Required Version
     ------------------------------------
-    GTK+                >= 2.10 and dependencies
-    libxml2             >= 2.0
-    portaudio           The portaudio2 ("unstable") branch >= 0.19
-    
-  If OpenGL support is desired (and it is _highly_ recommended), you also need:
-
-    Library             Required Version
-    ------------------------------------
-    gtkglext            >= 1.0
+    GTK+                   >= 2.10 and dependencies
+    libxml2                >= 2.0
+    One or more of portaudio, SDL or OSS
 
   And for joystick support:
 
     Library             Required Version
     ------------------------------------    
     SDL                 >= 1.2.12
-    
 
   Building requires you run the configure script with the parameter
     --with-gtk
@@ -54,10 +47,3 @@ Joystick Support:
   Snes9x will autodetect your joystick when run. If you've used any
   calibration programs beforehand, you may need to reboot your operating
   system to undo the damage they've done.
-
-
-Known Issues:
--------------
-
-  *  Turning "Sync to VBlank" for OpenGL from on to off will be ineffective
-     until the application is restarted. This is a GLX limitation.

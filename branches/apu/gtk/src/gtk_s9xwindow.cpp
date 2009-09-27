@@ -826,6 +826,8 @@ Snes9xWindow::try_open_rom (const char *filename)
 
         S9xNoROMLoaded ();
 
+        unpause_from_focus_change ();
+
         return 1;
     }
     else

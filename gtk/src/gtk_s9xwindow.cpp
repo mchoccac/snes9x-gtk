@@ -824,6 +824,8 @@ Snes9xWindow::try_open_rom (const char *filename)
         gtk_dialog_run (GTK_DIALOG (msg));
         gtk_widget_destroy (msg);
 
+        unpause_from_focus_change ();
+
         S9xNoROMLoaded ();
 
         return 1;

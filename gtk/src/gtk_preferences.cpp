@@ -110,6 +110,8 @@ event_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
     Binding           key_binding;
     int               focus;
+    GtkNotebook       *notebook;
+    GtkToggleButton   *toggle;
     Snes9xPreferences *window = (Snes9xPreferences *) user_data;
 
     if ((focus = window->get_focused_binding ()) < 0)
@@ -118,7 +120,11 @@ event_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
     }
 
     /* Allow modifier keys to be used if page is set to the joypad bindings. */
-    if (gtk_notebook_get_current_page (GTK_NOTEBOOK (window->get_widget ("preferences_notebook"))) != 4)
+    notebook = GTK_NOTEBOOK (window->get_widget ("preferences_notebook"));
+    toggle = GTK_TOGGLE_BUTTON (window->get_widget ("use_modifiers"));
+
+    if (gtk_notebook_get_current_page (notebook) != 4 ||
+        !gtk_toggle_button_get_active (toggle))
     {
         /* Don't allow modifiers that we track to be bound */
         if (event->keyval == GDK_Control_L ||

@@ -5,15 +5,16 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_EXPOSURE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="window_state_event" handler="main_window_state_event"/>
+    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
     <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
-    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <signal name="delete_event" handler="main_window_delete_event"/>
+    <signal name="window_state_event" handler="main_window_state_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
+        <property name="orientation">vertical</property>
         <child>
           <widget class="GtkMenuBar" id="menubar">
             <property name="visible">True</property>
@@ -889,6 +890,7 @@
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox1">
         <property name="visible">True</property>
+        <property name="orientation">vertical</property>
         <child>
           <widget class="GtkAlignment" id="alignment1">
             <property name="visible">True</property>
@@ -919,6 +921,7 @@
                           <widget class="GtkVBox" id="vbox2">
                             <property name="visible">True</property>
                             <property name="border_width">5</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <widget class="GtkFrame" id="frame11">
                                 <property name="visible">True</property>
@@ -933,6 +936,7 @@
                                     <child>
                                       <widget class="GtkVBox" id="vbox3">
                                         <property name="visible">True</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">5</property>
                                         <child>
                                           <widget class="GtkCheckButton" id="full_screen_on_open">
@@ -1067,6 +1071,7 @@
                                     <child>
                                       <widget class="GtkVBox" id="vbox5">
                                         <property name="visible">True</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">5</property>
                                         <child>
                                           <widget class="GtkCheckButton" id="scale_to_fit">
@@ -1258,6 +1263,7 @@ Scanlines</property>
                                       <widget class="GtkVBox" id="vbox6">
                                         <property name="visible">True</property>
                                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                        <property name="orientation">vertical</property>
                                         <child>
                                           <widget class="GtkHBox" id="hbox6">
                                             <property name="visible">True</property>
@@ -1615,6 +1621,7 @@ RGB</property>
                                       <widget class="GtkVBox" id="vbox7">
                                         <property name="visible">True</property>
                                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">5</property>
                                         <child>
                                           <widget class="GtkComboBox" id="hw_accel">
@@ -1631,6 +1638,7 @@ RGB</property>
                                           <widget class="GtkVBox" id="opengl_frame">
                                             <property name="visible">True</property>
                                             <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                            <property name="orientation">vertical</property>
                                             <property name="spacing">5</property>
                                             <child>
                                               <widget class="GtkCheckButton" id="bilinear_filter">
@@ -1739,6 +1747,7 @@ RGB</property>
                                         <child>
                                           <widget class="GtkVBox" id="xv_frame">
                                             <property name="visible">True</property>
+                                            <property name="orientation">vertical</property>
                                             <child>
                                               <widget class="GtkCheckButton" id="force_inverted_byte_order">
                                                 <property name="label" translatable="yes">Force an inverted byte-ordering</property>
@@ -1786,6 +1795,7 @@ RGB</property>
                 <child>
                   <widget class="GtkVBox" id="vbox23">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <widget class="GtkImage" id="image2">
                         <property name="visible">True</property>
@@ -1838,6 +1848,7 @@ RGB</property>
                                   <widget class="GtkVBox" id="vbox12">
                                     <property name="visible">True</property>
                                     <property name="border_width">5</property>
+                                    <property name="orientation">vertical</property>
                                     <property name="spacing">5</property>
                                     <child>
                                       <widget class="GtkHBox" id="hbox19">
@@ -2107,6 +2118,7 @@ RGB</property>
                 <child>
                   <widget class="GtkVBox" id="vbox24">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <widget class="GtkImage" id="image3">
                         <property name="visible">True</property>
@@ -2149,6 +2161,7 @@ RGB</property>
                         <child>
                           <widget class="GtkVBox" id="vbox11">
                             <property name="visible">True</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <widget class="GtkFrame" id="frame5">
                                 <property name="visible">True</property>
@@ -2163,6 +2176,7 @@ RGB</property>
                                       <widget class="GtkVBox" id="vbox1">
                                         <property name="visible">True</property>
                                         <property name="border_width">5</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">5</property>
                                         <child>
                                           <widget class="GtkHBox" id="hbox12">
@@ -2297,6 +2311,7 @@ RGB</property>
                                       <widget class="GtkVBox" id="vbox16">
                                         <property name="visible">True</property>
                                         <property name="border_width">5</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">5</property>
                                         <child>
                                           <widget class="GtkCheckButton" id="pause_emulation_on_switch">
@@ -2375,6 +2390,7 @@ Quit Snes9x</property>
                                       <widget class="GtkVBox" id="vbox22">
                                         <property name="visible">True</property>
                                         <property name="border_width">5</property>
+                                        <property name="orientation">vertical</property>
                                         <child>
                                           <widget class="GtkCheckButton" id="prevent_screensaver">
                                             <property name="label" translatable="yes">Prevent the screensaver from activating</property>
@@ -2419,6 +2435,7 @@ Quit Snes9x</property>
                 <child>
                   <widget class="GtkVBox" id="vbox25">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <widget class="GtkImage" id="image4">
                         <property name="visible">True</property>
@@ -2450,6 +2467,7 @@ Quit Snes9x</property>
                 <child>
                   <widget class="GtkVBox" id="vbox8">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <widget class="GtkFrame" id="frame4">
                         <property name="visible">True</property>
@@ -2506,6 +2524,7 @@ Quit Snes9x</property>
                                 <child>
                                   <widget class="GtkVBox" id="vbox9">
                                     <property name="visible">True</property>
+                                    <property name="orientation">vertical</property>
                                     <child>
                                       <widget class="GtkRadioButton" id="rom_folder_radio">
                                         <property name="label" translatable="yes">ROM folder</property>
@@ -2647,6 +2666,7 @@ Quit Snes9x</property>
                 <child>
                   <widget class="GtkVBox" id="vbox28">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <widget class="GtkImage" id="image7">
                         <property name="visible">True</property>
@@ -2679,6 +2699,7 @@ Quit Snes9x</property>
                   <widget class="GtkVBox" id="vbox10">
                     <property name="visible">True</property>
                     <property name="border_width">5</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">5</property>
                     <child>
                       <widget class="GtkHBox" id="hbox10">
@@ -2718,6 +2739,7 @@ Quit Snes9x</property>
                         <child>
                           <widget class="GtkVSeparator" id="vseparator1">
                             <property name="visible">True</property>
+                            <property name="orientation">vertical</property>
                           </widget>
                           <packing>
                             <property name="expand">False</property>
@@ -2742,6 +2764,7 @@ Quit Snes9x</property>
                         <child>
                           <widget class="GtkVSeparator" id="vseparator2">
                             <property name="visible">True</property>
+                            <property name="orientation">vertical</property>
                           </widget>
                           <packing>
                             <property name="expand">False</property>
@@ -3586,6 +3609,7 @@ Quit Snes9x</property>
                             <property name="visible">True</property>
                             <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                             <property name="border_width">5</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <widget class="GtkFrame" id="frame7">
                                 <property name="visible">True</property>
@@ -3677,6 +3701,7 @@ Quit Snes9x</property>
                                         <property name="visible">True</property>
                                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                                         <property name="border_width">5</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">5</property>
                                         <child>
                                           <widget class="GtkLabel" id="calibration_label">
@@ -3785,6 +3810,7 @@ Quit Snes9x</property>
                 <child>
                   <widget class="GtkVBox" id="vbox26">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <widget class="GtkImage" id="image5">
                         <property name="visible">True</property>
@@ -3817,6 +3843,7 @@ Quit Snes9x</property>
                   <widget class="GtkVBox" id="vbox13">
                     <property name="visible">True</property>
                     <property name="border_width">5</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">5</property>
                     <child>
                       <widget class="GtkLabel" id="label101">
@@ -5510,6 +5537,7 @@ Quit Snes9x</property>
                 <child>
                   <widget class="GtkVBox" id="vbox27">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <widget class="GtkImage" id="image6">
                         <property name="visible">True</property>
@@ -5541,6 +5569,7 @@ Quit Snes9x</property>
                 <child>
                   <widget class="GtkVBox" id="vbox14">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">5</property>
                     <child>
                       <widget class="GtkAlignment" id="alignment17">
@@ -5766,6 +5795,7 @@ Quit Snes9x</property>
                 <child>
                   <widget class="GtkVBox" id="vbox29">
                     <property name="visible">True</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <widget class="GtkImage" id="image8">
                         <property name="visible">True</property>
@@ -5876,12 +5906,14 @@ Quit Snes9x</property>
       <widget class="GtkVBox" id="dialog-vbox2">
         <property name="visible">True</property>
         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
           <widget class="GtkVBox" id="vbox4">
             <property name="visible">True</property>
             <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
             <property name="border_width">5</property>
+            <property name="orientation">vertical</property>
             <property name="spacing">10</property>
             <child>
               <widget class="GtkLabel" id="current_frame_label">
@@ -5940,7 +5972,7 @@ Quit Snes9x</property>
             <property name="layout_style">end</property>
             <child>
               <widget class="GtkButton" id="button3">
-                <property name="label" translatable="yes">gtk-cancel</property>
+                <property name="label">gtk-cancel</property>
                 <property name="response_id">-6</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -5956,7 +5988,7 @@ Quit Snes9x</property>
             </child>
             <child>
               <widget class="GtkButton" id="button2">
-                <property name="label" translatable="yes">gtk-ok</property>
+                <property name="label">gtk-ok</property>
                 <property name="response_id">-5</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -5996,6 +6028,7 @@ Quit Snes9x</property>
       <widget class="GtkVBox" id="dialog-vbox3">
         <property name="visible">True</property>
         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
           <widget class="GtkHBox" id="hbox15">
@@ -6027,6 +6060,7 @@ Quit Snes9x</property>
               <widget class="GtkVBox" id="vbox15">
                 <property name="visible">True</property>
                 <property name="border_width">5</property>
+                <property name="orientation">vertical</property>
                 <property name="spacing">5</property>
                 <child>
                   <widget class="GtkLabel" id="label139">
@@ -6101,7 +6135,7 @@ Goldfinger</property>
                 </child>
                 <child>
                   <widget class="GtkButton" id="button4">
-                    <property name="label" translatable="yes">gtk-add</property>
+                    <property name="label">gtk-add</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="can_default">True</property>
@@ -6128,7 +6162,7 @@ Goldfinger</property>
                 </child>
                 <child>
                   <widget class="GtkButton" id="button5">
-                    <property name="label" translatable="yes">gtk-remove</property>
+                    <property name="label">gtk-remove</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
@@ -6161,7 +6195,7 @@ Goldfinger</property>
             <property name="layout_style">end</property>
             <child>
               <widget class="GtkButton" id="button7">
-                <property name="label" translatable="yes">gtk-close</property>
+                <property name="label">gtk-close</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
@@ -6193,11 +6227,13 @@ Goldfinger</property>
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox4">
         <property name="visible">True</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
           <widget class="GtkVBox" id="vbox18">
             <property name="visible">True</property>
             <property name="border_width">5</property>
+            <property name="orientation">vertical</property>
             <property name="spacing">5</property>
             <child>
               <widget class="GtkFrame" id="frame3">
@@ -6290,6 +6326,7 @@ Goldfinger</property>
                     <child>
                       <widget class="GtkVBox" id="vbox19">
                         <property name="visible">True</property>
+                        <property name="orientation">vertical</property>
                         <child>
                           <widget class="GtkRadioButton" id="connect_radio">
                             <property name="label" translatable="yes">Connect to another computer</property>
@@ -6407,6 +6444,7 @@ Goldfinger</property>
                       <widget class="GtkVBox" id="vbox20">
                         <property name="visible">True</property>
                         <property name="border_width">5</property>
+                        <property name="orientation">vertical</property>
                         <property name="spacing">5</property>
                         <child>
                           <widget class="GtkCheckButton" id="sync_reset">
@@ -6543,7 +6581,7 @@ Goldfinger</property>
             <property name="layout_style">end</property>
             <child>
               <widget class="GtkButton" id="button9">
-                <property name="label" translatable="yes">gtk-cancel</property>
+                <property name="label">gtk-cancel</property>
                 <property name="response_id">-6</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -6558,7 +6596,7 @@ Goldfinger</property>
             </child>
             <child>
               <widget class="GtkButton" id="button10">
-                <property name="label" translatable="yes">gtk-connect</property>
+                <property name="label">gtk-connect</property>
                 <property name="response_id">-5</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>

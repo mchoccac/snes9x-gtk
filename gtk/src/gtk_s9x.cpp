@@ -89,7 +89,7 @@ main (int argc, char *argv[])
                                     NULL,
                                     NULL);
 
-    g_timeout_add (1000, S9xScreenSaverCheckFunc, NULL);
+    g_timeout_add (10000, S9xScreenSaverCheckFunc, NULL);
 
     S9xNoROMLoaded ();
 

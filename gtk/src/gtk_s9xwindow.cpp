@@ -2,7 +2,6 @@
 #include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
 #include <glade/glade-build.h>
-#include <X11/extensions/XTest.h>
 
 #ifdef USE_XV
 #include <X11/extensions/XShm.h>
@@ -1383,10 +1382,7 @@ Snes9xWindow::reset_screensaver (void)
     if (!focused)
         return;
 
-    Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
-
-    XTestFakeKeyEvent (display, 255, True, 0);
-    XTestFakeKeyEvent (display, 255, False, 0);
+    /* XTest method breaks in new X.org */
 
     config->screensaver_needs_reset = FALSE;
 

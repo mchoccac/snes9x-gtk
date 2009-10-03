@@ -5,12 +5,12 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_EXPOSURE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="key_release_event" handler="main_window_key_release_event"/>
+    <signal name="window_state_event" handler="main_window_state_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
     <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
+    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <signal name="delete_event" handler="main_window_delete_event"/>
-    <signal name="window_state_event" handler="main_window_state_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -2819,6 +2819,22 @@ Quit Snes9x</property>
                       </packing>
                     </child>
                     <child>
+                      <widget class="GtkCheckButton" id="use_modifiers">
+                        <property name="label" translatable="yes">Use modifier keys (CTRL, SHIFT, ALT) directly</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">False</property>
+                        <property name="tooltip" translatable="yes">Allow using modifier keys as independent keys instead of modifiers</property>
+                        <property name="active">True</property>
+                        <property name="draw_indicator">True</property>
+                      </widget>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
                       <widget class="GtkNotebook" id="notebook2">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
@@ -3785,7 +3801,7 @@ Quit Snes9x</property>
                         </child>
                       </widget>
                       <packing>
-                        <property name="position">1</property>
+                        <property name="position">2</property>
                       </packing>
                     </child>
                     <child>
@@ -3799,7 +3815,7 @@ Quit Snes9x</property>
                       </widget>
                       <packing>
                         <property name="expand">False</property>
-                        <property name="position">2</property>
+                        <property name="position">3</property>
                       </packing>
                     </child>
                   </widget>

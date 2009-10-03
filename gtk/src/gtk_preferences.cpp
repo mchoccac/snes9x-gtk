@@ -117,15 +117,19 @@ event_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
         return FALSE; /* Don't keep key for ourselves */
     }
 
-    /* Don't allow modifiers that we track to be bound */
-    if (event->keyval == GDK_Control_L ||
-        event->keyval == GDK_Control_R ||
-        event->keyval == GDK_Shift_L   ||
-        event->keyval == GDK_Shift_R   ||
-        event->keyval == GDK_Alt_L     ||
-        event->keyval == GDK_Alt_R)
+    /* Allow modifier keys to be used if page is set to the joypad bindings. */
+    if (gtk_notebook_get_current_page (GTK_NOTEBOOK (window->get_widget ("preferences_notebook"))) != 4)
     {
-        return FALSE;
+        /* Don't allow modifiers that we track to be bound */
+        if (event->keyval == GDK_Control_L ||
+            event->keyval == GDK_Control_R ||
+            event->keyval == GDK_Shift_L   ||
+            event->keyval == GDK_Shift_R   ||
+            event->keyval == GDK_Alt_L     ||
+            event->keyval == GDK_Alt_R)
+        {
+            return FALSE;
+        }
     }
 
     /* Make keypress lower-case */

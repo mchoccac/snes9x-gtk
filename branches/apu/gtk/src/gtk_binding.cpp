@@ -22,6 +22,17 @@ Binding::Binding (GdkEventKey *event)
     else
         value = BINDING_KEY | (event->keyval & BINDING_KEY_MASK);
 
+    /* Strip modifiers from modifiers */
+    if (event->keyval == GDK_Control_L ||
+        event->keyval == GDK_Control_R ||
+        event->keyval == GDK_Shift_L   ||
+        event->keyval == GDK_Shift_R   ||
+        event->keyval == GDK_Alt_L     ||
+        event->keyval == GDK_Alt_R)
+    {
+        return;
+    }
+
     if (event->state & GDK_SHIFT_MASK)
         value |= BINDING_SHIFT;
 

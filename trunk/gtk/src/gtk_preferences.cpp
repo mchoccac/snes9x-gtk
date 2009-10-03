@@ -124,7 +124,7 @@ event_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
     toggle = GTK_TOGGLE_BUTTON (window->get_widget ("use_modifiers"));
 
     if (gtk_notebook_get_current_page (notebook) != 4 ||
-        !gtk_toggle_button_toggled (toggle))
+        !gtk_toggle_button_get_active (toggle))
     {
         /* Don't allow modifiers that we track to be bound */
         if (event->keyval == GDK_Control_L ||
@@ -138,14 +138,7 @@ event_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
         }
     }
 
-    /* Make keypress lower-case */
-    if (event->keyval >= GDK_A && event->keyval <= GDK_Z)
-        event->keyval = event->keyval - GDK_A + GDK_a;
-
-    key_binding = Binding (event->keyval,
-                           event->state & GDK_CONTROL_MASK,
-                           event->state & GDK_SHIFT_MASK,
-                           event->state & GDK_MOD1_MASK);
+    key_binding = Binding (event);
 
     /* Allows ESC key to clear the key binding */
     if (event->keyval == GDK_Escape)

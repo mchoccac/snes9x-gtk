@@ -2,7 +2,6 @@
 #include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
 #include <glade/glade-build.h>
-#include <X11/extensions/XTest.h>
 
 #ifdef USE_XV
 #include <X11/extensions/XShm.h>
@@ -179,6 +178,7 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
     static unsigned int keyval  = 0;
     static GdkEventType type    = GDK_NOTHING;
     Binding             b;
+    s9xcommand_t        cmd;
 
     /* Ignore multiple identical keypresses to discard repeating keys */
     if (event->keyval == keyval && event->type == type)
@@ -197,12 +197,17 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
             window->toggle_ui ();
     }
 
-    b = Binding (event);
-
-    S9xReportButton (b.hex (), (event->type == GDK_KEY_PRESS));
-
     keyval = event->keyval;
     type = event->type;
+
+    b = Binding (event);
+
+    /* If no mapping for modifier version exists, try non-modifier */
+    cmd = S9xGetMapping (b.hex ());
+    if (cmd.type == S9xNoMapping)
+        b = Binding (event->keyval, false, false, false);
+
+    S9xReportButton (b.hex (), (event->type == GDK_KEY_PRESS));
 
     return FALSE; /* Pass the key to GTK */
 }
@@ -1382,11 +1387,6 @@ Snes9xWindow::reset_screensaver (void)
 {
     if (!focused)
         return;
-
-    Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
-
-    XTestFakeKeyEvent (display, 255, True, 0);
-    XTestFakeKeyEvent (display, 255, False, 0);
 
     config->screensaver_needs_reset = FALSE;
 

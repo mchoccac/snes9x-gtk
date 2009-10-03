@@ -178,6 +178,7 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
     static unsigned int keyval  = 0;
     static GdkEventType type    = GDK_NOTHING;
     Binding             b;
+    s9xcommand_t        cmd;
 
     /* Ignore multiple identical keypresses to discard repeating keys */
     if (event->keyval == keyval && event->type == type)
@@ -196,12 +197,17 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
             window->toggle_ui ();
     }
 
-    b = Binding (event);
-
-    S9xReportButton (b.hex (), (event->type == GDK_KEY_PRESS));
-
     keyval = event->keyval;
     type = event->type;
+
+    b = Binding (event);
+
+    /* If no mapping for modifier version exists, try non-modifier */
+    cmd = S9xGetMapping (b.hex ());
+    if (cmd.type == S9xNoMapping)
+        b = Binding (event->keyval, false, false, false);
+
+    S9xReportButton (b.hex (), (event->type == GDK_KEY_PRESS));
 
     return FALSE; /* Pass the key to GTK */
 }

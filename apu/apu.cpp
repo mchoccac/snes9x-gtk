@@ -338,8 +338,6 @@ S9xGetSampleCount (void)
 {
     int samples = spc::buffer->space_filled () >> 1;
 
-    samples >>= (so.stereo ? 0 : 1);
-
     samples *= so.playback_rate;
     samples /= so.input_rate;
 
@@ -419,7 +417,7 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
             spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
             spc::shrink_buffer  = new unsigned char[spc::buffer_size * 2];
 
-            spc::buffer = new ring_buffer (spc::buffer_size);
+            spc::buffer = new ring_buffer (spc::buffer_size * 2);
 
             spc::resampler->buffer_size (spc::buffer_size);
 
@@ -483,10 +481,10 @@ S9xInitAPU (void)
     spc_core->init ();
     spc_core->init_rom (APUROM);
 
-    spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
-    spc::shrink_buffer = new unsigned char[spc::buffer_size * 2];
+    spc::landing_buffer = new unsigned char[spc::buffer_size];
+    spc::shrink_buffer = new unsigned char[spc::buffer_size];
 
-    spc::buffer = new ring_buffer (spc::buffer_size);
+    spc::buffer = new ring_buffer (spc::buffer_size * 2);
 
     spc::resampler = new Resampler (spc::buffer_size);
     spc::resampler->buffer_size (spc::buffer_size);

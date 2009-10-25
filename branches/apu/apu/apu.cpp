@@ -201,10 +201,11 @@ namespace spc
 
     static Resampler *resampler = NULL;
 
-    static int reference_time;
-    static double clock_skew;
+    static int32 reference_time;
+    static uint32 remainder;
 
-    static double timing_hack_speedup = 1.0;
+    static const int32 timing_hack_numerator   = SNES_SPC::tempo_unit;
+    static int32       timing_hack_denominator = SNES_SPC::tempo_unit;
 
     static int sound_in_sync = 1;
 }
@@ -449,7 +450,7 @@ S9xSetPlaybackRate (uint32 playback_rate)
         so.playback_rate = playback_rate;
     }
 
-    spc::resampler->time_ratio (((double) so.input_rate) * spc::timing_hack_speedup / ((double) so.playback_rate));
+    spc::resampler->time_ratio (((double) so.input_rate) * (spc::timing_hack_numerator / spc::timing_hack_denominator) / ((double) so.playback_rate));
 
     delete[] spc::shrink_buffer;
     spc::shrink_buffer  = new unsigned char[spc::buffer_size * so.playback_rate / so.input_rate + 16];
@@ -495,13 +496,26 @@ S9xInitAPU (void)
     return TRUE;
 }
 
-double
+static inline int
 S9xAPUGetClock (int cpucycles)
 {
     if (Settings.PAL)
-        return (CPU_CLOCK_TO_APU_CLOCK_PAL (cpucycles - spc::reference_time) * spc::timing_hack_speedup + spc::clock_skew);
+        return floor ((double) APU_NUMERATOR_PAL   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder) /
+                              (APU_DENOMINATOR_PAL * spc::timing_hack_denominator);
     else
-        return (CPU_CLOCK_TO_APU_CLOCK_NTSC (cpucycles - spc::reference_time) * spc::timing_hack_speedup + spc::clock_skew);
+        return (APU_NUMERATOR_NTSC   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder) /
+               (APU_DENOMINATOR_NTSC * spc::timing_hack_denominator);
+}
+
+static inline int
+S9xAPUGetClockRemainder (int cpucycles)
+{
+    if (Settings.PAL)
+        return fmod ((double) APU_NUMERATOR_PAL   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder,
+                              APU_DENOMINATOR_PAL * spc::timing_hack_denominator);
+    else
+        return (APU_NUMERATOR_NTSC   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder) %
+               (APU_DENOMINATOR_NTSC * spc::timing_hack_denominator);
 }
 
 int
@@ -528,14 +542,11 @@ void
 S9xAPUExecute (void)
 {
     /* Accumulate partial APU cycles */
-    double desired_clock = S9xAPUGetClock (CPU.Cycles);
-    int attained_clock = (int) desired_clock;
+    spc_core->end_frame (S9xAPUGetClock (CPU.Cycles));
 
-    spc::clock_skew = desired_clock - (double) attained_clock;
+    spc::remainder = S9xAPUGetClockRemainder (CPU.Cycles);
 
     S9xAPUSetReferenceTime (CPU.Cycles);
-
-    spc_core->end_frame (attained_clock);
 }
 
 void
@@ -556,7 +567,7 @@ S9xAPUTimingSetSpeedup (int ticks)
 
     spc_core->set_tempo (SNES_SPC::tempo_unit - ticks);
 
-    spc::timing_hack_speedup = (double) SNES_SPC::tempo_unit / (SNES_SPC::tempo_unit - ticks);
+    spc::timing_hack_denominator = SNES_SPC::tempo_unit - ticks;
 
     S9xSetPlaybackRate (so.playback_rate);
 
@@ -588,7 +599,7 @@ S9xResetAPU (void)
 {
     so.mute_sound = FALSE;
     spc::reference_time = 0;
-    spc::clock_skew = 0;
+    spc::remainder = 0;
     so.sound_switch = 0;
     spc_core->reset ();
     spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
@@ -623,12 +634,9 @@ S9xAPUSaveState (unsigned char *block)
 
     spc_core->copy_state (&ptr, from_apu_to_state);
 
-    memcpy (ptr, &(spc::reference_time), sizeof (int));
-
+    SET_LE32 (ptr, spc::reference_time);
     ptr += sizeof (int);
-
-    memcpy (ptr, &(spc::clock_skew), sizeof (double));
-
+    SET_LE32 (ptr, spc::remainder);
 }
 
 void
@@ -639,10 +647,8 @@ S9xAPULoadState (unsigned char *block)
 
     spc_core->copy_state (&ptr, to_apu_from_state);
 
-    memcpy (&(spc::reference_time), ptr, sizeof (int));
-
+    spc::reference_time = GET_LE32 (ptr);
     ptr += sizeof (int);
-
-    memcpy (&(spc::clock_skew), ptr, sizeof (double));
+    spc::remainder = GET_LE32 (ptr);
 }
 

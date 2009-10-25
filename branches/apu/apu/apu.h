@@ -162,6 +162,7 @@
 #ifndef _APU_H_
 #define _APU_H_
 
+#include "../snes9x.h"
 #include "SNES_SPC.h"
 
 typedef struct
@@ -192,10 +193,12 @@ extern SoundStatus so;
 
 typedef void (*samples_available_callback) (void *);
 
-#define CPU_CLOCK_TO_APU_CLOCK_NTSC(cpuclock) (((cpuclock) * 1024000.0) / 21477272.0)
-#define CPU_CLOCK_TO_APU_CLOCK_PAL(cpuclock) (((cpuclock) * 1024000.0) / 21281370.0)
+#define APU_NUMERATOR_NTSC 5632
+#define APU_DENOMINATOR_NTSC 118125
+#define APU_NUMERATOR_PAL 102400
+#define APU_DENOMINATOR_PAL 2128137
 
-#define SPC_SAVE_STATE_BLOCK_SIZE (SNES_SPC::state_size + sizeof (int) + sizeof (double))
+#define SPC_SAVE_STATE_BLOCK_SIZE (SNES_SPC::state_size + 8)
 
 bool8 S9xInitAPU (void);
 void S9xDeinitAPU (void);
@@ -211,7 +214,6 @@ bool8 S9xOpenSoundDevice (int, bool8, int);
 void S9xAPUTimingSetSpeedup (int ticks);
 
 void S9xAPUEndScanline (void);
-double S9xAPUGetClock (int cpucycles);
 void S9xAPUExecute (void);
 void S9xAPUSetReferenceTime (int cpucycles);
 

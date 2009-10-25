@@ -481,8 +481,8 @@ S9xInitAPU (void)
     spc_core->init ();
     spc_core->init_rom (APUROM);
 
-    spc::landing_buffer = new unsigned char[spc::buffer_size];
-    spc::shrink_buffer = new unsigned char[spc::buffer_size];
+    spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
+    spc::shrink_buffer = new unsigned char[spc::buffer_size * 2];
 
     spc::buffer = new ring_buffer (spc::buffer_size * 2);
 

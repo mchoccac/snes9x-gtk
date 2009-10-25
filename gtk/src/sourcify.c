@@ -32,23 +32,24 @@ main (int argc,
              "int %s_size = %d;\n\n", 
              argv[3], 
              (int) file_info.st_size);
-    fprintf (outfile, "char %s [] = \n{\n    ", argv[3]);
+    fprintf (outfile, "char %s [] = \n{\n  ", argv[3]);
     
     counter = 0;
     
     while (fread (&inchar, 1, 1, infile))
     {
-        if (counter >= 14)
+        if (counter >= 32)
         {
             counter = 0;
-            fprintf (outfile, "\n    ");
+            fprintf (outfile, "\n  ");
         }
         
-        fprintf (outfile, "%d, ", inchar);
+        fprintf (outfile, "%d,", inchar);
         counter++;
     }
     
-    fseek (outfile, -2, SEEK_CUR);
+    /* Erase extra "," */
+    fseek (outfile, -1, SEEK_CUR);
     
     fprintf (outfile, "\n};\n");
     

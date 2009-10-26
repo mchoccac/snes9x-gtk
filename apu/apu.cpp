@@ -389,9 +389,10 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
         {
             spc::buffer_size = buffer_size;
 
-            if (spc::buffer_size < 4096)
+            /* 32 ms latency is generally a good target */
+            if (spc::buffer_size < 8192)
             {
-                spc::buffer_size = 4096;
+                spc::buffer_size = 8192;
             }
 
             delete[] spc::landing_buffer;
@@ -400,7 +401,7 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
             spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
             spc::shrink_buffer  = new unsigned char[spc::buffer_size * 2];
 
-            spc::resampler->buffer_size (spc::buffer_size * 2);
+            spc::resampler->resize (spc::buffer_size);
 
             spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
                                   spc::buffer_size);
@@ -469,7 +470,7 @@ S9xInitAPU (void)
     spc::shrink_buffer = new unsigned char[spc::buffer_size * 2];
 
     spc::resampler = new Resampler (spc::buffer_size);
-    spc::resampler->buffer_size (spc::buffer_size);
+    spc::resampler->resize (spc::buffer_size);
 
     so.input_rate = 32000;
 

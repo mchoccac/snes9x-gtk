@@ -293,7 +293,7 @@ S9xIdleFunc (gpointer data)
 
     if (Settings.Paused)
     {
-        S9xSetSoundMute (TRUE);
+        S9xSetSoundMute (gui_config->mute_sound);
         S9xSoundStop ();
 
 #ifdef USE_JOYSTICK

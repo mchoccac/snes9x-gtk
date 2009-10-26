@@ -205,6 +205,7 @@ namespace spc
     static int32       timing_hack_denominator = SNES_SPC::tempo_unit;
 
     static int sound_in_sync = 1;
+    static int sound_enabled = 0;
 }
 
 SoundStatus so;
@@ -330,7 +331,7 @@ S9xGetSampleCount (void)
 void
 S9xFinalizeSamples (void)
 {
-    if (!spc::resampler->push ((short *) spc::landing_buffer, spc_core->sample_count ()))
+    if (!so.mute_sound && Settings.APUEnabled && !spc::resampler->push ((short *) spc::landing_buffer, spc_core->sample_count ()))
     {
         spc::sound_in_sync = 0;
 
@@ -409,9 +410,7 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
 
     S9xSetPlaybackRate (so.playback_rate);
 
-    if (!S9xOpenSoundDevice (mode, so.stereo, spc::buffer_size))
-        so.mute_sound = TRUE;
-
+    spc::sound_enabled = S9xOpenSoundDevice (mode, so.stereo, spc::buffer_size);
 
     return 1;
 }
@@ -455,9 +454,13 @@ S9xSetSoundControl (uint8 sound_switch)
 bool8
 S9xSetSoundMute (bool8 mute)
 {
-    so.mute_sound = mute;
+    bool8 old = so.mute_sound;
 
-    return FALSE;
+    so.mute_sound = mute;
+    if (!spc::sound_enabled)
+        so.mute_sound = TRUE;
+
+    return old;
 }
 
 bool8
@@ -576,7 +579,6 @@ S9xDeinitAPU (void)
 void
 S9xResetAPU (void)
 {
-    so.mute_sound = FALSE;
     spc::reference_time = 0;
     spc::remainder = 0;
     so.sound_switch = 0;

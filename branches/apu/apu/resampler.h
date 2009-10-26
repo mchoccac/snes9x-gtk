@@ -1,5 +1,4 @@
-/* Simple resampler based on bsnes's ruby audio library, but with the same
- * interface as Blargg's Game_Music_Emu Fir_Resampler */
+/* Simple resampler based on bsnes's ruby audio library */
 
 #ifndef __RESAMPLER_H
 #define __RESAMPLER_H
@@ -59,7 +58,7 @@ class Resampler : ring_buffer
         void
         time_ratio (double ratio)
         {
-            this->r_step = ratio;
+            r_step = ratio;
             clear ();
         }
 
@@ -73,14 +72,14 @@ class Resampler : ring_buffer
         }
 
         void
-        read (short *data, int size)
+        read (short *data, int num_samples)
         {
-            int i_position = ring_buffer::start >> 1;
-            short *internal_buffer = (short *) ring_buffer::buffer;
+            int i_position = start >> 1;
+            short *internal_buffer = (short *) buffer;
             int o_position = 0;
             int consumed = 0;
 
-            while (o_position < size && consumed < ring_buffer::buffer_size)
+            while (o_position < num_samples && consumed < buffer_size)
             {
                 int s_left = internal_buffer[i_position];
                 int s_right = internal_buffer[i_position + 1];
@@ -91,7 +90,7 @@ class Resampler : ring_buffer
                     data[o_position + 1] = (short) s_right;
 
                     o_position += 2;
-                    i_position = (i_position + 2) % (ring_buffer::buffer_size >> 1);
+                    i_position = (i_position + 2) % (buffer_size >> 1);
                     consumed += 2;
 
                     continue;
@@ -107,7 +106,7 @@ class Resampler : ring_buffer
                 r_right[2] = r_right[3];
                 r_right[3] = s_right;
 
-                while (r_frac <= 1.0 && o_position < size)
+                while (r_frac <= 1.0 && o_position < num_samples)
                 {
                     data[o_position]     = short_clamp (hermite (r_frac, r_left [0], r_left [1], r_left [2], r_left [3]));
                     data[o_position + 1] = short_clamp (hermite (r_frac, r_right[0], r_right[1], r_right[2], r_right[3]));
@@ -120,22 +119,22 @@ class Resampler : ring_buffer
                 if (r_frac > 1.0)
                 {
                     r_frac -= 1.0;
-                    i_position = (i_position + 2) % (ring_buffer::buffer_size >> 1);
+                    i_position = (i_position + 2) % (buffer_size >> 1);
                     consumed += 2;
                 }
             }
 
-            ring_buffer::size -= consumed << 1;
-            ring_buffer::start = (ring_buffer::start + (consumed << 1)) % ring_buffer::buffer_size;
+            size -= consumed << 1;
+            start = (start + (consumed << 1)) % buffer_size;
         }
 
         bool
-        push (short *src, int size)
+        push (short *src, int num_samples)
         {
-            if (max_write () < size)
+            if (max_write () < num_samples)
                 return false;
 
-            ring_buffer::push ((unsigned char *) src, size << 1);
+            ring_buffer::push ((unsigned char *) src, num_samples << 1);
 
             return true;
         }
@@ -143,13 +142,13 @@ class Resampler : ring_buffer
         int
         max_write (void)
         {
-            return ring_buffer::space_empty () >> 1;
+            return space_empty () >> 1;
         }
 
         void
-        buffer_size (int size)
+        resize (int num_samples)
         {
-            ring_buffer::resize (size << 1);
+            ring_buffer::resize (num_samples << 1);
         }
 
         int

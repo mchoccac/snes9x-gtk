@@ -163,7 +163,6 @@
 #include "apu.h"
 #include "display.h"
 #include "resampler.h"
-#include "ring_buffer.h"
 
 #undef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -390,9 +389,9 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
             spc::buffer_size = buffer_size;
 
             /* 32 ms latency is generally a good target */
-            if (spc::buffer_size < 8192)
+            if (spc::buffer_size < 4096)
             {
-                spc::buffer_size = 8192;
+                spc::buffer_size = 4096;
             }
 
             delete[] spc::landing_buffer;
@@ -410,7 +409,9 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
 
     S9xSetPlaybackRate (so.playback_rate);
 
-    S9xOpenSoundDevice (mode, so.stereo, spc::buffer_size);
+    if (!S9xOpenSoundDevice (mode, so.stereo, spc::buffer_size))
+        so.mute_sound = TRUE;
+
 
     return 1;
 }

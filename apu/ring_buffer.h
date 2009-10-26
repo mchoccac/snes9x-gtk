@@ -10,7 +10,7 @@
 
 class ring_buffer
 {
-private:
+protected:
     int size;
     int buffer_size;
     int start;
@@ -86,6 +86,18 @@ public:
         start = 0;
         size = 0;
         memset (buffer, 0, buffer_size);
+    }
+
+    void
+    resize (int size)
+    {
+        delete[] buffer;
+        buffer_size = size;
+        buffer = new unsigned char[buffer_size];
+        memset (buffer, 0, this->buffer_size);
+
+        size = 0;
+        start = 0;
     }
 
     inline void

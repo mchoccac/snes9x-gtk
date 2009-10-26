@@ -106,6 +106,7 @@ class Resampler
                     data[o_position + 1] = (short) s_right;
 
                     o_position += 2;
+                    i_position += 2;
 
                     continue;
                 }
@@ -143,6 +144,19 @@ class Resampler
             filled -= i_position;
         }
 
+        bool
+        push (short *src, int size)
+        {
+            if (max_write () < size)
+                return false;
+
+            memcpy (buffer (), src, size * 2);
+            printf ("Pushing %d\n", size);
+            write (size);
+
+            return true;
+        }
+
         int
         max_write (void)
         {
@@ -161,16 +175,7 @@ class Resampler
         int
         avail (void)
         {
-            int size = 0;
-            double temp_pos = r_frac;
-
-            while ((temp_pos) < (filled >> 1))
-            {
-                size += 2;
-                temp_pos += r_step;
-            }
-
-            return size;
+            return (int) floor (((filled >> 1) - r_frac) / r_step) * 2;
         }
 };
 

@@ -197,8 +197,6 @@ namespace spc
     static unsigned char *landing_buffer = NULL;
     static unsigned char *shrink_buffer = NULL;
 
-    static ring_buffer *buffer = NULL;
-
     static Resampler *resampler = NULL;
 
     static int32 reference_time;
@@ -282,33 +280,27 @@ S9xMixSamples (uint8 *buffer, int sample_count)
     if (so.mute_sound)
     {
         memset (dest, 0, sample_count << 1);
+        spc::resampler->clear ();
+
+        return FALSE;
     }
 
-    else if (so.playback_rate != so.input_rate)
+    else
     {
-        int samples_to_write = MIN (spc::buffer->space_filled () >> 1,
-                                    spc::resampler->max_write ());
-        spc::buffer->pull ((unsigned char *) spc::resampler->buffer (),
-                           samples_to_write << 1);
-        spc::resampler->write (samples_to_write);
-
         if (spc::resampler->avail () >= sample_count)
         {
+            printf ("Have %d, taking %d\n", spc::resampler->avail (), sample_count);
+            fflush (stdout);
             spc::resampler->read ((short *) dest,
                                   sample_count);
+            printf ("Has %d now\n", spc::resampler->avail ());
         }
         else
         {
+            printf ("Wants %d, only have %d\n", sample_count, spc::resampler->avail ());
             memset (buffer, 0, sample_count << (so.sixteen_bit ? 1 : 0));
-            return FALSE;
+            return TRUE;
         }
-    }
-
-    else if (!spc::buffer->pull (dest, sample_count << 1))
-    {
-        memset (buffer, 0, sample_count << (so.sixteen_bit ? 1 : 0));
-
-        return FALSE;
     }
 
     if (Settings.ReverseStereo && so.stereo)
@@ -336,19 +328,16 @@ S9xMixSamples (uint8 *buffer, int sample_count)
 int
 S9xGetSampleCount (void)
 {
-    int samples = spc::buffer->space_filled () >> 1;
-
-    samples *= so.playback_rate;
-    samples /= so.input_rate;
-
-    return samples;
+    return spc::resampler->avail ();
 }
 
 void
 S9xFinalizeSamples (void)
 {
-    if (!spc::buffer->push (spc::landing_buffer, spc_core->sample_count () << 1))
+    if (!spc::resampler->push ((short *) spc::landing_buffer, spc_core->sample_count ()))
     {
+        printf ("Have %d ready, max write %d avail %d\n", spc_core->sample_count (), spc::resampler->max_write(), spc::resampler->avail ());
+
         spc::sound_in_sync = 0;
 
         if (Settings.SoundSync && !Settings.TurboMode)
@@ -358,7 +347,7 @@ S9xFinalizeSamples (void)
     spc::sound_in_sync = 1;
 
     spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
-                          spc::buffer_size);
+                          spc::buffer_size >> 1);
 
     return;
 }
@@ -412,14 +401,11 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
 
             delete[] spc::landing_buffer;
             delete[] spc::shrink_buffer;
-            delete spc::buffer;
 
             spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
             spc::shrink_buffer  = new unsigned char[spc::buffer_size * 2];
 
-            spc::buffer = new ring_buffer (spc::buffer_size * 2);
-
-            spc::resampler->buffer_size (spc::buffer_size);
+            spc::resampler->buffer_size (spc::buffer_size * 2);
 
             spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
                                   spc::buffer_size);
@@ -448,10 +434,13 @@ S9xSetPlaybackRate (uint32 playback_rate)
         so.playback_rate = playback_rate;
     }
 
-    spc::resampler->time_ratio (((double) so.input_rate) * (spc::timing_hack_numerator / spc::timing_hack_denominator) / ((double) so.playback_rate));
+    double time_ratio = (double) so.input_rate * spc::timing_hack_numerator /
+                             (so.playback_rate * spc::timing_hack_denominator);
+
+    spc::resampler->time_ratio (time_ratio);
 
     delete[] spc::shrink_buffer;
-    spc::shrink_buffer  = new unsigned char[spc::buffer_size * so.playback_rate / so.input_rate + 16];
+    spc::shrink_buffer  = new unsigned char[ceil (spc::buffer_size * time_ratio)];
 
     return;
 }
@@ -483,8 +472,6 @@ S9xInitAPU (void)
 
     spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
     spc::shrink_buffer = new unsigned char[spc::buffer_size * 2];
-
-    spc::buffer = new ring_buffer (spc::buffer_size * 2);
 
     spc::resampler = new Resampler (spc::buffer_size);
     spc::resampler->buffer_size (spc::buffer_size);
@@ -581,9 +568,6 @@ S9xDeinitAPU (void)
     delete spc::resampler;
     spc::resampler = NULL;
 
-    delete spc::buffer;
-    spc::buffer = NULL;
-
     delete[] spc::landing_buffer;
     spc::landing_buffer = NULL;
     delete[] spc::shrink_buffer;
@@ -601,11 +585,9 @@ S9xResetAPU (void)
     so.sound_switch = 0;
     spc_core->reset ();
     spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
-                          spc::buffer_size);
+                          spc::buffer_size >> 1);
 
-    spc::buffer->clear ();
     spc::resampler->clear ();
-    spc::buffer->cache_silence ();
 }
 
 /* State saving functions */

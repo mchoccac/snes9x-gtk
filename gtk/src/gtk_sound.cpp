@@ -108,7 +108,7 @@ S9xPortSoundInit (void)
     }
     else
     {
-        S9xSetSoundMute (TRUE);
+        S9xSetSoundMute (gui_config->mute_sound);
     }
 
     return;

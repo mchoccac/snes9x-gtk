@@ -289,15 +289,12 @@ S9xMixSamples (uint8 *buffer, int sample_count)
     {
         if (spc::resampler->avail () >= sample_count)
         {
-            printf ("Have %d, taking %d\n", spc::resampler->avail (), sample_count);
             fflush (stdout);
             spc::resampler->read ((short *) dest,
                                   sample_count);
-            printf ("Has %d now\n", spc::resampler->avail ());
         }
         else
         {
-            printf ("Wants %d, only have %d\n", sample_count, spc::resampler->avail ());
             memset (buffer, 0, sample_count << (so.sixteen_bit ? 1 : 0));
             return TRUE;
         }
@@ -336,8 +333,6 @@ S9xFinalizeSamples (void)
 {
     if (!spc::resampler->push ((short *) spc::landing_buffer, spc_core->sample_count ()))
     {
-        printf ("Have %d ready, max write %d avail %d\n", spc_core->sample_count (), spc::resampler->max_write(), spc::resampler->avail ());
-
         spc::sound_in_sync = 0;
 
         if (Settings.SoundSync && !Settings.TurboMode)
@@ -440,7 +435,7 @@ S9xSetPlaybackRate (uint32 playback_rate)
     spc::resampler->time_ratio (time_ratio);
 
     delete[] spc::shrink_buffer;
-    spc::shrink_buffer  = new unsigned char[ceil (spc::buffer_size * time_ratio)];
+    spc::shrink_buffer  = new unsigned char[(int) ceil (spc::buffer_size * time_ratio)];
 
     return;
 }

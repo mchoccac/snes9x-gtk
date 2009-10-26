@@ -4,6 +4,8 @@
 #ifndef __RESAMPLER_H
 #define __RESAMPLER_H
 
+#include "ring_buffer.h"
+
 #undef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
@@ -12,12 +14,9 @@
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define short_clamp(n) ((short) CLAMP((n), -32768, 32767))
 
-class Resampler
+class Resampler : ring_buffer
 {
-    private:
-        short *internal_buffer;
-        int   buffer_max;
-        int   filled;
+    protected:
 
         double r_step;
         double r_frac;
@@ -48,17 +47,13 @@ class Resampler
         }
 
     public:
-        Resampler (int num_samples)
+        Resampler (int num_samples) : ring_buffer (num_samples << 1)
         {
-            internal_buffer = new short[num_samples];
-            buffer_max = num_samples;
             r_frac = 0.0;
-            filled = 0;
         }
 
         ~Resampler ()
         {
-            delete [] internal_buffer;
         }
 
         void
@@ -71,31 +66,21 @@ class Resampler
         void
         clear (void)
         {
-            filled = 0;
+            ring_buffer::clear ();
             r_frac = 0;
             r_left [0] = r_left [1] = r_left [2] = r_left [3] = 0;
             r_right[0] = r_right[1] = r_right[2] = r_right[3] = 0;
         }
 
-        short *
-        buffer (void)
-        {
-            return internal_buffer + filled;
-        }
-
-        void
-        write (int size)
-        {
-            filled += MIN (max_write (), size);
-        }
-
         void
         read (short *data, int size)
         {
-            int i_position = 0;
+            int i_position = ring_buffer::start >> 1;
+            short *internal_buffer = (short *) ring_buffer::buffer;
             int o_position = 0;
+            int consumed = 0;
 
-            while (o_position < size && i_position < filled)
+            while (o_position < size && consumed < ring_buffer::buffer_size)
             {
                 int s_left = internal_buffer[i_position];
                 int s_right = internal_buffer[i_position + 1];
@@ -106,7 +91,8 @@ class Resampler
                     data[o_position + 1] = (short) s_right;
 
                     o_position += 2;
-                    i_position += 2;
+                    i_position = (i_position + 2) % (ring_buffer::buffer_size >> 1);
+                    consumed += 2;
 
                     continue;
                 }
@@ -134,14 +120,13 @@ class Resampler
                 if (r_frac > 1.0)
                 {
                     r_frac -= 1.0;
-                    i_position += 2;
+                    i_position = (i_position + 2) % (ring_buffer::buffer_size >> 1);
+                    consumed += 2;
                 }
             }
 
-            memmove (internal_buffer,
-                     internal_buffer + i_position,
-                     sizeof (short) * (filled - i_position));
-            filled -= i_position;
+            ring_buffer::size -= consumed << 1;
+            ring_buffer::start = (ring_buffer::start + (consumed << 1)) % ring_buffer::buffer_size;
         }
 
         bool
@@ -150,9 +135,7 @@ class Resampler
             if (max_write () < size)
                 return false;
 
-            memcpy (buffer (), src, size * 2);
-            printf ("Pushing %d\n", size);
-            write (size);
+            ring_buffer::push ((unsigned char *) src, size << 1);
 
             return true;
         }
@@ -160,22 +143,19 @@ class Resampler
         int
         max_write (void)
         {
-            return buffer_max - filled;
+            return ring_buffer::space_empty () >> 1;
         }
 
         void
         buffer_size (int size)
         {
-            delete[] internal_buffer;
-            internal_buffer = new short[size];
-            buffer_max = size;
-            clear ();
+            ring_buffer::resize (size << 1);
         }
 
         int
         avail (void)
         {
-            return (int) floor (((filled >> 1) - r_frac) / r_step) * 2;
+            return (int) floor (((size >> 2) - r_frac) / r_step) * 2;
         }
 };
 

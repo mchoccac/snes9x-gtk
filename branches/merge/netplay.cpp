@@ -721,6 +721,9 @@ bool8 S9xNPLoadROMDialog (const char *rom_name)
 #ifdef NP_DEBUG
     printf ("CLIENT: Got reply from GUI thread (%d)\n", NetPlay.Answer);
 #endif
+
+#else
+    NetPlay.Answer = TRUE;
 #endif
 
     return (NetPlay.Answer);

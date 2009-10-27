@@ -166,7 +166,7 @@
 #include "memmap.h"
 #include "cpuops.h"
 #include "dma.h"
-#include "apu.h"
+#include "apu/apu.h"
 #include "display.h"
 #include "debug.h"
 #include "missing.h"
@@ -1290,7 +1290,7 @@ static void debug_process_command (char *Line)
 		debug_line_print(String);
 	}
 
-	if (strncmp(Line, "ai", 2) == 0)
+        /* if (strncmp(Line, "ai", 2) == 0)
 	{
 		printf("APU vectors:");
 
@@ -1303,7 +1303,7 @@ static void debug_process_command (char *Line)
 		}
 
 		printf("\n");
-	}
+        } */
 
 	if (*Line == 's')
 	{
@@ -1450,7 +1450,7 @@ static void debug_process_command (char *Line)
 		printf("HC event tracing %s.\n", Settings.TraceHCEvent ? "enabled" : "disabled");
 	}
 
-	if (*Line == 'A')
+        /* if (*Line == 'A')
 	{
 		APU.Flags ^= TRACE_FLAG;
 
@@ -1466,7 +1466,7 @@ static void debug_process_command (char *Line)
 			fclose(apu_trace);
 			apu_trace = NULL;
 		}
-	}
+        } */
 
 	if (*Line == 'B')
 	{
@@ -1474,6 +1474,7 @@ static void debug_process_command (char *Line)
 		printf("Sound DSP register tracing %s.\n", Settings.TraceSoundDSP ? "enabled" : "disabled");
 	}
 
+        /*
 	if (*Line == 'x')
 		S9xPrintSoundDSPState();
 
@@ -1491,7 +1492,7 @@ static void debug_process_command (char *Line)
 			if (i % 8 == 7)
 				printf("\n");
 		}
-	}
+        } */
 
 	if (*Line == 'R')
 	{
@@ -1500,6 +1501,7 @@ static void debug_process_command (char *Line)
 		CPU.Flags |= DEBUG_MODE_FLAG;
 	}
 
+        /*
 	if (strncmp(Line, "ad", 2) == 0)
 	{
 		uint32	Count = 16;
@@ -1542,7 +1544,7 @@ static void debug_process_command (char *Line)
 	{
 		Settings.TraceDSP = !Settings.TraceDSP;
 		printf("DSP tracing %s.\n", Settings.TraceDSP ? "enabled" : "disabled");
-	}
+        } */
 
 	if (*Line == 'p')
 	{

@@ -163,15 +163,13 @@
 #include "memmap.h"
 #include "cpuops.h"
 #include "dma.h"
-#include "apu.h"
-#include "soundux.h"
 #include "fxemu.h"
 #include "snapshot.h"
+#include "apu/apu.h"
 #ifdef DEBUGGER
 #include "debug.h"
 #include "missing.h"
 #endif
-
 
 void S9xMainLoop (void)
 {
@@ -291,8 +289,6 @@ void S9xMainLoop (void)
 		Registers.PCw++;
 		(*Opcodes[Op].S9xOpcode)();
 
-		S9xAPUExecute();
-
 		if (SA1.Executing)
 			S9xSA1MainLoop();
 
@@ -301,8 +297,6 @@ void S9xMainLoop (void)
     }
 
     S9xPackStatus();
-    APURegisters.PC = IAPU.PC - IAPU.RAM;
-    S9xAPUPackStatus();
 
     if (CPU.Flags & SCAN_KEYS_FLAG)
     {
@@ -388,12 +382,9 @@ void S9xDoHEventProcessing (void)
 			S9xSuperFXExec();
 		#endif
 
-			if (Settings.SoundSync)
-				S9xGenerateSound();
-
+                        S9xAPUEndScanline ();
 			CPU.Cycles -= Timings.H_Max;
-			APU.NextAPUTimerPos -= (Timings.H_Max << SNES_APU_ACCURACY);
-			APU.Cycles -= (Timings.H_Max << SNES_APU_ACCURACY);
+                        S9xAPUSetReferenceTime (CPU.Cycles);
 
 			if ((Timings.NMITriggerPos != 0xffff) && (Timings.NMITriggerPos >= Timings.H_Max))
 				Timings.NMITriggerPos -= Timings.H_Max;
@@ -530,7 +521,6 @@ void S9xDoHEventProcessing (void)
 		#endif
 			S9xCheckMissingHTimerHalt(Timings.WRAMRefreshPos, SNES_WRAM_REFRESH_CYCLES);
 			CPU.Cycles += SNES_WRAM_REFRESH_CYCLES;
-			S9xAPUExecute();
 
 			S9xCheckMissingHTimerPosition(Timings.WRAMRefreshPos);
 

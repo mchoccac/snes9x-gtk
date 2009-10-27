@@ -162,7 +162,7 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "dma.h"
-#include "apu.h"
+#include "apu/apu.h"
 #include "fxemu.h"
 #include "sdd1.h"
 #include "srtc.h"
@@ -481,14 +481,10 @@ void S9xSetPPU (uint8 Byte, uint16 Address)
 
 	if ((Address & 0xffc0) == 0x2140)
 	{
-		// APUIO0, APUIO1, APUIO2, APUIO3
-	#ifdef SPC700_SHUTDOWN
-		IAPU.APUExecuting = Settings.APUEnabled;
-		IAPU.WaitCounter++;
-	#endif
-		S9xAPUExecute();
-		IAPU.RAM[(Address & 3) + 0xf4] = Byte;
-	}
+            // APUIO0, APUIO1, APUIO2, APUIO3
+            // write_port will run the APU until given clock before writing value
+            S9xAPUWritePort (Address & 3, Byte);
+        }
 	else
 	if (Address <= 0x2183)
 	{
@@ -1280,45 +1276,9 @@ uint8 S9xGetPPU (uint16 Address)
 
 	if ((Address & 0xffc0) == 0x2140)
 	{
-		// APUIO0, APUIO1, APUIO2, APUIO3
-	#ifdef SPC700_SHUTDOWN
-		IAPU.APUExecuting = Settings.APUEnabled;
-		IAPU.WaitCounter++;
-	#endif
-		S9xAPUExecute();
-		if (Settings.APUEnabled)
-			return (APU.OutPorts[Address & 3]);
-
-		switch (Settings.SoundSkipMethod)
-		{
-			case 0:
-			case 1:
-			case 3:
-				CPU.BranchSkip = TRUE;
-				break;
-			case 2:
-				break;
-		}
-
-		if ((Address & 3) < 2)
-		{
-			int r = rand();
-			if (r & 2)
-			{
-				if (r & 4)
-					return ((Address & 3) == 1 ? 0xaa : 0xbb);
-				else
-					return ((r >> 3) & 0xff);
-			}
-		}
-		else
-		{
-			int r = rand();
-			if (r & 2)
-				return ((r >> 3) & 0xff);
-		}
-
-		return (Memory.FillRAM[Address]);
+            // APUIO0, APUIO1, APUIO2, APUIO3
+            // read_port will run the APU until given APU time before reading value
+            return S9xAPUReadPort (Address & 3);
 	}
 	else
 	if (Address <= 0x2183)

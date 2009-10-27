@@ -161,7 +161,7 @@
 
 #include "snes9x.h"
 #include "memmap.h"
-#include "apu.h"
+#include "apu/apu.h"
 
 // for "Magic WDM" features
 #ifdef DEBUGGER	

@@ -162,7 +162,7 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "dma.h"
-#include "apu.h"
+#include "apu/apu.h"
 #include "fxemu.h"
 #include "sdd1.h"
 #include "srtc.h"

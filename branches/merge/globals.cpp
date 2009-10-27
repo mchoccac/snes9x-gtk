@@ -162,8 +162,7 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "dma.h"
-#include "apu.h"
-#include "soundux.h"
+#include "apu/apu.h"
 #include "fxinst.h"
 #include "fxemu.h"
 #include "srtc.h"
@@ -182,9 +181,6 @@ struct SRegisters		Registers;
 struct SPPU				PPU;
 struct InternalPPU		IPPU;
 struct SDMA				DMA[8];
-struct SAPU				APU;
-struct SIAPU			IAPU;
-struct SAPURegisters	APURegisters;
 struct STimings			Timings;
 struct SGFX				GFX;
 struct SBG				BG;
@@ -221,9 +217,6 @@ struct FxRegs_s			GSU;
 struct FxInfo_s			SuperFX;
 #endif
 CMemory					Memory;
-SSoundData				SoundData;
-SOldSoundData			OldSoundData;
-volatile SoundStatus	so;
 
 char	String[513];
 uint8	OpenBus = 0;
@@ -398,47 +391,4 @@ uint8 S9xOpLengthsM1X1[256] =
 	2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4, // D
 	2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 3, 3, 3, 4, // E
 	2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4  // F
-};
-
-// Raw SPC700 instruction cycle lengths
-int32 S9xAPUCycleLengths[256] =
-{
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  5,  4,  5,  4,  6,  8,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  6,  5,  2,  2,  4,  6,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  5,  4,  5,  4,  5,  4,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  6,  5,  2,  2,  3,  8,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  4,  4,  5,  4,  6,  6,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  4,  5,  2,  2,  4,  3,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  4,  4,  5,  4,  5,  5,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  5,  5,  2,  2,  3,  6,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  5,  4,  5,  2,  4,  5,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  5,  5,  2,  2, 12,  5,
-	3,  8,  4,  5,  3,  4,  3,  6,  2,  6,  4,  4,  5,  2,  4,  4,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  5,  5,  2,  2,  3,  4,
-	3,  8,  4,  5,  4,  5,  4,  7,  2,  5,  6,  4,  5,  2,  4,  9,
-	2,  8,  4,  5,  5,  6,  6,  7,  4,  5,  5,  5,  2,  2,  6,  3,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  4,  5,  3,  4,  3,  4,  3,
-	2,  8,  4,  5,  4,  5,  5,  6,  3,  4,  5,  4,  2,  2,  4,  3
-};
-
-// Actual data used by CPU emulation, will be scaled by APUReset routine
-// to be relative to the 65c816 instruction lengths.
-int32 S9xAPUCycles[256] =
-{
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  5,  4,  5,  4,  6,  8,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  6,  5,  2,  2,  4,  6,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  5,  4,  5,  4,  5,  4,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  6,  5,  2,  2,  3,  8,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  4,  4,  5,  4,  6,  6,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  4,  5,  2,  2,  4,  3,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  4,  4,  5,  4,  5,  5,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  5,  5,  2,  2,  3,  6,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  6,  5,  4,  5,  2,  4,  5,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  5,  5,  2,  2, 12,  5,
-	3,  8,  4,  5,  3,  4,  3,  6,  2,  6,  4,  4,  5,  2,  4,  4,
-	2,  8,  4,  5,  4,  5,  5,  6,  5,  5,  5,  5,  2,  2,  3,  4,
-	3,  8,  4,  5,  4,  5,  4,  7,  2,  5,  6,  4,  5,  2,  4,  9,
-	2,  8,  4,  5,  5,  6,  6,  7,  4,  5,  5,  5,  2,  2,  6,  3,
-	2,  8,  4,  5,  3,  4,  3,  6,  2,  4,  5,  3,  4,  3,  4,  3,
-	2,  8,  4,  5,  4,  5,  5,  6,  3,  4,  5,  4,  2,  2,  4,  3
 };

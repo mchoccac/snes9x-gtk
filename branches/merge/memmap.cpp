@@ -168,12 +168,12 @@
 #endif
 
 #ifdef JMA_SUPPORT
-#include "s9x-jma.h"
+#include "jma/s9x-jma.h"
 #endif
 
 #include "snes9x.h"
 #include "memmap.h"
-#include "apu.h"
+#include "apu/apu.h"
 #include "fxemu.h"
 #include "sdd1.h"
 #include "srtc.h"
@@ -2589,8 +2589,6 @@ void CMemory::InitROM (void)
 	Timings.NMIDMADelay  = 24;
 	Timings.IRQPendCount = 0;
 
-	IAPU.OneCycle = SNES_APU_ONE_CYCLE_SCALED;
-
 	CPU.FastROMSpeed = 0;
 	ResetSpeedMap();
 
@@ -3533,11 +3531,12 @@ void CMemory::ApplyROMFixes (void)
 
 	//// APU timing hacks :(
 #if 1
+        S9xAPUTimingSetSpeedup (0);
+
 	// This game cannot work well anyway
 	if (match_id("AVCJ"))                                      // Rendering Ranger R2
 	{
-		IAPU.OneCycle = (int32) (15.7 * (1 << SNES_APU_ACCURACY));
-		printf("APU OneCycle hack: %d\n", IAPU.OneCycle);
+            S9xAPUTimingSetSpeedup (4);
 	}
 
 	// XXX: All Quintet games?
@@ -3545,8 +3544,7 @@ void CMemory::ApplyROMFixes (void)
 		match_id("JG  ")                                    || // Illusion of Gaia
 		match_id("CQ  "))                                      // Stunt Race FX
 	{
-		IAPU.OneCycle = (int32) (13.0 * (1 << SNES_APU_ACCURACY));
-		printf("APU OneCycle hack: %d\n", IAPU.OneCycle);
+                S9xAPUTimingSetSpeedup (1);
 	}
 
 	if (match_na("SOULBLADER - 1")                          || // Soul Blader
@@ -3581,8 +3579,7 @@ void CMemory::ApplyROMFixes (void)
 		match_na("HEIWA Parlor!Mini8")                      || // Parlor mini 8
 		match_nn("SANKYO Fever! \xCC\xA8\xB0\xCA\xDE\xB0!"))   // SANKYO Fever! Fever!
 	{
-		IAPU.OneCycle = (int32) (15.0 * (1 << SNES_APU_ACCURACY));
-		printf("APU OneCycle hack: %d\n", IAPU.OneCycle);
+            S9xAPUTimingSetSpeedup (1);
 	}
 #endif
 	//// DMA/HDMA timing hacks :(
@@ -3911,14 +3908,6 @@ void CMemory::ApplyROMFixes (void)
 		SNESGameFixes.Uniracers = TRUE;
 		printf("Applied Uniracers hack.\n");
 	}
-
-	/*
-	// XXX: What's this?
-	if (match_na("\xBD\xB0\xCA\xDF\xB0\xCC\xA7\xD0\xBD\xC0")   || // Super Famista
-		match_na("\xBD\xB0\xCA\xDF\xB0\xCC\xA7\xD0\xBD\xC0 2") || // Super Famista 2
-		match_na("GANBA LEAGUE"))                                 // Hakunetsu Pro Yakyuu - Ganba League
-		SNESGameFixes.APU_OutPorts_ReturnValueFix = TRUE;
-	*/
 }
 
 // IPS

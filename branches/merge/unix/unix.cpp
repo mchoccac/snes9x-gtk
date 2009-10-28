@@ -190,8 +190,7 @@
 
 #include "snes9x.h"
 #include "memmap.h"
-#include "apu.h"
-#include "soundux.h"
+#include "apu/apu.h"
 #include "gfx.h"
 #include "snapshot.h"
 #include "controls.h"

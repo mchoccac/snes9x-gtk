@@ -185,7 +185,6 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "ppu.h"
-#include "soundux.h"
 #include "controls.h"
 #include "movie.h"
 #include "logger.h"

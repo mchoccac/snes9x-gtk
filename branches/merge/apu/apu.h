@@ -201,7 +201,7 @@ typedef void (*samples_available_callback) (void *);
 #define SPC_SAVE_STATE_BLOCK_SIZE (SNES_SPC::state_size + 8)
 
 /* Legacy defines */
-#define SOUND_BUFFER_SIZE      65536
+#define SOUND_BUFFER_SIZE      4096
 #define MAX_BUFFER_SIZE        SOUND_BUFFER_SIZE
 #define SOUND_BUFFER_SIZE_MASK (SOUND_BUFFER_SIZE - 1)
 

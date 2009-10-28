@@ -424,7 +424,7 @@ S9xSyncSpeedFinish (void)
     {
         while (!S9xSyncSound ())
         {
-            usleep (10);
+            usleep (0);
         }
         return;
     }

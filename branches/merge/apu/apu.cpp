@@ -289,12 +289,16 @@ S9xMixSamples (uint8 *buffer, int sample_count)
     {
         if (spc::resampler->avail () >= sample_count)
         {
+            printf ("Reading %d samples\n", sample_count);
             fflush (stdout);
             spc::resampler->read ((short *) dest,
                                   sample_count);
+
+            printf ("Buffer-level: %d\n", spc::resampler->avail ());
         }
         else
         {
+            printf ("No samples available. Bad!\n");
             memset (buffer, 0, sample_count << (so.sixteen_bit ? 1 : 0));
             return TRUE;
         }
@@ -331,7 +335,7 @@ S9xGetSampleCount (void)
 void
 S9xFinalizeSamples (void)
 {
-    if (!so.mute_sound && Settings.APUEnabled && !spc::resampler->push ((short *) spc::landing_buffer, spc_core->sample_count ()))
+    if (!so.mute_sound && !spc::resampler->push ((short *) spc::landing_buffer, spc_core->sample_count ()))
     {
         spc::sound_in_sync = 0;
 
@@ -390,21 +394,21 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
             spc::buffer_size = buffer_size;
 
             /* 32 ms latency is generally a good target */
-            if (spc::buffer_size < 4096)
+            if (spc::buffer_size < 8192)
             {
-                spc::buffer_size = 4096;
+                spc::buffer_size = 8192;
             }
 
             delete[] spc::landing_buffer;
             delete[] spc::shrink_buffer;
 
-            spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
-            spc::shrink_buffer  = new unsigned char[spc::buffer_size * 2];
+            spc::landing_buffer = new unsigned char[spc::buffer_size];
+            spc::shrink_buffer  = new unsigned char[spc::buffer_size];
 
-            spc::resampler->resize (spc::buffer_size);
+            spc::resampler->resize (spc::buffer_size >> 1);
 
             spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
-                                  spc::buffer_size);
+                                  spc::buffer_size >> 1);
         }
     }
 
@@ -470,11 +474,10 @@ S9xInitAPU (void)
     spc_core->init ();
     spc_core->init_rom (APUROM);
 
-    spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
-    spc::shrink_buffer = new unsigned char[spc::buffer_size * 2];
+    spc::landing_buffer = new unsigned char[spc::buffer_size];
+    spc::shrink_buffer = new unsigned char[spc::buffer_size];
 
-    spc::resampler = new Resampler (spc::buffer_size);
-    spc::resampler->resize (spc::buffer_size);
+    spc::resampler = new Resampler (spc::buffer_size >> 1);
 
     so.input_rate = 32000;
 
@@ -484,6 +487,10 @@ S9xInitAPU (void)
 static inline int
 S9xAPUGetClock (int cpucycles)
 {
+    if (!spc::sound_in_sync)
+    {
+        //printf ("Continuing WITH SOUND NOT IN SYNC!\n");
+    }
     if (Settings.PAL)
         return floor ((double) APU_NUMERATOR_PAL   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder) /
                               (APU_DENOMINATOR_PAL * spc::timing_hack_denominator);

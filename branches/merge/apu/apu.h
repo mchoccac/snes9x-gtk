@@ -193,17 +193,20 @@ extern SoundStatus so;
 
 typedef void (*samples_available_callback) (void *);
 
-#define APU_NUMERATOR_NTSC 5632
-#define APU_DENOMINATOR_NTSC 118125
-#define APU_NUMERATOR_PAL 102400
-#define APU_DENOMINATOR_PAL 2128137
+#define APU_DEFAULT_INPUT_RATE    32000
+#define APU_MINIMUM_BUFFER_SIZE   8192
+
+#define APU_NUMERATOR_NTSC        5632
+#define APU_DENOMINATOR_NTSC      118125
+#define APU_NUMERATOR_PAL         102400
+#define APU_DENOMINATOR_PAL       2128137
 
 #define SPC_SAVE_STATE_BLOCK_SIZE (SNES_SPC::state_size + 8)
 
 /* Legacy defines */
-#define SOUND_BUFFER_SIZE      4096
-#define MAX_BUFFER_SIZE        SOUND_BUFFER_SIZE
-#define SOUND_BUFFER_SIZE_MASK (SOUND_BUFFER_SIZE - 1)
+#define SOUND_BUFFER_SIZE         4096
+#define MAX_BUFFER_SIZE           SOUND_BUFFER_SIZE
+#define SOUND_BUFFER_SIZE_MASK    (SOUND_BUFFER_SIZE - 1)
 
 bool8 S9xInitAPU (void);
 void S9xDeinitAPU (void);

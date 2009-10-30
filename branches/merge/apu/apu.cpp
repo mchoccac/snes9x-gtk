@@ -191,7 +191,7 @@ namespace spc
     static samples_available_callback sa_callback = NULL;
     static void *extra_data = NULL;
 
-    static int buffer_size = 8192;
+    static int buffer_size = APU_MINIMUM_BUFFER_SIZE;
 
     static unsigned char *landing_buffer = NULL;
     static unsigned char *shrink_buffer = NULL;
@@ -335,15 +335,23 @@ S9xGetSampleCount (void)
 void
 S9xFinalizeSamples (void)
 {
-    if (!so.mute_sound && !spc::resampler->push ((short *) spc::landing_buffer, spc_core->sample_count ()))
+    if (!so.mute_sound &&
+        !spc::resampler->push ((short *) spc::landing_buffer,
+                               spc_core->sample_count ()))
     {
+        /* We weren't able to process the entire buffer. Potential overrun. */
         spc::sound_in_sync = 0;
 
         if (Settings.SoundSync && !Settings.TurboMode)
             return;
     }
 
-    spc::sound_in_sync = 1;
+    if (!Settings.SoundSync || Settings.TurboMode || so.mute_sound)
+        spc::sound_in_sync = 1;
+    else if (spc::resampler->space_empty () >= spc::resampler->space_filled ())
+        spc::sound_in_sync = 1;
+    else
+        spc::sound_in_sync = 0;
 
     spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
                           spc::buffer_size >> 1);
@@ -385,32 +393,29 @@ S9xSetSamplesAvailableCallback (samples_available_callback callback, void *data)
 bool8
 S9xInitSound (int mode, bool8 stereo, int buffer_size)
 {
+    /* buffer_size argument is in bytes */
     so.stereo = stereo;
 
-    if (spc::buffer_size != buffer_size)
+    spc::buffer_size = buffer_size;
+
+    /* 32 ms latency is generally a good target */
+    if (spc::buffer_size < APU_MINIMUM_BUFFER_SIZE)
     {
-        if (spc::landing_buffer)
-        {
-            spc::buffer_size = buffer_size;
-
-            /* 32 ms latency is generally a good target */
-            if (spc::buffer_size < 8192)
-            {
-                spc::buffer_size = 8192;
-            }
-
-            delete[] spc::landing_buffer;
-            delete[] spc::shrink_buffer;
-
-            spc::landing_buffer = new unsigned char[spc::buffer_size];
-            spc::shrink_buffer  = new unsigned char[spc::buffer_size];
-
-            spc::resampler->resize (spc::buffer_size >> 1);
-
-            spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
-                                  spc::buffer_size >> 1);
-        }
+        spc::buffer_size = APU_MINIMUM_BUFFER_SIZE;
     }
+
+    delete[] spc::landing_buffer;
+    spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
+
+    /* The resampler and spc unit use samples (16-bit short) as
+               arguments. Use 2x in the resampler for buffer leveling. */
+    if (!spc::resampler)
+        spc::resampler = new Resampler (spc::buffer_size);
+    else
+        spc::resampler->resize (spc::buffer_size);
+
+    spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
+                          spc::buffer_size >> 1);
 
     S9xSetPlaybackRate (so.playback_rate);
 
@@ -474,12 +479,11 @@ S9xInitAPU (void)
     spc_core->init ();
     spc_core->init_rom (APUROM);
 
-    spc::landing_buffer = new unsigned char[spc::buffer_size];
-    spc::shrink_buffer = new unsigned char[spc::buffer_size];
+    spc::landing_buffer = NULL;
+    spc::shrink_buffer = NULL;
+    spc::resampler = NULL;
 
-    spc::resampler = new Resampler (spc::buffer_size >> 1);
-
-    so.input_rate = 32000;
+    so.input_rate = APU_DEFAULT_INPUT_RATE;
 
     return TRUE;
 }

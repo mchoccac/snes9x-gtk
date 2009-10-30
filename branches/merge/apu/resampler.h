@@ -13,7 +13,7 @@
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 #define short_clamp(n) ((short) CLAMP((n), -32768, 32767))
 
-class Resampler : ring_buffer
+class Resampler : public ring_buffer
 {
     protected:
 

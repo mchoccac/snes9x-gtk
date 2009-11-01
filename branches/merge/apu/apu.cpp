@@ -258,24 +258,28 @@ ReverseStereo (uint8 *src_buffer, int sample_count)
 bool8
 S9xMixSamples (uint8 *buffer, int sample_count)
 {
+    static int shrink_buffer_size = -1;
     unsigned char *dest;
 
     if (!so.sixteen_bit || !so.stereo)
     {
-        if ((int) sizeof (spc::shrink_buffer) < (sample_count << (so.sixteen_bit ? 1 : 0)))
+        /* We still need both stereo samples for generating the mono sample */
+        if (!so.stereo)
+            sample_count <<= 1;
+
+        /* We still have to generate 16-bit samples for bit-dropping, too */
+        if (shrink_buffer_size < (sample_count << 1))
         {
             delete[] spc::shrink_buffer;
-            spc::shrink_buffer = new unsigned char[sample_count << (so.sixteen_bit ? 1 : 0)];
+            spc::shrink_buffer = new unsigned char[sample_count << 1];
+            shrink_buffer_size = sample_count << 1;
         }
 
         dest = spc::shrink_buffer;
 
-        if (!so.stereo)
-            sample_count <<= 1;
     }
     else
         dest = buffer;
-
 
     if (so.mute_sound)
     {
@@ -298,9 +302,10 @@ S9xMixSamples (uint8 *buffer, int sample_count)
         }
         else
         {
+            /* TODO: Use 128 as silence for 8-bit audio */
             printf ("No samples available. Bad!\n");
-            memset (buffer, 0, sample_count << (so.sixteen_bit ? 1 : 0));
-            return TRUE;
+            memset (buffer, 0, (sample_count << (so.sixteen_bit ? 1 : 0)) >> (so.stereo ? 0 : 1));
+            return FALSE;
         }
     }
 
@@ -313,14 +318,16 @@ S9xMixSamples (uint8 *buffer, int sample_count)
     {
         if (!so.stereo)
         {
-            DeStereo (spc::shrink_buffer, sample_count);
+            DeStereo (dest, sample_count);
             sample_count >>= 1;
         }
 
         if (!so.sixteen_bit)
-            EightBitize (spc::shrink_buffer, sample_count);
+            EightBitize (dest, sample_count);
 
-        memcpy (buffer, spc::shrink_buffer, (sample_count << (so.sixteen_bit ? 1 : 0)));
+        fflush (stdout);
+
+        memcpy (buffer, dest, (sample_count << (so.sixteen_bit ? 1 : 0)));
     }
 
     return TRUE;
@@ -408,11 +415,11 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
     spc::landing_buffer = new unsigned char[spc::buffer_size * 2];
 
     /* The resampler and spc unit use samples (16-bit short) as
-               arguments. Use 2x in the resampler for buffer leveling. */
+       arguments. Use 2x in the resampler for buffer leveling with SoundSync */
     if (!spc::resampler)
-        spc::resampler = new Resampler (spc::buffer_size);
+        spc::resampler = new Resampler (spc::buffer_size >> (Settings.SoundSync ? 0 : 1));
     else
-        spc::resampler->resize (spc::buffer_size);
+        spc::resampler->resize (spc::buffer_size >> (Settings.SoundSync ? 0 : 1));
 
     spc_core->set_output ((SNES_SPC::sample_t *) spc::landing_buffer,
                           spc::buffer_size >> 1);
@@ -444,9 +451,6 @@ S9xSetPlaybackRate (uint32 playback_rate)
 
     spc::resampler->time_ratio (time_ratio);
 
-    delete[] spc::shrink_buffer;
-    spc::shrink_buffer  = new unsigned char[(int) ceil (spc::buffer_size * time_ratio)];
-
     return;
 }
 
@@ -466,7 +470,7 @@ S9xSetSoundMute (bool8 mute)
     bool8 old = so.mute_sound;
 
     so.mute_sound = mute;
-    if (!spc::sound_enabled)
+    if (!spc::sound_enabled || Settings.Mute)
         so.mute_sound = TRUE;
 
     return old;

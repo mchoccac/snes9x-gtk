@@ -538,7 +538,8 @@ Snes9xPreferences::get_settings_from_dialog (void)
             (uint32) (7 - (get_combo ("playback_combo"))))                  ||
         (Settings.SixteenBitSound   != get_check ("16bit_check"))           ||
         (Settings.ReverseStereo     != get_check ("reverse_stereo_check"))  ||
-        (config->sound_input_rate   != get_slider ("sound_input_rate"))
+        (config->sound_input_rate   != get_slider ("sound_input_rate"))     ||
+        (Settings.SoundSync         != get_check ("sync_sound"))
         )         
     {
         sound_needs_restart = 1;

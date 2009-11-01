@@ -95,14 +95,14 @@ S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     audiospec->freq = playback_rates [Settings.SoundPlaybackRate];
     audiospec->channels = so.stereo ? 2 : 1;
     audiospec->format = so.sixteen_bit ? AUDIO_S16SYS : AUDIO_U8;
-    audiospec->samples = gui_config->sound_buffer_size * audiospec->freq / 1000;
+    audiospec->samples = (gui_config->sound_buffer_size * audiospec->freq / 1000) >> 1;
     audiospec->callback = sdl_audio_callback;
     audiospec->userdata = this;
 
     printf ("SDL sound driver initializing...\n");
     printf ("    --> (Frequency: %dhz, Latency: %dms)...",
             audiospec->freq,
-            (audiospec->samples * 1000 / audiospec->freq));
+            (audiospec->samples * 1000 / audiospec->freq) << 1);
 
     if (SDL_OpenAudio (audiospec, NULL) < 0)
     {

@@ -186,11 +186,13 @@ S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
         so.buffer_size *= 2;
     if (so.buffer_size > 65536)
         so.buffer_size = 65536;
+    if (so.buffer_size < 256)
+        so.buffer_size = 256;
 
     if (gui_config->mute_sound)
         return FALSE;
 
-    return driver->open_device (mode, stereo, buffer_size);
+    return driver->open_device (mode, stereo, so.buffer_size);
 }
 
 /* This really shouldn't be in the port layer */

@@ -293,18 +293,14 @@ S9xMixSamples (uint8 *buffer, int sample_count)
     {
         if (spc::resampler->avail () >= sample_count)
         {
-            printf ("Reading %d samples\n", sample_count);
-            fflush (stdout);
             spc::resampler->read ((short *) dest,
                                   sample_count);
-
-            printf ("Buffer-level: %d\n", spc::resampler->avail ());
         }
         else
         {
-            /* TODO: Use 128 as silence for 8-bit audio */
-            printf ("No samples available. Bad!\n");
-            memset (buffer, 0, (sample_count << (so.sixteen_bit ? 1 : 0)) >> (so.stereo ? 0 : 1));
+            memset (buffer,
+                    (so.sixteen_bit ? 0 : 128),
+                    (sample_count << (so.sixteen_bit ? 1 : 0)) >> (so.stereo ? 0 : 1));
             return FALSE;
         }
     }
@@ -400,15 +396,17 @@ S9xSetSamplesAvailableCallback (samples_available_callback callback, void *data)
 bool8
 S9xInitSound (int mode, bool8 stereo, int buffer_size)
 {
+    int ideal_buffer_size = (APU_MINIMUM_BUFFER_SIZE >> (so.stereo ? 0 : 1)) >> (so.sixteen_bit ? 0 : 1);
+
     /* buffer_size argument is in bytes */
     so.stereo = stereo;
 
     spc::buffer_size = buffer_size;
 
     /* 32 ms latency is generally a good target */
-    if (spc::buffer_size < APU_MINIMUM_BUFFER_SIZE)
+    if (spc::buffer_size < ideal_buffer_size)
     {
-        spc::buffer_size = APU_MINIMUM_BUFFER_SIZE;
+        spc::buffer_size = ideal_buffer_size;
     }
 
     delete[] spc::landing_buffer;
@@ -495,10 +493,6 @@ S9xInitAPU (void)
 static inline int
 S9xAPUGetClock (int cpucycles)
 {
-    if (!spc::sound_in_sync)
-    {
-        //printf ("Continuing WITH SOUND NOT IN SYNC!\n");
-    }
     if (Settings.PAL)
         return floor ((double) APU_NUMERATOR_PAL   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder) /
                               (APU_DENOMINATOR_PAL * spc::timing_hack_denominator);
@@ -563,7 +557,7 @@ void
 S9xAPUTimingSetSpeedup (int ticks)
 {
     if (ticks != 0)
-        printf("APU speedup hack: %d\n", ticks);
+        printf ("APU speedup hack: %d\n", ticks);
 
     spc_core->set_tempo (SNES_SPC::tempo_unit - ticks);
 

@@ -117,10 +117,6 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
-    /* Make sure there's at least enough for one frame of sound */
-    if (so.buffer_size < 4096)
-        so.buffer_size = 4096;
-
     /* OSS requires a power-of-two buffer size, first 16 bits are the number
      * of fragments to generate, second 16 are the respective power-of-two. */
     temp = (2 << 16) | (base2log (so.buffer_size));
@@ -173,7 +169,7 @@ S9xOSSSoundDriver::samples_available (void)
     ioctl (filedes, SNDCTL_DSP_GETOSPACE, &info);
 
     samples_to_write = MIN (info.bytes >> (so.sixteen_bit ? 1 : 0),
-                            S9xGetSampleCount ());
+                            S9xGetSampleCount () >> (so.stereo ? 0 : 1));
 
     if (sizeof (sound_buffer) < ((unsigned int) samples_to_write << (so.sixteen_bit ? 1 : 0)))
     {

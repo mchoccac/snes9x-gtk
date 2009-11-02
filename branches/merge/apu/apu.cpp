@@ -276,7 +276,6 @@ S9xMixSamples (uint8 *buffer, int sample_count)
         }
 
         dest = spc::shrink_buffer;
-
     }
     else
         dest = buffer;
@@ -396,18 +395,23 @@ S9xSetSamplesAvailableCallback (samples_available_callback callback, void *data)
 bool8
 S9xInitSound (int mode, bool8 stereo, int buffer_size)
 {
-    int ideal_buffer_size = (APU_MINIMUM_BUFFER_SIZE >> (so.stereo ? 0 : 1)) >> (so.sixteen_bit ? 0 : 1);
-
     /* buffer_size argument is in bytes */
+    int ideal_buffer_size;
+
     so.stereo = stereo;
+
+    if (Settings.SixteenBitSound)
+        so.sixteen_bit = TRUE;
 
     spc::buffer_size = buffer_size;
 
     /* 32 ms latency is generally a good target */
+    ideal_buffer_size = (APU_MINIMUM_BUFFER_SIZE >> (so.stereo ? 0 : 1)) >> (so.sixteen_bit ? 0 : 1);
     if (spc::buffer_size < ideal_buffer_size)
     {
         spc::buffer_size = ideal_buffer_size;
     }
+    printf ("Size is %d\n", spc::buffer_size);
 
     delete[] spc::landing_buffer;
     spc::landing_buffer = new unsigned char[spc::buffer_size * 2];

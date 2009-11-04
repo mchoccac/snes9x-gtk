@@ -411,7 +411,6 @@ S9xInitSound (int mode, bool8 stereo, int buffer_size)
     {
         spc::buffer_size = ideal_buffer_size;
     }
-    printf ("Size is %d\n", spc::buffer_size);
 
     delete[] spc::landing_buffer;
     spc::landing_buffer = new unsigned char[spc::buffer_size * 2];

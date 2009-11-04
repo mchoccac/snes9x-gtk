@@ -16,6 +16,7 @@ S9xOSSSoundDriver::S9xOSSSoundDriver (void)
 {
     filedes = -1;
     sound_buffer = NULL;
+    sound_buffer_size = 0;
 
     return;
 }
@@ -135,6 +136,7 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     printf ("OK\n");
 
     sound_buffer = (uint8 *) malloc (so.buffer_size);
+    sound_buffer_size = so.buffer_size;
 
     S9xSetSamplesAvailableCallback (oss_samples_available, this);
 
@@ -171,9 +173,10 @@ S9xOSSSoundDriver::samples_available (void)
     samples_to_write = MIN (info.bytes >> (so.sixteen_bit ? 1 : 0),
                             S9xGetSampleCount () >> (so.stereo ? 0 : 1));
 
-    if (sizeof (sound_buffer) < ((unsigned int) samples_to_write << (so.sixteen_bit ? 1 : 0)))
+    if (sound_buffer_size < samples_to_write << (so.sixteen_bit ? 1 : 0))
     {
         sound_buffer = (uint8 *) realloc (sound_buffer, samples_to_write << (so.sixteen_bit ? 1 : 0));
+        sound_buffer_size = samples_to_write << (so.sixteen_bit ? 1 : 0);
     }
 
     S9xMixSamples (sound_buffer, samples_to_write);

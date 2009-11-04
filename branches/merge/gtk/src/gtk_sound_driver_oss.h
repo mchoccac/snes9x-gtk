@@ -22,6 +22,7 @@ class S9xOSSSoundDriver : public S9xSoundDriver
     private:
         int filedes;
         uint8 *sound_buffer;
+        int sound_buffer_size;
         GMutex *mutex;
 };
 

@@ -20,6 +20,7 @@ details. You should have received a copy of the GNU Lesser General Public
 License along with this module; if not, write to the Free Software Foundation,
 Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA */
 
+#include <stdio.h>
 #include "blargg_source.h"
 
 #define RAM         (m.ram.ram)
@@ -28,12 +29,9 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA */
 
 void SNES_SPC::save_regs( uint8_t out [reg_count] )
 {
-	// Use current timer counter values
-	for ( int i = 0; i < timer_count; i++ )
-		out [r_t0out + i] = m.timers [i].counter;
-	
 	// Last written values
-	memcpy( out, REGS, r_t0out );
+        memcpy( out, REGS, reg_count );
+        memcpy( out + reg_count, REGS_IN, reg_count );
 }
 
 void SNES_SPC::init_header( void* spc_out )
@@ -77,13 +75,15 @@ void SNES_SPC::save_spc( void* spc_out )
 		spc->dsp [i] = dsp.read( i );
 }
 
+#undef IF_0_THEN_256
+#define IF_0_THEN_256( n ) ((uint8_t) ((n) - 1) + 1)
 void SNES_SPC::copy_state( unsigned char** io, copy_func_t copy )
 {
 	SPC_State_Copier copier( io, copy );
 	
 	// Make state data more readable by putting 64K RAM, 16 SMP registers,
 	// then DSP (with its 128 registers) first
-	
+
 	// RAM
 	enable_rom( 0 ); // will get re-enabled if necessary in regs_loaded() below
 	copier.copy( RAM, 0x10000 );
@@ -91,13 +91,21 @@ void SNES_SPC::copy_state( unsigned char** io, copy_func_t copy )
 	{
 		// SMP registers
 		uint8_t out_ports [port_count];
-		uint8_t regs [reg_count];
-		memcpy( out_ports, &REGS [r_cpuio0], sizeof out_ports );
-		save_regs( regs );
-		copier.copy( regs, sizeof regs );
+                uint8_t regs [reg_count];
+                uint8_t regs_in [reg_count];
+
+                memcpy( out_ports, &REGS [r_cpuio0], sizeof out_ports );
+                memcpy( regs, REGS, reg_count );
+                memcpy( regs_in, REGS_IN, reg_count );
+
+                copier.copy( regs, sizeof regs );
+                copier.copy( regs_in, sizeof regs_in );
 		copier.copy( out_ports, sizeof out_ports );
-		load_regs( regs );
-		regs_loaded();
+
+                memcpy( REGS, regs, reg_count);
+                memcpy( REGS_IN, regs_in, reg_count );
+
+                enable_rom( REGS [r_control] & 0x80 );
 		memcpy( &REGS [r_cpuio0], out_ports, sizeof out_ports );
 	}
 	
@@ -112,18 +120,24 @@ void SNES_SPC::copy_state( unsigned char** io, copy_func_t copy )
 	
 	SPC_COPY( int16_t, m.spc_time );
 	SPC_COPY( int16_t, m.dsp_time );
-	
+
 	// DSP
 	dsp.copy_state( io, copy );
 	
 	// Timers
 	for ( int i = 0; i < timer_count; i++ )
 	{
-		Timer* t = &m.timers [i];
-		SPC_COPY( int16_t, t->next_time );
-		SPC_COPY( uint8_t, t->divider );
-		copier.extra();
+            Timer* t = &m.timers [i];
+            t->period  = IF_0_THEN_256( REGS [r_t0target + i] );
+            t->enabled = REGS [r_control] >> i & 1;
+            SPC_COPY( int16_t, t->next_time );
+            SPC_COPY( uint8_t, t->divider );
+            SPC_COPY( uint8_t, t->counter );
+            copier.extra();
 	}
+
+        set_tempo( m.tempo );
+
 	copier.extra();
 }
 #endif

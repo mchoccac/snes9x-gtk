@@ -88,7 +88,7 @@ public:
 
 #if !SPC_NO_COPY_STATE_FUNCS
 	// Saves/loads state
-	enum { state_size = 67 * 1024L }; // maximum space needed when saving
+        enum { state_size = 68 * 1024L }; // maximum space needed when saving
 	typedef SPC_DSP::copy_func_t copy_func_t;
 	void copy_state( unsigned char** io, copy_func_t );
 	

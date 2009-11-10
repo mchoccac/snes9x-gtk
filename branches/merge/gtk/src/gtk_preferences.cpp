@@ -610,7 +610,6 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->sound_buffer_size         = get_spin ("sound_buffer_size");
     config->sound_input_rate          = get_slider ("sound_input_rate");
     Settings.SoundSync                = get_check ("sync_sound");
-    Settings.APUEnabled = Settings.NextAPUEnabled = TRUE;
     config->mute_sound                = get_check ("mute_sound_check");
 
     config->ntsc_format               = get_combo ("video_format_combo");

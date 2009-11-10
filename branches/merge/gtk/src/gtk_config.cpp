@@ -190,14 +190,9 @@ Snes9xConfig::load_defaults (void)
     Settings.SkipFrames = AUTO_FRAMERATE;
     Settings.Transparency = TRUE;
     Settings.DisplayFrameRate = FALSE;
-    Settings.APUEnabled = TRUE;
-    Settings.NextAPUEnabled = TRUE;
     Settings.SixteenBitSound = TRUE;
     Settings.Stereo = TRUE;
     Settings.ReverseStereo = FALSE;
-    Settings.InterpolatedSound = TRUE;
-    Settings.SoundEnvelopeHeightReading = FALSE;
-    Settings.DisableSoundEcho = FALSE;
     Settings.SoundPlaybackRate = 5;
     Settings.SoundSync = 0;
     Settings.DisableHDMA = 0;
@@ -205,7 +200,6 @@ Snes9xConfig::load_defaults (void)
     Settings.StopEmulation = TRUE;
     Settings.JoystickEnabled = TRUE;
     Settings.DisableIRQ = FALSE;
-    Settings.SoundSkipMethod = 0;
     Settings.FrameTimeNTSC = 16667;
     Settings.FrameTimePAL = 20000;
     Settings.FrameTime = Settings.FrameTimeNTSC;
@@ -352,9 +346,6 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "16bit_sound", Settings.SixteenBitSound);
     xml_out_int (xml, "stereo", Settings.Stereo);
     xml_out_int (xml, "reverse_stereo", Settings.ReverseStereo);
-    xml_out_int (xml, "gaussian_interpolation", Settings.InterpolatedSound);
-    xml_out_int (xml, "envelope_reading", Settings.SoundEnvelopeHeightReading);
-    xml_out_int (xml, "sound_echo", !(Settings.DisableSoundEcho));
     xml_out_int (xml, "playback_rate", Settings.SoundPlaybackRate);
     xml_out_int (xml, "speedhacks", Settings.ShutdownMaster);
     xml_out_int (xml, "hdma", !(Settings.DisableHDMA));
@@ -550,8 +541,6 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "sound_emulation"))
     {
-        Settings.APUEnabled = TRUE;
-        Settings.NextAPUEnabled = Settings.APUEnabled;
         mute_sound = !(atoi (value));
     }
     else if (!strcasecmp (name, "mute_sound"))
@@ -572,15 +561,12 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "gaussian_interpolation"))
     {
-        Settings.InterpolatedSound = atoi (value);
     }
     else if (!strcasecmp (name, "envelope_reading"))
     {
-        Settings.SoundEnvelopeHeightReading = atoi (value);
     }
     else if (!strcasecmp (name, "sound_echo"))
     {
-        Settings.DisableSoundEcho = !(atoi (value));
     }
     else if (!strcasecmp (name, "master_volume"))
     {

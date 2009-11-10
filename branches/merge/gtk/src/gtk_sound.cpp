@@ -164,9 +164,6 @@ S9xMixSound (void)
 bool8
 S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
 {
-    if (Settings.APUEnabled == FALSE)
-        return FALSE;
-
     so.playback_rate = playback_rates[Settings.SoundPlaybackRate];
     S9xSetPlaybackRate (so.playback_rate);
     so.stereo = Settings.Stereo ? 1 : 0;

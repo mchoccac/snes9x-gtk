@@ -29,9 +29,12 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA */
 
 void SNES_SPC::save_regs( uint8_t out [reg_count] )
 {
-	// Last written values
-        memcpy( out, REGS, reg_count );
-        memcpy( out + reg_count, REGS_IN, reg_count );
+    // Use current timer counter values
+    for ( int i = 0; i < timer_count; i++ )
+            out [r_t0out + i] = m.timers [i].counter;
+
+    // Last written values
+    memcpy( out, REGS, r_t0out );
 }
 
 void SNES_SPC::init_header( void* spc_out )
@@ -90,23 +93,19 @@ void SNES_SPC::copy_state( unsigned char** io, copy_func_t copy )
 	
 	{
 		// SMP registers
-		uint8_t out_ports [port_count];
                 uint8_t regs [reg_count];
                 uint8_t regs_in [reg_count];
 
-                memcpy( out_ports, &REGS [r_cpuio0], sizeof out_ports );
                 memcpy( regs, REGS, reg_count );
                 memcpy( regs_in, REGS_IN, reg_count );
 
                 copier.copy( regs, sizeof regs );
                 copier.copy( regs_in, sizeof regs_in );
-		copier.copy( out_ports, sizeof out_ports );
 
                 memcpy( REGS, regs, reg_count);
                 memcpy( REGS_IN, regs_in, reg_count );
 
                 enable_rom( REGS [r_control] & 0x80 );
-		memcpy( &REGS [r_cpuio0], out_ports, sizeof out_ports );
 	}
 	
 	// CPU registers

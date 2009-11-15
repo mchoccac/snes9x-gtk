@@ -168,10 +168,15 @@ S9xOSSSoundDriver::samples_available (void)
 
     S9xFinalizeSamples ();
 
+    samples_to_write = S9xGetSampleCount ();
+
     ioctl (filedes, SNDCTL_DSP_GETOSPACE, &info);
 
     samples_to_write = MIN (info.bytes >> (so.sixteen_bit ? 1 : 0),
-                            S9xGetSampleCount () >> (so.stereo ? 0 : 1));
+                            samples_to_write >> (so.stereo ? 0 : 1));
+
+    if (samples_to_write < 0)
+        return;
 
     if (sound_buffer_size < samples_to_write << (so.sixteen_bit ? 1 : 0))
     {

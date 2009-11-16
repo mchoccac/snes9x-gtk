@@ -74,6 +74,12 @@ AC_ARG_WITH(oss,
   [],
   [with_oss=yes])
 
+AC_ARG_WITH(alsa,
+  [AS_HELP_STRING([--with(out)-alsa],
+     [Enable ALSA sound driver support (default: with)])],
+  [],
+  [with_alsa=yes])
+
 AC_ARG_WITH(assembler,
   [AS_HELP_STRING([--with(out)-assembler],
     [Use assembler cores if available (default: with)])],
@@ -217,7 +223,7 @@ if test yes = "$with_gtk" ; then
             CFLAGS="$CFLAGS -DUSE_XV"
         ],[
             echo "Cannot find libXv. Make sure the X11 development headers are installed."
-            echo "--> Disabling Xv support."
+            echo "--> Disabling Xv support"
         ])
     fi
 
@@ -245,6 +251,20 @@ if test yes = "$with_gtk" ; then
             echo "--> Disabling OSS support"
         ])    
     fi
+
+    ALSA=0
+    ALSA_CFLAGS=""
+    ALSA_LIBS=""
+    if test yes = "$with_alsa" ; then
+
+        PKG_CHECK_MODULES([ALSA], [alsa],[
+            ALSA=yes
+            CFLAGS="$CFLAGS -DUSE_ALSA"
+        ],[
+            echo "Cannot find ALSA development support."
+            echo "--> Disabling ALSA"
+        ])
+    fi
    
     XRANDR=0
     XRANDR_CFLAGS=""
@@ -260,8 +280,8 @@ if test yes = "$with_gtk" ; then
     fi
     PKG_CHECK_MODULES([LIBPNG],libpng)
 
-    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS"
-    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS"
+    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $ALSA_CFLAGS"
+    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $ALSA_LIBS"
 fi
 
 
@@ -449,6 +469,7 @@ AM_CONDITIONAL(PORTAUDIO, [test yes = "$PORTAUDIO"])
 AM_CONDITIONAL(OSS, [test yes = "$OSS"])
 AM_CONDITIONAL(DEBUG, [test yes = "$with_debug" ])
 AM_CONDITIONAL(SDL, [test yes = "$GTKJOY"])
+AM_CONDITIONAL(ALSA, [test yes = "$ALSA"])
 
 AC_SUBST(NASM)
 AC_SUBST(NASM_FLAGS)
@@ -458,6 +479,10 @@ AC_OUTPUT(Makefile data/Makefile po/Makefile.in)
 echo ""
 echo "Snes9x will build with support for the following:"
 echo ""
+
+if test yes = "$ALSA" ; then
+    echo "    ALSA"
+fi
 
 if test yes = "$OPENGL" ; then
     echo "    OpenGL"
@@ -508,6 +533,10 @@ echo ""
 
 if ! test yes = "$PORTAUDIO" ; then
     if ! test yes = "$OSS" ; then
-        echo "ERROR: No audio driver is selected or available. Snes9x will not build."
+        if ! test yes = "$SDL"; then
+            if ! test yes = "$ALSA"; then
+                echo "ERROR: No audio driver is selected or available. Snes9x will probably not build."
+            fi
+        fi
     fi
 fi

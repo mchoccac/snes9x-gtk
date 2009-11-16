@@ -463,6 +463,9 @@ Snes9xPreferences::move_settings_to_dialog (void)
 #ifdef USE_JOYSTICK
     num_sound_drivers++;
 #endif
+#ifdef USE_ALSA
+    num_sound_drivers++;
+#endif
 
     if (config->sound_driver >= num_sound_drivers)
         config->sound_driver = 0;
@@ -817,6 +820,10 @@ Snes9xPreferences::show (void)
 #ifdef USE_JOYSTICK
     gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
                                _("SDL"));
+#endif
+#ifdef USE_ALSA
+    gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
+                               _("ALSA"));
 #endif
 
     move_settings_to_dialog ();

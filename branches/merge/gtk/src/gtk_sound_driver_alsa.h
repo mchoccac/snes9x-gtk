@@ -1,13 +1,14 @@
-#ifndef __GTK_SOUND_DRIVER_OSS_H
-#define __GTK_SOUND_DRIVER_OSS_H
+#ifndef __GTK_SOUND_DRIVER_ALSA_H
+#define __GTK_SOUND_DRIVER_ALSA_H
 
 #include "gtk_sound.h"
 #include "gtk_sound_driver.h"
+#include "alsa/asoundlib.h"
 
-class S9xOSSSoundDriver : public S9xSoundDriver
+class S9xAlsaSoundDriver : public S9xSoundDriver
 {
     public:
-        S9xOSSSoundDriver (void);
+        S9xAlsaSoundDriver (void);
         void init (void);
         void terminate (void);
         bool8 open_device (int mode, bool8 stereo, int buffer_size);
@@ -17,11 +18,9 @@ class S9xOSSSoundDriver : public S9xSoundDriver
         void samples_available (void);
 
     private:
-        int filedes;
-        uint8 *sound_buffer;
+        snd_pcm_t *pcm;
         int sound_buffer_size;
+        uint8 *sound_buffer;
 };
 
-
-
-#endif /* __GTK_SOUND_DRIVER_OSS_H */
+#endif /* __GTK_SOUND_DRIVER_ALSA_H */

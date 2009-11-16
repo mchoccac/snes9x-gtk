@@ -102,31 +102,31 @@ msgid ""
 "Features enabled:<i>"
 msgstr ""
 "\n"
-"Opciones Activas : <i>"
+"Opciones Activas:<i>"
 
 #: ../src/gtk_preferences.cpp:343
 msgid " Only barebones features enabled<i>"
-msgstr "Solo caracteristicas barebones activas<i>"
+msgstr " Solo caracteristicas barebones activas<i>"
 
 #: ../src/gtk_preferences.cpp:346
 msgid " OpenGL"
-msgstr "OpenGL"
+msgstr " OpenGL"
 
 #: ../src/gtk_preferences.cpp:349
 msgid " XVideo"
-msgstr "XVideo"
+msgstr " XVideo"
 
 #: ../src/gtk_preferences.cpp:352
 msgid " XRandR"
-msgstr "XRandR"
+msgstr " XRandR"
 
 #: ../src/gtk_preferences.cpp:355
 msgid " Joystick"
-msgstr "Control"
+msgstr " Control"
 
 #: ../src/gtk_preferences.cpp:358
 msgid " NetPlay"
-msgstr "NetPlay"
+msgstr " NetPlay"
 
 #: ../src/gtk_preferences.cpp:360
 msgid ""

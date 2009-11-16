@@ -14,6 +14,9 @@
 #ifdef USE_JOYSTICK
 #include "gtk_sound_driver_sdl.h"
 #endif
+#ifdef USE_ALSA
+#include "gtk_sound_driver_alsa.h"
+#endif
 
 int playback_rates[8] =
 {
@@ -55,6 +58,7 @@ S9xPortSoundInit (void)
     int pao_driver = 0;
     int sdl_driver = 0;
     int oss_driver = 0;
+    int alsa_driver = 0;
     int max_driver = 0;
 
     driver = NULL;
@@ -62,17 +66,25 @@ S9xPortSoundInit (void)
 #ifdef USE_PORTAUDIO
     sdl_driver++;
     oss_driver++;
+    alsa_driver++;
 
     max_driver++;
 #endif
 
 #ifdef USE_OSS
     sdl_driver++;
+    alsa_driver++;
 
     max_driver++;
 #endif
 
 #ifdef USE_JOYSTICK
+    alsa_driver++;
+
+    max_driver++;
+#endif
+
+#ifdef USE_ALSA
     max_driver++;
 #endif
 
@@ -92,6 +104,11 @@ S9xPortSoundInit (void)
 #ifdef USE_JOYSTICK
     if (gui_config->sound_driver == sdl_driver)
         driver = new S9xSDLSoundDriver ();
+#endif
+
+#ifdef USE_ALSA
+    if (gui_config->sound_driver == alsa_driver)
+        driver = new S9xAlsaSoundDriver ();
 #endif
 
     if (driver != NULL)

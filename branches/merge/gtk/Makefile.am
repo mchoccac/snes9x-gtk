@@ -80,6 +80,12 @@ snes9x_gtk_SOURCES += \
     src/gtk_sound_driver_sdl.cpp
 endif
 
+if ALSA
+snes9x_gtk_SOURCES += \
+    src/gtk_sound_driver_alsa.h \
+    src/gtk_sound_driver_alsa.cpp
+endif
+
 if ZSNESFX
 snes9x_gtk_SOURCES += \
     ../i386/fxemu2b.asm \

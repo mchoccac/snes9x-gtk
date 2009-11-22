@@ -139,6 +139,11 @@ S9xPulseSoundDriver::samples_available (void)
 
     S9xMixSamples (buffer, bytes >> (so.sixteen_bit ? 1 : 0));
 
+    /* PulseAudio-simple has no write indicator, so we don't know when the
+       buffer is full. So we just drop the audio when we're in Turbo Mode. */
+    if (Settings.TurboMode)
+        return;
+
     pa_simple_write (pulse, buffer, bytes, &err);
 
     return;

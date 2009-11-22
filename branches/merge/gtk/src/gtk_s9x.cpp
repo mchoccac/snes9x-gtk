@@ -437,6 +437,7 @@ S9xSyncSpeedFinish (void)
                  (next_frame_time.tv_usec - now.tv_usec)) >
                 1000000)
             {
+                /* Flush out our sample buffer and give up. */
                 Settings.SoundSync ^= 1;
                 S9xFinalizeSamples ();
                 Settings.SoundSync ^= 1;

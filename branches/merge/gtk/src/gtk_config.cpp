@@ -148,7 +148,7 @@ Snes9xConfig::load_defaults (void)
     prevent_screensaver = FALSE;
     sound_driver = 0;
     sound_buffer_size = 32;
-    sound_input_rate = 32000;
+    sound_input_rate = 31950;
     last_directory[0] = '\0';
     window_width = -1;
     window_height = -1;

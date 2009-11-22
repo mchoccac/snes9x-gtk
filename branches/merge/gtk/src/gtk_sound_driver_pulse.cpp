@@ -73,7 +73,7 @@ S9xPulseSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     buffer_attr.maxlength = -1;
     buffer_attr.fragsize  = -1;
     buffer_attr.prebuf    = -1;
-    buffer_attr.minreq    = -1;
+    buffer_attr.minreq    = 0;
     buffer_attr.tlength   = ((so.playback_rate <<
                              (so.stereo ? 1 : 0)) <<
                              (so.sixteen_bit ? 1 : 0)) *

@@ -422,16 +422,32 @@ S9xSyncSpeedFinish (void)
     if (!syncing)
         return;
 
+    gettimeofday (&now, NULL);
+
     if (Settings.SoundSync)
     {
         while (!S9xSyncSound ())
         {
-            usleep (0);
+            usleep (100);
+
+            gettimeofday (&next_frame_time, NULL);
+
+            /* If we can't sync sound within a second, we're probably deadlocked */
+            if (((next_frame_time.tv_sec - now.tv_sec) * 1000000 +
+                 (next_frame_time.tv_usec - now.tv_usec)) >
+                1000000)
+            {
+                Settings.SoundSync ^= 1;
+                S9xFinalizeSamples ();
+                Settings.SoundSync ^= 1;
+
+                break;
+            }
         }
+
+        next_frame_time = now;
         return;
     }
-
-    gettimeofday (&now, NULL);
 
     while (timercmp (&next_frame_time, &now, >))
     {

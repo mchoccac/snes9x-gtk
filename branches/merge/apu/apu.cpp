@@ -337,6 +337,9 @@ S9xGetSampleCount (void)
 void
 S9xFinalizeSamples (void)
 {
+    if (spc_core->sample_count () < 128)
+        return;
+
     if (!so.mute_sound &&
         !spc::resampler->push ((short *) spc::landing_buffer,
                                spc_core->sample_count ()))
@@ -551,7 +554,10 @@ S9xAPUEndScanline (void)
 {
     S9xAPUExecute ();
 
-    S9xLandSamples ();
+    if (spc_core->sample_count () >= 128)
+    {
+        S9xLandSamples ();
+    }
 
     return;
 }

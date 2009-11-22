@@ -70,6 +70,8 @@ main (int argc, char *argv[])
     if (!Memory.Init () || !S9xInitAPU ())
         exit (3);
 
+    g_set_application_name ("Snes9x");
+
     top_level = new Snes9xWindow (gui_config);
     top_level->show ();
 

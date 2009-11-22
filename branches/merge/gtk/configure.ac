@@ -80,6 +80,12 @@ AC_ARG_WITH(alsa,
   [],
   [with_alsa=yes])
 
+AC_ARG_WITH(pulseaudio,
+  [AS_HELP_STRING([--with(out)-pulseaudio],
+    [Enable PulseAudio sound driver support (default: with)])],
+  [],
+  [with_pulseaudio=yes])
+
 AC_ARG_WITH(assembler,
   [AS_HELP_STRING([--with(out)-assembler],
     [Use assembler cores if available (default: with)])],
@@ -265,6 +271,19 @@ if test yes = "$with_gtk" ; then
             echo "--> Disabling ALSA"
         ])
     fi
+
+    PULSEAUDIO=0
+    PULSEAUDIO_CFLAGS=""
+    PULSEAUDIO_LIBS=""
+    if test yes = "$with_pulseaudio" ; then
+        PKG_CHECK_MODULES([PULSEAUDIO], [libpulse-simple],[
+            PULSEAUDIO=yes
+            CFLAGS="$CFLAGS -DUSE_PULSEAUDIO"
+        ],[
+            echo "Cannot find PulseAudio library."
+            echo "--> Disabling PulseAudio"
+        ])
+    fi
    
     XRANDR=0
     XRANDR_CFLAGS=""
@@ -280,8 +299,8 @@ if test yes = "$with_gtk" ; then
     fi
     PKG_CHECK_MODULES([LIBPNG],libpng)
 
-    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $ALSA_CFLAGS"
-    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $ALSA_LIBS"
+    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $ALSA_CFLAGS $PULSEAUDIO_CFLAGS"
+    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $ALSA_LIBS $PULSEAUDIO_LIBS"
 fi
 
 
@@ -470,6 +489,7 @@ AM_CONDITIONAL(OSS, [test yes = "$OSS"])
 AM_CONDITIONAL(DEBUG, [test yes = "$with_debug" ])
 AM_CONDITIONAL(SDL, [test yes = "$GTKJOY"])
 AM_CONDITIONAL(ALSA, [test yes = "$ALSA"])
+AM_CONDITIONAL(PULSEAUDIO, [test yes = "$PULSEAUDIO"])
 
 AC_SUBST(NASM)
 AC_SUBST(NASM_FLAGS)
@@ -482,6 +502,10 @@ echo ""
 
 if test yes = "$ALSA" ; then
     echo "    ALSA"
+fi
+
+if test yes = "$PULSEAUDIO" ; then
+    echo "    PulseAudio"
 fi
 
 if test yes = "$OPENGL" ; then

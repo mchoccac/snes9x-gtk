@@ -68,6 +68,12 @@ snes9x_gtk_SOURCES += \
     src/gtk_sound_driver_portaudio.h
 endif
 
+if PULSEAUDIO
+snes9x_gtk_SOURCES += \
+    src/gtk_sound_driver_pulse.cpp \
+    src/gtk_sound_driver_pulse.h
+endif
+
 if OSS
 snes9x_gtk_SOURCES += \
     src/gtk_sound_driver_oss.h \

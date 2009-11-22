@@ -17,6 +17,9 @@
 #ifdef USE_ALSA
 #include "gtk_sound_driver_alsa.h"
 #endif
+#ifdef USE_PULSEAUDIO
+#include "gtk_sound_driver_pulse.h"
+#endif
 
 int playback_rates[8] =
 {
@@ -31,7 +34,7 @@ double d_playback_rates[8] =
 S9xSoundDriver *driver;
 
 int
-base2log (int num)
+S9xSoundBase2log (int num)
 {
     int power;
 
@@ -47,7 +50,7 @@ base2log (int num)
 }
 
 int
-powerof2 (int num)
+S9xSoundPowerof2 (int num)
 {
     return (1 << num);
 }
@@ -59,6 +62,7 @@ S9xPortSoundInit (void)
     int sdl_driver = 0;
     int oss_driver = 0;
     int alsa_driver = 0;
+    int pulse_driver = 0;
     int max_driver = 0;
 
     driver = NULL;
@@ -67,6 +71,7 @@ S9xPortSoundInit (void)
     sdl_driver++;
     oss_driver++;
     alsa_driver++;
+    pulse_driver++;
 
     max_driver++;
 #endif
@@ -74,17 +79,24 @@ S9xPortSoundInit (void)
 #ifdef USE_OSS
     sdl_driver++;
     alsa_driver++;
+    pulse_driver++;
 
     max_driver++;
 #endif
 
 #ifdef USE_JOYSTICK
     alsa_driver++;
+    pulse_driver++;
 
     max_driver++;
 #endif
 
 #ifdef USE_ALSA
+    max_driver++;
+    pulse_driver++;
+#endif
+
+#ifdef USE_PULSEAUDIO
     max_driver++;
 #endif
 
@@ -109,6 +121,11 @@ S9xPortSoundInit (void)
 #ifdef USE_ALSA
     if (gui_config->sound_driver == alsa_driver)
         driver = new S9xAlsaSoundDriver ();
+#endif
+
+#ifdef USE_PULSEAUDIO
+    if (gui_config->sound_driver == pulse_driver)
+        driver = new S9xPulseSoundDriver ();
 #endif
 
     if (driver != NULL)

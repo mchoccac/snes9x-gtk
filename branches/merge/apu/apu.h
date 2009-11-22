@@ -195,6 +195,7 @@ typedef void (*samples_available_callback) (void *);
 
 #define APU_DEFAULT_INPUT_RATE    31950
 #define APU_MINIMUM_BUFFER_SIZE   8192
+#define APU_MINIMUM_SAMPLE_BLOCK  128
 
 #define APU_NUMERATOR_NTSC        5632
 #define APU_DENOMINATOR_NTSC      118125

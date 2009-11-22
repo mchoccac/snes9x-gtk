@@ -181,6 +181,8 @@ static uint8 APUROM[64] =
 
 SNES_SPC *spc_core = NULL;
 
+const int SPC_SAMPLE_BLOCK_MIN = 128;
+
 namespace spc
 {
     static int playback_rates[8] =
@@ -337,9 +339,6 @@ S9xGetSampleCount (void)
 void
 S9xFinalizeSamples (void)
 {
-    if (spc_core->sample_count () < 128)
-        return;
-
     if (!so.mute_sound &&
         !spc::resampler->push ((short *) spc::landing_buffer,
                                spc_core->sample_count ()))
@@ -554,7 +553,7 @@ S9xAPUEndScanline (void)
 {
     S9xAPUExecute ();
 
-    if (spc_core->sample_count () >= 128)
+    if (spc_core->sample_count () >= SPC_SAMPLE_BLOCK_MIN || !spc::sound_in_sync)
     {
         S9xLandSamples ();
     }

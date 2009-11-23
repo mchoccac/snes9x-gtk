@@ -60,32 +60,32 @@ S9xPulseSoundDriver::stop (void)
 }
 
 bool8
-S9xPulseSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
+S9xPulseSoundDriver::open_device (void)
 {
     int err;
     pa_sample_spec ss;
     pa_buffer_attr buffer_attr;
 
-    ss.channels = stereo ? 2 : 1;
-    ss.format   = so.sixteen_bit ? PA_SAMPLE_S16NE : PA_SAMPLE_U8;
-    ss.rate     = so.playback_rate;
+    ss.channels = Settings.Stereo ? 2 : 1;
+    ss.format   = Settings.SixteenBitSound ? PA_SAMPLE_S16NE : PA_SAMPLE_U8;
+    ss.rate     = Settings.SoundPlaybackRate;
 
     buffer_attr.maxlength = -1;
     buffer_attr.fragsize  = -1;
     buffer_attr.prebuf    = -1;
     buffer_attr.minreq    = 0;
-    buffer_attr.tlength   = ((so.playback_rate <<
-                             (so.stereo ? 1 : 0)) <<
-                             (so.sixteen_bit ? 1 : 0)) *
+    buffer_attr.tlength   = ((Settings.SoundPlaybackRate <<
+                             (Settings.Stereo ? 1 : 0)) <<
+                             (Settings.SixteenBitSound ? 1 : 0)) *
                              (gui_config->sound_buffer_size + 16) /
                              1000;
 
     printf ("PulseAudio sound driver initializing...\n");
 
     printf ("    --> (%dhz, %s %s, %dms (%d+16ms))...",
-            so.playback_rate,
-            so.sixteen_bit ? "16-bit" : "8-bit",
-            so.stereo ? "Stereo" : "Mono",
+            Settings.SoundPlaybackRate,
+            Settings.SixteenBitSound ? "16-bit" : "8-bit",
+            Settings.Stereo ? "Stereo" : "Mono",
             gui_config->sound_buffer_size + 16,
             gui_config->sound_buffer_size);
 
@@ -125,7 +125,7 @@ S9xPulseSoundDriver::samples_available (void)
 
     S9xFinalizeSamples ();
 
-    bytes = (S9xGetSampleCount () << (so.sixteen_bit ? 1 : 0));
+    bytes = (S9xGetSampleCount () << (Settings.SixteenBitSound ? 1 : 0));
 
     if (bytes <= 128)
         return;
@@ -137,7 +137,7 @@ S9xPulseSoundDriver::samples_available (void)
         buffer_size = bytes;
     }
 
-    S9xMixSamples (buffer, bytes >> (so.sixteen_bit ? 1 : 0));
+    S9xMixSamples (buffer, bytes >> (Settings.SixteenBitSound ? 1 : 0));
 
     /* PulseAudio-simple has no write indicator, so we don't know when the
        buffer is full. So we just drop the audio when we're in Turbo Mode. */

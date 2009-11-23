@@ -62,7 +62,7 @@ S9xAlsaSoundDriver::stop (void)
 }
 
 bool8
-S9xAlsaSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
+S9xAlsaSoundDriver::open_device (void)
 {
     int err;
     snd_pcm_sw_params_t *sw_params;
@@ -82,16 +82,16 @@ S9xAlsaSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     printf ("OK\n");
 
     printf ("    --> (%s, %s, %dhz, %d ms)...",
-            so.sixteen_bit ? "16-bit" : "8-bit",
+            Settings.SixteenBitSound ? "16-bit" : "8-bit",
             Settings.Stereo ? "Stereo" : "Mono",
-            so.playback_rate,
+            Settings.SoundPlaybackRate,
             gui_config->sound_buffer_size);
 
     if ((err = snd_pcm_set_params (pcm,
-                                   so.sixteen_bit ? SND_PCM_FORMAT_S16 : SND_PCM_FORMAT_U8,
+                                   Settings.SixteenBitSound ? SND_PCM_FORMAT_S16 : SND_PCM_FORMAT_U8,
                                    SND_PCM_ACCESS_RW_INTERLEAVED,
-                                   so.stereo ? 2 : 1,
-                                   so.playback_rate,
+                                   Settings.Stereo ? 2 : 1,
+                                   Settings.SoundPlaybackRate,
                                    1 /* Allow software resampling */,
                                    gui_config->sound_buffer_size * 1000))
          < 0)
@@ -113,9 +113,6 @@ S9xAlsaSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
         goto close_fail;
 
     printf ("OK\n");
-
-    sound_buffer = (uint8 *) malloc (so.buffer_size);
-    sound_buffer_size = so.buffer_size;
 
     S9xSetSamplesAvailableCallback (alsa_samples_available, this);
 
@@ -152,7 +149,7 @@ S9xAlsaSoundDriver::samples_available (void)
         frames = snd_pcm_recover (pcm, frames, 1);
     }
 
-    frames = MIN (frames, S9xGetSampleCount () >> (so.stereo ? 1 : 0));
+    frames = MIN (frames, S9xGetSampleCount () >> (Settings.Stereo ? 1 : 0));
 
     bytes = snd_pcm_frames_to_bytes (pcm, frames);
     if (bytes <= 0)
@@ -160,13 +157,13 @@ S9xAlsaSoundDriver::samples_available (void)
         return;
     }
 
-    if (sound_buffer_size < bytes)
+    if (sound_buffer_size < bytes || sound_buffer == NULL)
     {
         sound_buffer = (uint8 *) realloc (sound_buffer, bytes);
         sound_buffer_size = bytes;
     }
 
-    S9xMixSamples (sound_buffer, frames << (so.stereo ? 1 : 0));
+    S9xMixSamples (sound_buffer, frames << (Settings.Stereo ? 1 : 0));
 
     frames_written = 0;
 

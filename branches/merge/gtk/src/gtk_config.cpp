@@ -148,6 +148,7 @@ Snes9xConfig::load_defaults (void)
     prevent_screensaver = FALSE;
     sound_driver = 0;
     sound_buffer_size = 32;
+    sound_playback_rate = 5;
     sound_input_rate = 31950;
     last_directory[0] = '\0';
     window_width = -1;
@@ -193,12 +194,10 @@ Snes9xConfig::load_defaults (void)
     Settings.SixteenBitSound = TRUE;
     Settings.Stereo = TRUE;
     Settings.ReverseStereo = FALSE;
-    Settings.SoundPlaybackRate = 5;
-    Settings.SoundSync = 0;
+    Settings.SoundPlaybackRate = 32000;
     Settings.DisableHDMA = 0;
     Settings.ShutdownMaster = 0;
     Settings.StopEmulation = TRUE;
-    Settings.JoystickEnabled = TRUE;
     Settings.DisableIRQ = FALSE;
     Settings.FrameTimeNTSC = 16667;
     Settings.FrameTimePAL = 20000;
@@ -346,7 +345,7 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "16bit_sound", Settings.SixteenBitSound);
     xml_out_int (xml, "stereo", Settings.Stereo);
     xml_out_int (xml, "reverse_stereo", Settings.ReverseStereo);
-    xml_out_int (xml, "playback_rate", Settings.SoundPlaybackRate);
+    xml_out_int (xml, "playback_rate", gui_config->sound_playback_rate);
     xml_out_int (xml, "speedhacks", Settings.ShutdownMaster);
     xml_out_int (xml, "hdma", !(Settings.DisableHDMA));
     xml_out_int (xml, "block_invalid_vram_access", Settings.BlockInvalidVRAMAccess);
@@ -573,7 +572,7 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "playback_rate"))
     {
-        Settings.SoundPlaybackRate = atoi (value);
+        sound_playback_rate = atoi (value);
     }
     else if (!strcasecmp (name, "sound_decoder"))
     {

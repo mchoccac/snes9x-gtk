@@ -132,11 +132,11 @@ S9xPortSoundInit (void)
     {
         driver->init ();
 
-        so.input_rate = CLAMP (gui_config->sound_input_rate, 8000, 48000);
+        Settings.SoundInputRate = CLAMP (gui_config->sound_input_rate, 8000, 48000);
 
-        S9xInitSound (Settings.SoundPlaybackRate,
-                      Settings.Stereo,
-                      (gui_config->sound_buffer_size * 32000 / 1000) << 2);
+        Settings.SoundPlaybackRate = playback_rates[gui_config->sound_playback_rate];
+
+        S9xInitSound (gui_config->sound_buffer_size * 32000 / 1000, 0);
 
         S9xSetSoundMute (FALSE);
     }
@@ -196,46 +196,37 @@ S9xMixSound (void)
 }
 
 bool8
-S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
+S9xOpenSoundDevice (void)
 {
-    so.playback_rate = playback_rates[Settings.SoundPlaybackRate];
-    S9xSetPlaybackRate (so.playback_rate);
-    so.stereo = Settings.Stereo ? 1 : 0;
-    so.sixteen_bit = Settings.SixteenBitSound;
-    so.encoded = 1;
+    if (gui_config->mute_sound)
+        return FALSE;
 
     if (gui_config->sound_buffer_size < 2)
         gui_config->sound_buffer_size = 2;
     if (gui_config->sound_buffer_size > 256)
         gui_config->sound_buffer_size = 256;
 
-    so.buffer_size = (gui_config->sound_buffer_size * so.playback_rate) / 1000;
+    return driver->open_device ();
+}
 
-    if (so.stereo)
-        so.buffer_size *= 2;
-    if (so.sixteen_bit)
-        so.buffer_size *= 2;
-    if (so.buffer_size > 65536)
-        so.buffer_size = 65536;
-    if (so.buffer_size < 256)
-        so.buffer_size = 256;
-
-    if (gui_config->mute_sound)
-        return FALSE;
-
-    return driver->open_device (mode, stereo, so.buffer_size);
+bool8
+S9xOpenSoundDevice (int buffer_size)
+{
+    return S9xOpenSoundDevice ();    
 }
 
 /* This really shouldn't be in the port layer */
 void
 S9xToggleSoundChannel (int c)
 {
-    if (c == 8)
-        so.sound_switch = 255;
-    else
-        so.sound_switch ^= 1 << c;
+    static int sound_switch = 255;
 
-    S9xSetSoundControl (so.sound_switch);
+    if (c == 8)
+        sound_switch = 255;
+    else
+        sound_switch ^= 1 << c;
+
+    S9xSetSoundControl (sound_switch);
 
     return;
 }

@@ -61,9 +61,21 @@ S9xOSSSoundDriver::stop (void)
 }
 
 bool8
-S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
+S9xOSSSoundDriver::open_device (void)
 {
     int temp;
+    int output_buffer_size;
+
+    output_buffer_size = (gui_config->sound_buffer_size * Settings.SoundPlaybackRate) / 1000;
+
+    if (Settings.Stereo)
+        output_buffer_size *= 2;
+    if (Settings.SixteenBitSound)
+        output_buffer_size *= 2;
+    if (output_buffer_size > 65536)
+        output_buffer_size = 65536;
+    if (output_buffer_size < 256)
+        output_buffer_size = 256;
 
     printf ("OSS sound driver initializing...\n");
 
@@ -77,7 +89,7 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
     printf ("OK\n");
 
 
-    if (so.sixteen_bit)
+    if (Settings.SixteenBitSound)
     {
         printf ("    --> (Format: 16-bit)...");
 
@@ -112,31 +124,28 @@ S9xOSSSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
 
     printf ("OK\n");
 
-    printf ("    --> (Frequency: %d)...", so.playback_rate);
-    if (ioctl (filedes, SNDCTL_DSP_SPEED, &so.playback_rate) < 0)
+    printf ("    --> (Frequency: %d)...", Settings.SoundPlaybackRate);
+    if (ioctl (filedes, SNDCTL_DSP_SPEED, &Settings.SoundPlaybackRate) < 0)
         goto close_fail;
 
     printf ("OK\n");
 
     /* OSS requires a power-of-two buffer size, first 16 bits are the number
      * of fragments to generate, second 16 are the respective power-of-two. */
-    temp = (2 << 16) | (S9xSoundBase2log (so.buffer_size));
+    temp = (2 << 16) | (S9xSoundBase2log (output_buffer_size));
 
-    so.buffer_size = S9xSoundPowerof2 (temp & 0xffff);
+    output_buffer_size = S9xSoundPowerof2 (temp & 0xffff);
 
     printf ("    --> (Buffer size: %d bytes, %dms latency)...",
-            so.buffer_size,
-            (((so.buffer_size * 1000) >> (so.stereo ? 1 : 0))
-                                 >> (so.sixteen_bit ? 1 : 0))
-                              / (so.playback_rate));
+            output_buffer_size,
+            (((output_buffer_size * 1000) >> (Settings.Stereo ? 1 : 0))
+                                          >> (Settings.SixteenBitSound ? 1 : 0))
+                                           / (Settings.SoundPlaybackRate));
 
     if (ioctl (filedes, SNDCTL_DSP_SETFRAGMENT, &temp) < 0)
         goto close_fail;
 
     printf ("OK\n");
-
-    sound_buffer = (uint8 *) malloc (so.buffer_size);
-    sound_buffer_size = so.buffer_size;
 
     S9xSetSamplesAvailableCallback (oss_samples_available, this);
 
@@ -172,22 +181,22 @@ S9xOSSSoundDriver::samples_available (void)
 
     ioctl (filedes, SNDCTL_DSP_GETOSPACE, &info);
 
-    samples_to_write = MIN (info.bytes >> (so.sixteen_bit ? 1 : 0),
-                            samples_to_write >> (so.stereo ? 0 : 1));
+    samples_to_write = MIN (info.bytes >> (Settings.SixteenBitSound ? 1 : 0),
+                            samples_to_write >> (Settings.Stereo ? 0 : 1));
 
     if (samples_to_write < 0)
         return;
 
-    if (sound_buffer_size < samples_to_write << (so.sixteen_bit ? 1 : 0))
+    if (sound_buffer_size < samples_to_write << (Settings.SixteenBitSound ? 1 : 0))
     {
-        sound_buffer = (uint8 *) realloc (sound_buffer, samples_to_write << (so.sixteen_bit ? 1 : 0));
-        sound_buffer_size = samples_to_write << (so.sixteen_bit ? 1 : 0);
+        sound_buffer = (uint8 *) realloc (sound_buffer, samples_to_write << (Settings.SixteenBitSound ? 1 : 0));
+        sound_buffer_size = samples_to_write << (Settings.SixteenBitSound ? 1 : 0);
     }
 
     S9xMixSamples (sound_buffer, samples_to_write);
 
     bytes_written = 0;
-    bytes_to_write = samples_to_write << (so.sixteen_bit ? 1 : 0);
+    bytes_to_write = samples_to_write << (Settings.SixteenBitSound ? 1 : 0);
 
     while (bytes_to_write > bytes_written)
     {

@@ -9,7 +9,7 @@ port_audio_callback (const void *input,
                      PaStreamCallbackFlags statusFlags,
                      void *userData)
 {
-    ((S9xPortAudioSoundDriver *) userData)->mix ((unsigned char *) output, frameCount * (so.stereo ? 2 : 1) * (so.sixteen_bit ? 2 : 1));
+    ((S9xPortAudioSoundDriver *) userData)->mix ((unsigned char *) output, frameCount * (Settings.Stereo ? 2 : 1) * (Settings.SixteenBitSound ? 2 : 1));
 
     return 0;
 }
@@ -27,7 +27,7 @@ S9xPortAudioSoundDriver::mix (unsigned char *output, int bytes)
 {
     g_mutex_lock (mutex);
 
-    S9xMixSamples (output, bytes >> (so.sixteen_bit ? 1 : 0));
+    S9xMixSamples (output, bytes >> (Settings.SixteenBitSound ? 1 : 0));
 
     g_mutex_unlock (mutex);
 
@@ -108,7 +108,7 @@ S9xPortAudioSoundDriver::stop (void)
 }
 
 bool8
-S9xPortAudioSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
+S9xPortAudioSoundDriver::open_device (void)
 {
     PaStreamParameters  param;
     const PaDeviceInfo  *device_info;
@@ -170,7 +170,7 @@ S9xPortAudioSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
         err = Pa_OpenStream (&audio_stream,
                              NULL,
                              &param,
-                             d_playback_rates[Settings.SoundPlaybackRate],
+                             Settings.SoundPlaybackRate,
                              0,
                              paNoFlag,
                              port_audio_callback,

@@ -11,7 +11,7 @@ class S9xAlsaSoundDriver : public S9xSoundDriver
         S9xAlsaSoundDriver (void);
         void init (void);
         void terminate (void);
-        bool8 open_device (int mode, bool8 stereo, int buffer_size);
+        bool8 open_device (void);
         void start (void);
         void stop (void);
         void mix (void);

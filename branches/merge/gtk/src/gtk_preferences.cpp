@@ -444,7 +444,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_check ("16bit_check",               Settings.SixteenBitSound);
     set_check ("stereo_check",              Settings.Stereo);
     set_check ("reverse_stereo_check",      Settings.ReverseStereo);
-    set_combo ("playback_combo",            7 - Settings.SoundPlaybackRate);
+    set_combo ("playback_combo",            7 - config->sound_playback_rate);
     set_combo ("hw_accel",                  combo_value (config->hw_accel));
     set_check ("pause_emulation_on_switch", config->pause_emulation_on_switch);
     set_spin  ("num_threads",               config->num_threads);
@@ -540,8 +540,8 @@ Snes9xPreferences::get_settings_from_dialog (void)
         (config->mute_sound         != get_check ("mute_sound_check"))      ||
         (config->sound_buffer_size  != (int) get_spin ("sound_buffer_size"))||
         (Settings.Stereo            != get_check ("stereo_check"))          ||
-        (Settings.SoundPlaybackRate !=
-            (uint32) (7 - (get_combo ("playback_combo"))))                  ||
+        (config->sound_playback_rate !=
+                     (7 - (get_combo ("playback_combo"))))                  ||
         (Settings.SixteenBitSound   != get_check ("16bit_check"))           ||
         (Settings.ReverseStereo     != get_check ("reverse_stereo_check"))  ||
         (config->sound_input_rate   != get_slider ("sound_input_rate"))     ||
@@ -612,7 +612,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
     Settings.SixteenBitSound          = get_check ("16bit_check");
     Settings.Stereo                   = get_check ("stereo_check");
     Settings.ReverseStereo            = get_check ("reverse_stereo_check");
-    Settings.SoundPlaybackRate        = 7 - (get_combo ("playback_combo"));
+    config->sound_playback_rate       = 7 - (get_combo ("playback_combo"));
     config->sound_buffer_size         = get_spin ("sound_buffer_size");
     config->sound_input_rate          = get_slider ("sound_input_rate");
     Settings.SoundSync                = get_check ("sync_sound");

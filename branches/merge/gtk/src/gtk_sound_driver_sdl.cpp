@@ -23,7 +23,7 @@ void
 S9xSDLSoundDriver::mix (unsigned char *output, int bytes)
 {
     SDL_LockAudio ();
-    S9xMixSamples (output, bytes >> (so.sixteen_bit ? 1 : 0));
+    S9xMixSamples (output, bytes >> (Settings.SixteenBitSound ? 1 : 0));
     SDL_UnlockAudio ();
 
     return;
@@ -88,13 +88,13 @@ S9xSDLSoundDriver::stop (void)
 }
 
 bool8
-S9xSDLSoundDriver::open_device (int mode, bool8 stereo, int buffer_size)
+S9xSDLSoundDriver::open_device (void)
 {
     audiospec = (SDL_AudioSpec *) malloc (sizeof (SDL_AudioSpec));
 
-    audiospec->freq = playback_rates [Settings.SoundPlaybackRate];
-    audiospec->channels = so.stereo ? 2 : 1;
-    audiospec->format = so.sixteen_bit ? AUDIO_S16SYS : AUDIO_U8;
+    audiospec->freq = Settings.SoundPlaybackRate;
+    audiospec->channels = Settings.Stereo ? 2 : 1;
+    audiospec->format = Settings.SixteenBitSound ? AUDIO_S16SYS : AUDIO_U8;
     audiospec->samples = (gui_config->sound_buffer_size * audiospec->freq / 1000) >> 1;
     audiospec->callback = sdl_audio_callback;
     audiospec->userdata = this;

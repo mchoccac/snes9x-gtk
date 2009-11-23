@@ -508,7 +508,7 @@ S9xSyncSpeed (void)
 
     else if (Settings.TurboMode)
     {
-        if ((++IPPU.FrameSkip >= Settings.TurboSkipFrames || Settings.OldTurbo)
+        if ((++IPPU.FrameSkip >= Settings.TurboSkipFrames)
             && !Settings.HighSpeedSeek)
         {
             IPPU.FrameSkip = 0;

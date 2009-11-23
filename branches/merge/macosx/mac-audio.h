@@ -180,7 +180,6 @@ void InitMacSound (void);
 void DeinitMacSound (void);
 void MacStartSound (void);
 void MacStopSound (void);
-void SetSoundPitch (void);
 void ConfigureSoundEffects (void);
 void PlayAlertSound (void);
 

@@ -162,80 +162,40 @@
 #ifndef _APU_H_
 #define _APU_H_
 
-#include "../snes9x.h"
+#include "snes9x.h"
 #include "SNES_SPC.h"
 
-typedef struct
-{
-    bool8   stereo;                                 // stereo or mono
+typedef void (*apu_callback) (void *);
 
-    bool8   sixteen_bit;                    // 16bit or 8bit sample
-    bool8   disable_echo;                   // force echo disabled
-    uint32  playback_rate;                  // 32000Hz is recommended
-    bool8   snes_standard;                  // stereo && 16bit && echo && 32000Hz
-
-    bool8   mute_sound;                             // force mute regardless of FLG
-    uint8   sound_switch;                   // channel on/off
-    uint16  stereo_switch;                  // stereo channel on/off
-    double  pitch_mul;                              // used with Settings.FixFrequency
-
-    int     buffer_size;                    // ** port specific
-    int     sound_fd;                               // ** port specific
-    bool8   encoded;                                // ** port specific
-    int32   samples_mixed_so_far;   // ** port specific
-    int32   play_position;                  // ** port specific
-    uint32  err_counter;                    // ** port specific
-    uint32  err_rate;                               // ** port specific
-    uint32  input_rate;
-} SoundStatus;
-
-extern SoundStatus so;
-
-typedef void (*samples_available_callback) (void *);
-
-#define APU_DEFAULT_INPUT_RATE    31950
-#define APU_MINIMUM_BUFFER_SIZE   8192
-#define APU_MINIMUM_SAMPLE_BLOCK  128
-
-#define APU_NUMERATOR_NTSC        5632
-#define APU_DENOMINATOR_NTSC      118125
-#define APU_NUMERATOR_PAL         102400
-#define APU_DENOMINATOR_PAL       2128137
-
-#define SPC_SAVE_STATE_BLOCK_SIZE (SNES_SPC::state_size + 8)
-
-/* Legacy defines */
-#define SOUND_BUFFER_SIZE         2048
-#define MAX_BUFFER_SIZE           SOUND_BUFFER_SIZE
-#define SOUND_BUFFER_SIZE_MASK    (SOUND_BUFFER_SIZE - 1)
+#define SPC_SAVE_STATE_BLOCK_SIZE	(SNES_SPC::state_size + 8)
 
 bool8 S9xInitAPU (void);
 void S9xDeinitAPU (void);
 void S9xResetAPU (void);
-bool8 S9xInitSound (int, bool8, int);
-bool8 S9xMixSamples (uint8 *, int);
-void S9xSetSoundControl (uint8 sound_switch);
-void S9xResetSound (bool8);
-void S9xSetPlaybackRate (uint32);
-bool8 S9xSetSoundMute (bool8);
-bool8 S9xOpenSoundDevice (int, bool8, int);
-
-void S9xAPUTimingSetSpeedup (int ticks);
-
-void S9xAPUEndScanline (void);
+void S9xSoftResetAPU (void);
+uint8 S9xAPUReadPort (int);
+void S9xAPUWritePort (int, uint8);
 void S9xAPUExecute (void);
-void S9xAPUSetReferenceTime (int cpucycles);
+void S9xAPUEndScanline (void);
+void S9xAPUSetReferenceTime (int32);
+void S9xAPUTimingSetSpeedup (int);
+void S9xAPULoadState (uint8 *);
+void S9xAPUSaveState (uint8 *);
+void S9xDumpSPCSnapshot (void);
 
-int S9xAPUReadPort (int port);
-void S9xAPUWritePort (int port, int byte);
-void S9xAPULoadState (unsigned char *block);
-void S9xAPUSaveState (unsigned char *block);
+bool8 S9xInitSound (int, int);
+bool8 S9xOpenSoundDevice (int);
 
-void S9xFinalizeSamples (void);
-void S9xSetSamplesAvailableCallback (samples_available_callback callback, void *data);
+bool8 S9xSyncSound (void);
 int S9xGetSampleCount (void);
-int S9xSyncSound (void);
+void S9xSetSoundControl (uint8);
+void S9xSetSoundMute (bool8);
+void S9xLandSamples (void);
+void S9xFinalizeSamples (void);
+void S9xClearSamples (void);
+bool8 S9xMixSamples (uint8 *, int);
+void S9xSetSamplesAvailableCallback (apu_callback, void *);
 
-extern SNES_SPC *spc_core;
+extern SNES_SPC	*spc_core;
 
 #endif

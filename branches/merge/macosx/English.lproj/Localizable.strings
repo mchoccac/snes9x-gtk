@@ -29,8 +29,6 @@
 "NPConnecting"    = "Connecting";
 "NPServerName"    = "Server";
 
-"AlertMes_01"     = "Changing sound state while playing a game might not work properly.";
-"AlertMes_02"     = "If you feel that sound is incorrect, please reset or reload the game.";
 "AlertMes_03"     = "The folders for saving files could not be created.";
 "AlertMes_04"     = "Some features will not work properly without these folders.";
 "AlertMes_05"     = "This ROM image has bad checksum, so might not work properly.";
@@ -38,7 +36,7 @@
 "AlertMes_07"     = "No enough space in Cheat Entry.";
 "AlertMes_08"     = "Delete some cheats before.";
 "AlertMes_09"     = "Snes9x cannot run on your system.";
-"AlertMes_10"     = "System requirements: Mac OS X 10.2.5 or later, QuickTime 6.4 or later.";
+"AlertMes_10"     = "System requirements: Mac OS X 10.3.9 or later, QuickTime 7 or later.";
 
 "PresetNum"       = "Preset #%ld";
 

@@ -168,7 +168,7 @@
 #include <string>
 
 #ifdef UNZIP_SUPPORT
-#include "unzip.h"
+#include "unzip/unzip.h"
 #endif
 #include "snes9x.h"
 #include "reader.h"

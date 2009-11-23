@@ -170,7 +170,6 @@
 #include "font.h"
 #include "display.h"
 
-
 extern struct SCheatData		Cheat;
 extern struct SLineData			LineData[240];
 extern struct SLineMatrixData	LineMatrixData[240];
@@ -2324,8 +2323,6 @@ HIGH_BITS_SHIFTED_TWO_MASK = ((FIRST_COLOR_MASK | SECOND_COLOR_MASK | THIRD_COLO
 
 bool8 S9xSetRenderPixelFormat (int format)
 {
-	Settings.CurrentGraphicFormat = format;
-
 	switch (format)
 	{
 		case RGB565:

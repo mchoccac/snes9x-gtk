@@ -173,7 +173,7 @@
 
 #include "snes9x.h"
 #include "memmap.h"
-#include "soundux.h"
+#include "apu.h"
 
 #include <QuickTime/QuickTime.h>
 
@@ -490,7 +490,7 @@ void MacQTRecordFrame (int width, int height)
 				CGImageRelease(sqt.srcImage);
 			sqt.srcImage = CreateGameScreenCGImage();
 
-			CGRect	dst = CGRectMake(0.0, 0.0, (float) sqt.width, (float) sqt.height);
+			CGRect	dst = CGRectMake(0.0f, 0.0f, (float) sqt.width, (float) sqt.height);
 
 			if ((!(height % SNES_HEIGHT_EXTENDED)) && (!(macQTMovFlag & kMovExtendedHeight)))
 			{
@@ -505,12 +505,12 @@ void MacQTRecordFrame (int width, int height)
 			else
 			if ((sqt.height << 1) % height)
 			{
-				CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+				CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 				CGContextFillRect(ctx, dst);
 
 				float	dh  = (float) ((sqt.height > 256) ? (SNES_HEIGHT << 1) : SNES_HEIGHT);
 				float	ofs = (float) ((int) ((drawoverscan ? 1.0 : 0.5) * ((float) sqt.height - dh) + 0.5));
-				dst = CGRectMake(0.0, ofs, (float) sqt.width, dh);
+				dst = CGRectMake(0.0f, ofs, (float) sqt.width, dh);
 				CGContextDrawImage(ctx, dst, sqt.srcImage);
 			}
 			else
@@ -573,7 +573,7 @@ void MacQTStopRecording (void)
 	err = EndMediaEdits(sqt.vMedia);
 	CheckError(err, 52);
 
-	err = InsertMediaIntoTrack(sqt.vTrack, 0, 0, GetMediaDisplayDuration(sqt.vMedia), fixed1);
+	err = InsertMediaIntoTrack(sqt.vTrack, 0, 0, (TimeValue) GetMediaDisplayDuration(sqt.vMedia), fixed1);
 	CheckError(err, 58);
 
 	CGImageRelease(sqt.srcImage);

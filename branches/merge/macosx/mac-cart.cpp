@@ -907,14 +907,14 @@ static pascal Boolean NavDefrostFromPreview (NavCBRecPtr callBackParms, NavCallB
 
 						CGContextClipToRect(ctx, bounds);
 
-						CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
+						CGContextSetRGBFillColor(ctx, 1.0f, 1.0f, 1.0f, 1.0f);
 						CGContextFillRect(ctx, bounds);
-						CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+						CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 
 						bounds.origin.x = (float) (callBackParms->previewRect.left + ((callBackParms->previewRect.right - callBackParms->previewRect.left - 128) >> 1));
 						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 120 - 25);
-						bounds.size.width  = 128.0;
-						bounds.size.height = 120.0;
+						bounds.size.width  = 128.0f;
+						bounds.size.height = 120.0f;
 
 						DrawThumbnailResource(&ref, ctx, bounds);
 
@@ -933,7 +933,7 @@ static pascal Boolean NavDefrostFromPreview (NavCBRecPtr callBackParms, NavCallB
 						bounds.origin.x = (float) (callBackParms->previewRect.left + 10);
 						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 20);
 						bounds.size.width  = (float) (callBackParms->previewRect.right - callBackParms->previewRect.left - 20);
-						bounds.size.height = 20.0;
+						bounds.size.height = 20.0f;
 
 						err = HIThemeDrawTextBox(sref, &bounds, &textinfo, ctx, kHIThemeOrientationInverted);
 
@@ -1626,19 +1626,19 @@ static pascal Boolean NavPlayMovieFromPreview (NavCBRecPtr callBackParms, NavCal
 						CFDateFormatterRef	format;
 						CFLocaleRef			locale;
 						CFStringRef			datstr;
-						Boolean				r;
+						Boolean				e;
 
 						err = UCConvertUTCDateTimeToCFAbsoluteTime(&utctime, &at);
 						locale = CFLocaleCopyCurrent();
 						format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterShortStyle, kCFDateFormatterNoStyle);
 						datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
-						r = CFStringGetCString(datstr, cbuf, sizeof(cbuf), CFStringGetSystemEncoding());
+						e = CFStringGetCString(datstr, cbuf, sizeof(cbuf), CFStringGetSystemEncoding());
 						CFRelease(datstr);
 						CFRelease(format);
 						strcat(cbuf, "\n");
 						format = CFDateFormatterCreate(kCFAllocatorDefault, locale, kCFDateFormatterNoStyle, kCFDateFormatterMediumStyle);
 						datstr = CFDateFormatterCreateStringWithAbsoluteTime(kCFAllocatorDefault, format, at);
-						r = CFStringGetCString(datstr, cstr, sizeof(cstr), CFStringGetSystemEncoding());
+						e = CFStringGetCString(datstr, cstr, sizeof(cstr), CFStringGetSystemEncoding());
 						CFRelease(datstr);
 						CFRelease(format);
 						strcat(cbuf, cstr);
@@ -1676,16 +1676,16 @@ static pascal Boolean NavPlayMovieFromPreview (NavCBRecPtr callBackParms, NavCal
 
 						CGContextClipToRect(ctx, bounds);
 
-						CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
+						CGContextSetRGBFillColor(ctx, 1.0f, 1.0f, 1.0f, 1.0f);
 						CGContextFillRect(ctx, bounds);
-						CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+						CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 
 						// Thumbnail
 
 						bounds.origin.x  = (float) (callBackParms->previewRect.left + ((callBackParms->previewRect.right - callBackParms->previewRect.left - 128) >> 1));
 						bounds.origin.y  = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 120 - 25);
-						bounds.size.width  = 128.0;
-						bounds.size.height = 120.0;
+						bounds.size.width  = 128.0f;
+						bounds.size.height = 120.0f;
 
 						DrawThumbnailResource(&ref, ctx, bounds);
 
@@ -1705,7 +1705,7 @@ static pascal Boolean NavPlayMovieFromPreview (NavCBRecPtr callBackParms, NavCal
 						bounds.origin.x = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - width) >> 1) + callBackParms->previewRect.left + border + 7);
 						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 60);
 						bounds.size.width  = (float) callBackParms->previewRect.right - bounds.origin.x;
-						bounds.size.height = 60.0;
+						bounds.size.height = 60.0f;
 
 						sref = CFStringCreateWithCString(kCFAllocatorDefault, cbuf, CFStringGetSystemEncoding());
 						if (sref)
@@ -1718,7 +1718,7 @@ static pascal Boolean NavPlayMovieFromPreview (NavCBRecPtr callBackParms, NavCal
 						bounds.origin.x = (float) callBackParms->previewRect.left;
 						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.top - 153 - 60);
 						bounds.size.width  = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - width) >> 1) + border);
-						bounds.size.height = 60.0;
+						bounds.size.height = 60.0f;
 
 						sref = CFCopyLocalizedString(CFSTR("MoviePrevMes"), "MovieInfo");
 						if (sref)
@@ -1730,7 +1730,7 @@ static pascal Boolean NavPlayMovieFromPreview (NavCBRecPtr callBackParms, NavCal
 
 						bounds.origin.x = (float) (((callBackParms->previewRect.right - callBackParms->previewRect.left - 132) >> 1) + callBackParms->previewRect.left);
 						bounds.origin.y = (float) (rct.bottom - rct.top - callBackParms->previewRect.bottom + 10);
-						bounds.size.width  = 132.0;
+						bounds.size.width  = 132.0f;
 						bounds.size.height = (float) (callBackParms->previewRect.bottom - callBackParms->previewRect.top - 223 - 10);
 
 						n = wcslen(movinfo.Metadata);

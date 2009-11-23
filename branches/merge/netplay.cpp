@@ -723,7 +723,7 @@ bool8 S9xNPLoadROMDialog (const char *rom_name)
 #endif
 
 #else
-    NetPlay.Answer = TRUE;
+	NetPlay.Answer = TRUE;
 #endif
 
     return (NetPlay.Answer);

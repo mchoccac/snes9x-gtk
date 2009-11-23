@@ -163,7 +163,7 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include "unzip.h"
+#include "unzip/unzip.h"
 #include "snes9x.h"
 #include "memmap.h"
 

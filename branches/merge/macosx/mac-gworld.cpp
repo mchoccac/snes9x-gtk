@@ -190,7 +190,7 @@ void DrawSubCGImage (CGContextRef ctx, CGImageRef image, CGRect src, CGRect dst)
     float	w = (float) CGImageGetWidth(image);
     float	h = (float) CGImageGetHeight(image);
 
-	CGRect	drawRect = CGRectMake(0.0, 0.0, w, h);
+	CGRect	drawRect = CGRectMake(0.0f, 0.0f, w, h);
 
 	if (!CGRectEqualToRect(src, dst))
 	{

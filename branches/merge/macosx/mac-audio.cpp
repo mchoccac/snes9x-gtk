@@ -172,11 +172,12 @@
 **********************************************************************************/
 
 #include "snes9x.h"
-#include "soundux.h"
+#include "apu.h"
 
 #include <CoreAudio/CoreAudio.h>
 #include <AudioToolbox/AudioToolbox.h>
 #include <AudioUnit/AudioUnitCarbonView.h>
+#include <pthread.h>
 
 #include "mac-prefix.h"
 #include "mac-dialog.h"
@@ -198,6 +199,7 @@ static EventHandlerUPP		carbonViewEventUPP = NULL;
 static EventHandlerRef		carbonViewEventRef = NULL;
 static WindowRef			effectWRef;
 static HISize				effectWSize;
+static pthread_mutex_t		mutex;
 
 static void ConnectAudioUnits (void);
 static void DisconnectAudioUnits (void);
@@ -207,6 +209,7 @@ static void SetAudioUnitSoundFormat (void);
 static void SetAudioUnitVolume (void);
 static void ReplaceAudioUnitCarbonView (void);
 static void ResizeSoundEffectsDialog (HIViewRef);
+static void MacFinalizeSamplesCallBack (void *);
 static OSStatus MacAURenderCallBack (void *, AudioUnitRenderActionFlags *, const AudioTimeStamp *, UInt32, UInt32, AudioBufferList *);
 static pascal OSStatus SoundEffectsEventHandler (EventHandlerCallRef, EventRef, void *);
 static pascal OSStatus SoundEffectsCarbonViewEventHandler (EventHandlerCallRef, EventRef, void *);
@@ -281,12 +284,16 @@ void InitMacSound (void)
 
 	ConnectAudioUnits();
 	LoadEffectPresets();
+
+	pthread_mutex_init(&mutex, NULL);
+	S9xSetSamplesAvailableCallback(MacFinalizeSamplesCallBack, NULL); 
 }
 
 void DeinitMacSound (void)
 {
 	OSStatus	err;
 
+	pthread_mutex_destroy(&mutex);
 	SaveEffectPresets();
 	DisconnectAudioUnits();
 	err = AUGraphUninitialize(agraph);
@@ -307,14 +314,14 @@ static void SetAudioUnitSoundFormat (void)
 
 	memset(&format, 0, sizeof(format));
 
-	format.mSampleRate	     = (Float64) so.playback_rate;
+	format.mSampleRate	     = (Float64) Settings.SoundPlaybackRate;
 	format.mFormatID	     = kAudioFormatLinearPCM;
-	format.mFormatFlags	     = endian | (so.sixteen_bit ? kLinearPCMFormatFlagIsSignedInteger : 0);
-	format.mBytesPerPacket   = 2 * (so.sixteen_bit ? 2 : 1);
+	format.mFormatFlags	     = endian | (Settings.SixteenBitSound ? kLinearPCMFormatFlagIsSignedInteger : 0);
+	format.mBytesPerPacket   = 2 * (Settings.SixteenBitSound ? 2 : 1);
 	format.mFramesPerPacket  = 1;
-	format.mBytesPerFrame    = 2 * (so.sixteen_bit ? 2 : 1);
+	format.mBytesPerFrame    = 2 * (Settings.SixteenBitSound ? 2 : 1);
 	format.mChannelsPerFrame = 2;
-	format.mBitsPerChannel   = so.sixteen_bit ? 16 : 8;
+	format.mBitsPerChannel   = Settings.SixteenBitSound ? 16 : 8;
 
 	err = AudioUnitSetProperty(aueffect ? cnvAU : outAU, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &format, sizeof(format));
 }
@@ -323,7 +330,7 @@ static void SetAudioUnitVolume (void)
 {
 	OSStatus	err;
 
-	err = AudioUnitSetParameter(outAU, kAudioUnitParameterUnit_LinearGain, kAudioUnitScope_Output, 0, (float) macSoundVolume / 100.0, 0);
+	err = AudioUnitSetParameter(outAU, kAudioUnitParameterUnit_LinearGain, kAudioUnitScope_Output, 0, (float) macSoundVolume / 100.0f, 0);
 }
 
 static void ConnectAudioUnits (void)
@@ -370,33 +377,37 @@ static void DisconnectAudioUnits (void)
 
 static OSStatus MacAURenderCallBack (void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumFrames, AudioBufferList *ioData)
 {
-	if (so.mute_sound || !Settings.APUEnabled)
+	if (Settings.Mute)
 	{
 		memset(ioData->mBuffers[0].mData, 0, ioData->mBuffers[0].mDataByteSize);
 		*ioActionFlags |= kAudioUnitRenderAction_OutputIsSilence;
 	}
 	else
-	if (so.stereo)
+	if (Settings.Stereo)
 	{
 		unsigned int	samples;
 
 		samples = ioData->mBuffers[0].mDataByteSize;
-		if (so.sixteen_bit)
+		if (Settings.SixteenBitSound)
 			samples >>= 1;
 
+		pthread_mutex_lock(&mutex);
 		S9xMixSamples((uint8 *) ioData->mBuffers[0].mData, samples);
+		pthread_mutex_unlock(&mutex);
 	}
 	else	// Manually map L to R
 	{
 		unsigned int	monosmp;
 
 		monosmp = ioData->mBuffers[0].mDataByteSize >> 1;
-		if (so.sixteen_bit)
+		if (Settings.SixteenBitSound)
 			monosmp >>= 1;
 
+		pthread_mutex_lock(&mutex);
 		S9xMixSamples((uint8 *) ioData->mBuffers[0].mData, monosmp);
+		pthread_mutex_unlock(&mutex);
 
-		if (so.sixteen_bit)
+		if (Settings.SixteenBitSound)
 		{
 			for (int i = monosmp - 1; i >= 0; i--)
 				((int16 *) ioData->mBuffers[0].mData)[i * 2 + 1] = ((int16 *) ioData->mBuffers[0].mData)[i * 2] = ((int16 *) ioData->mBuffers[0].mData)[i];
@@ -409,6 +420,13 @@ static OSStatus MacAURenderCallBack (void *inRefCon, AudioUnitRenderActionFlags 
 	}
 
 	return (noErr);
+}
+
+static void MacFinalizeSamplesCallBack (void *userData)
+{ 
+	pthread_mutex_lock(&mutex);
+	S9xFinalizeSamples(); 
+	pthread_mutex_unlock(&mutex);
 }
 
 static void SaveEffectPresets (void)
@@ -500,28 +518,9 @@ void MacStopSound (void)
 	}
 }
 
-void SetSoundPitch (void)
-{
-	if ((int) (macSoundPitch * 100000) != 100000)
-	{
-		Settings.FixFrequency = true;
-		so.pitch_mul = macSoundPitch;
-	}
-	else
-	{
-		Settings.FixFrequency = false;
-		macSoundPitch = 1.0;
-	}
-}
-
-bool8 S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
+bool8 S9xOpenSoundDevice (int buffer_size)
 {
 	OSStatus	err;
-
-	so.stereo        = Settings.Stereo;
-	so.sixteen_bit   = Settings.SixteenBitSound;
-	so.disable_echo  = Settings.DisableSoundEcho;
-	so.playback_rate = Settings.SoundPlaybackRate;
 
 	err = AUGraphUninitialize(agraph);
 
@@ -529,10 +528,6 @@ bool8 S9xOpenSoundDevice (int mode, bool8 stereo, int buffer_size)
 	SetAudioUnitVolume();
 
 	err = AUGraphInitialize(agraph);
-
-	SetSoundPitch();
-
-	S9xSetPlaybackRate(so.playback_rate);
 
 	return (true);
 }
@@ -545,11 +540,6 @@ void PlayAlertSound (void)
 	else
 		SysBeep(10);
 #endif
-}
-
-void S9xGenerateSound (void)
-{
-	return;
 }
 
 static void ReplaceAudioUnitCarbonView (void)
@@ -681,22 +671,22 @@ static void ResizeSoundEffectsDialog (HIViewRef view)
 #ifdef MAC_PANTHER_SUPPORT
 	if (systemVersion < 0x1040)
 	{
-		HIRect	bounds;
+		HIRect	frame;
 		Rect	rct;
 
 		GetWindowBounds(effectWRef, kWindowContentRgn, &rv);
 
 		cid.signature = 'SfUI';
 		HIViewFindByID(root, cid, &ctl);
-		HIViewGetFrame(ctl, &bounds);
-		bounds.size.width = (float) (rv.right - rv.left);
-		HIViewSetFrame(ctl, &bounds);
+		HIViewGetFrame(ctl, &frame);
+		frame.size.width = (float) (rv.right - rv.left);
+		HIViewSetFrame(ctl, &frame);
 
 		cid.signature = 'LINE';
 		HIViewFindByID(root, cid, &ctl);
-		HIViewGetFrame(ctl, &bounds);
-		bounds.size.width = (float) (rv.right - rv.left - 24);
-		HIViewSetFrame(ctl, &bounds);
+		HIViewGetFrame(ctl, &frame);
+		frame.size.width = (float) (rv.right - rv.left - 24);
+		HIViewSetFrame(ctl, &frame);
 
 		rct.top    = 0;
 		rct.left   = 0;
@@ -750,7 +740,7 @@ void ConfigureSoundEffects (void)
 					CFRelease(str);
 				}
 
-				frame = CGRectMake(0.0, 0.0, (float) (rct.right - rct.left), (float) (rct.bottom - rct.top));
+				frame = CGRectMake(0.0f, 0.0f, (float) (rct.right - rct.left), (float) (rct.bottom - rct.top));
 				err = CreateNewWindow(kDocumentWindowClass, kWindowCloseBoxAttribute | kWindowCollapseBoxAttribute | kWindowStandardHandlerAttribute | kWindowCompositingAttribute | metal, &rct, &effectWRef);
 				err = HIViewFindByID(HIViewGetRoot(effectWRef), kHIViewWindowContentID, &contentview);
 				err = HIViewAddSubview(contentview, userpane);

@@ -164,7 +164,7 @@
 #include <assert.h>
 
 #ifdef UNZIP_SUPPORT
-#include "unzip.h"
+#include "unzip/unzip.h"
 #endif
 
 #ifdef JMA_SUPPORT
@@ -2622,7 +2622,6 @@ void CMemory::InitROM (void)
 	Settings.ForcePAL = FALSE;
 	Settings.ForceNTSC = FALSE;
 
-	Settings.TakeSPCShapshot = FALSE;
 	Settings.TakeScreenshot = FALSE;
 
 	if (stopMovie)
@@ -3506,6 +3505,7 @@ bool8 CMemory::match_id (const char *str)
 void CMemory::ApplyROMFixes (void)
 {
 	Settings.Shutdown = Settings.ShutdownMaster;
+	Settings.BlockInvalidVRAMAccess = Settings.BlockInvalidVRAMAccessMaster;
 
 	//// Warnings
 
@@ -3530,115 +3530,129 @@ void CMemory::ApplyROMFixes (void)
 	}
 
 	//// APU timing hacks :(
-#if 1
-        S9xAPUTimingSetSpeedup (0);
 
-	// This game cannot work well anyway
-	if (match_id("AVCJ"))                                      // Rendering Ranger R2
+	Timings.APUSpeedup = 0;
+
+	if (!Settings.DisableGameSpecificHacks)
 	{
-            S9xAPUTimingSetSpeedup (4);
+		if (match_id("AVCJ"))                                      // Rendering Ranger R2
+			Timings.APUSpeedup = 4;
+
+		if (match_na("GAIA GENSOUKI 1 JPN")                     || // Gaia Gensouki
+			match_id("JG  ")                                    || // Illusion of Gaia
+			match_id("CQ  ")                                    || // Stunt Race FX
+			match_na("SOULBLADER - 1")                          || // Soul Blader
+			match_na("SOULBLAZER - 1 USA")                      || // Soul Blazer
+			match_na("SLAP STICK 1 JPN")                        || // Slap Stick
+			match_id("E9 ")                                     || // Robotrek
+			match_nn("ACTRAISER")                               || // Actraiser
+			match_nn("ActRaiser-2")                             || // Actraiser 2
+			match_id("AQT")                                     || // Tenchi Souzou, Terranigma
+			match_id("ATV")                                     || // Tales of Phantasia
+			match_id("ARF")                                     || // Star Ocean
+			match_id("APR")                                     || // Zen-Nippon Pro Wrestling 2 - 3-4 Budoukan
+			match_id("A4B")                                     || // Super Bomberman 4
+			match_id("Y7 ")                                     || // U.F.O. Kamen Yakisoban - Present Ban
+			match_id("Y9 ")                                     || // U.F.O. Kamen Yakisoban - Shihan Ban
+			match_id("APB")                                     || // Super Bomberman - Panic Bomber W
+			match_na("DARK KINGDOM")                            || // Dark Kingdom
+			match_na("ZAN3 SFC")                                || // Zan III Spirits
+			match_na("HIOUDEN")                                 || // Hiouden - Mamono-tachi Tono Chikai
+			match_na("\xC3\xDD\xBC\xC9\xB3\xC0")                || // Tenshi no Uta
+			match_na("FORTUNE QUEST")                           || // Fortune Quest - Dice wo Korogase
+			match_na("FISHING TO BASSING")                      || // Shimono Masaki no Fishing To Bassing
+			match_na("OHMONO BLACKBASS")                        || // Oomono Black Bass Fishing - Jinzouko Hen
+			match_na("MASTERS")                                 || // Harukanaru Augusta 2 - Masters
+			match_na("SFC \xB6\xD2\xDD\xD7\xB2\xC0\xDE\xB0")    || // Kamen Rider
+			match_na("ZENKI TENCHIMEIDOU")					    || // Kishin Douji Zenki - Tenchi Meidou
+			match_nn("TokyoDome '95Battle 7")                   || // Shin Nippon Pro Wrestling Kounin '95 - Tokyo Dome Battle 7
+			match_nn("SWORD WORLD SFC")                         || // Sword World SFC/2
+			match_nn("LETs PACHINKO(")                          || // BS Lets Pachinko Nante Gindama 1/2/3/4
+			match_nn("THE FISHING MASTER")                      || // Mark Davis The Fishing Master
+			match_nn("Parlor")                                  || // Parlor mini/2/3/4/5/6/7, Parlor Parlor!/2/3/4/5
+			match_na("HEIWA Parlor!Mini8")                      || // Parlor mini 8
+			match_nn("SANKYO Fever! \xCC\xA8\xB0\xCA\xDE\xB0!"))   // SANKYO Fever! Fever!
+			Timings.APUSpeedup = 1;
 	}
 
-	// XXX: All Quintet games?
-	if (match_na("GAIA GENSOUKI 1 JPN")                     || // Gaia Gensouki
-		match_id("JG  ")                                    || // Illusion of Gaia
-		match_id("CQ  "))                                      // Stunt Race FX
-	{
-                S9xAPUTimingSetSpeedup (1);
-	}
+	S9xAPUTimingSetSpeedup(Timings.APUSpeedup);
 
-	if (match_na("SOULBLADER - 1")                          || // Soul Blader
-		match_na("SOULBLAZER - 1 USA")                      || // Soul Blazer
-		match_na("SLAP STICK 1 JPN")                        || // Slap Stick
-		match_id("E9 ")                                     || // Robotrek
-		match_nn("ACTRAISER")                               || // Actraiser
-		match_nn("ActRaiser-2")                             || // Actraiser 2
-		match_id("AQT")                                     || // Tenchi Souzou, Terranigma
-		match_id("ATV")                                     || // Tales of Phantasia
-		match_id("ARF")                                     || // Star Ocean
-		match_id("APR")                                     || // Zen-Nippon Pro Wrestling 2 - 3-4 Budoukan
-		match_id("A4B")                                     || // Super Bomberman 4
-		match_id("Y7 ")                                     || // U.F.O. Kamen Yakisoban - Present Ban
-		match_id("Y9 ")                                     || // U.F.O. Kamen Yakisoban - Shihan Ban
-		match_id("APB")                                     || // Super Bomberman - Panic Bomber W
-		match_na("DARK KINGDOM")                            || // Dark Kingdom
-		match_na("ZAN3 SFC")                                || // Zan III Spirits
-		match_na("HIOUDEN")                                 || // Hiouden - Mamono-tachi Tono Chikai
-		match_na("\xC3\xDD\xBC\xC9\xB3\xC0")                || // Tenshi no Uta
-		match_na("FORTUNE QUEST")                           || // Fortune Quest - Dice wo Korogase
-		match_na("FISHING TO BASSING")                      || // Shimono Masaki no Fishing To Bassing
-		match_na("OHMONO BLACKBASS")                        || // Oomono Black Bass Fishing - Jinzouko Hen
-		match_na("MASTERS")                                 || // Harukanaru Augusta 2 - Masters
-		match_na("SFC \xB6\xD2\xDD\xD7\xB2\xC0\xDE\xB0")    || // Kamen Rider
-		match_na("ZENKI TENCHIMEIDOU")					    || // Kishin Douji Zenki - Tenchi Meidou
-		match_nn("TokyoDome '95Battle 7")                   || // Shin Nippon Pro Wrestling Kounin '95 - Tokyo Dome Battle 7
-		match_nn("SWORD WORLD SFC")                         || // Sword World SFC/2
-		match_nn("LETs PACHINKO(")                          || // BS Lets Pachinko Nante Gindama 1/2/3/4
-		match_nn("THE FISHING MASTER")                      || // Mark Davis The Fishing Master
-		match_nn("Parlor")                                  || // Parlor mini/2/3/4/5/6/7, Parlor Parlor!/2/3/4/5
-		match_na("HEIWA Parlor!Mini8")                      || // Parlor mini 8
-		match_nn("SANKYO Fever! \xCC\xA8\xB0\xCA\xDE\xB0!"))   // SANKYO Fever! Fever!
-	{
-            S9xAPUTimingSetSpeedup (1);
-	}
-#endif
-	//// DMA/HDMA timing hacks :(
+	//// Other timing hacks :(
 
 	Timings.HDMAStart   = SNES_HDMA_START_HC + Settings.HDMATimingHack - 100;
 	Timings.HBlankStart = SNES_HBLANK_START_HC + Timings.HDMAStart - SNES_HDMA_START_HC;
 
-	// The HC counter (CPU.Cycles for snes9x) passes over the WRAM refresh point (HC~536)
-	// while preparing to jump to the IRQ vector address.
-	// That is to say, the WRAM refresh point is passed over in S9xOpcode_IRQ().
-	// Then, HDMA starts just after $210e is half updated, and it causes the flicker of the ground.
-	// IRQ timing is bad? HDMA timing is bad? else?
-	if (match_na("GUNDAMW ENDLESSDUEL")) // Shin Kidou Senki Gundam W - Endless Duel
+	if (!Settings.DisableGameSpecificHacks)
 	{
-		Timings.HDMAStart   -= 10;
-		Timings.HBlankStart -= 10;
-		printf("HDMA timing hack: %d\n", Timings.HDMAStart);
+		// The HC counter (CPU.Cycles for snes9x) passes over the WRAM refresh point (HC~536)
+		// while preparing to jump to the IRQ vector address.
+		// That is to say, the WRAM refresh point is passed over in S9xOpcode_IRQ().
+		// Then, HDMA starts just after $210e is half updated, and it causes the flicker of the ground.
+		// IRQ timing is bad? HDMA timing is bad? else?
+		if (match_na("GUNDAMW ENDLESSDUEL")) // Shin Kidou Senki Gundam W - Endless Duel
+		{
+			Timings.HDMAStart   -= 10;
+			Timings.HBlankStart -= 10;
+			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
+		}
+
+		// Due to Snes9x's very inaccurate timings,
+		// HDMA transfer to $210D-$2114 between the first and second writings to the same addresses.
+		if (match_na("POWER RANGERS FIGHT")) // Mighty Morphin Power Rangers - The Fighting Edition
+		{
+			Timings.HDMAStart   -= 10;
+			Timings.HBlankStart -= 10;
+			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
+		}
+
+		if (match_na("SFX SUPERBUTOUDEN2")) // Dragon Ball Z - Super Butouden 2
+		{
+			Timings.HDMAStart   += 20;
+			Timings.HBlankStart += 20;
+			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
+		}
 	}
 
-	// Due to Snes9x's very inaccurate timings,
-	// HDMA transfer to $210D-$2114 between the first and second writings to the same addresses.
-	if (match_na("POWER RANGERS FIGHT")) // Mighty Morphin Power Rangers - The Fighting Edition
+	if (!Settings.DisableGameSpecificHacks)
 	{
-		Timings.HDMAStart   -= 10;
-		Timings.HBlankStart -= 10;
-		printf("HDMA timing hack: %d\n", Timings.HDMAStart);
+		// The delay to sync CPU and DMA which Snes9x cannot emulate.
+		// Some games need really severe delay timing...
+		if (match_na("BATTLE GRANDPRIX")) // Battle Grandprix
+		{
+			Timings.DMACPUSync = 20;
+			printf("DMA sync: %d\n", Timings.DMACPUSync);
+		}
 	}
 
-	if (match_na("SFX SUPERBUTOUDEN2")) // Dragon Ball Z - Super Butouden 2
+	if (!Settings.DisableGameSpecificHacks)
 	{
-		Timings.HDMAStart   += 20;
-		Timings.HBlankStart += 20;
-		printf("HDMA timing hack: %d\n", Timings.HDMAStart);
+		// Opcode-based emulators cannot escape from "reading $4211/BPL" infinite loop...
+		// The true IRQ can be triggered inside an opcode.
+		if (match_na("TRAVERSE")) // Traverse - Starlight & Prairie
+		{
+			Timings.IRQPendCount = 1;
+			printf("IRQ count hack: %d\n", Timings.IRQPendCount);
+		}
+
+		// An infinite loop reads $4212 and waits V-blank end, whereas VIRQ is set V=0.
+		// If Snes9x succeeds to escape from the loop before jumping into the IRQ handler, the game goes further.
+		// If Snes9x jumps into the IRQ handler before escaping from the loop,
+		// Snes9x cannot escape from the loop permanently because the RTI is in the next V-blank.
+		if (match_na("Aero the AcroBat 2"))
+		{
+			Timings.IRQPendCount = 2;
+			printf("IRQ count hack: %d\n", Timings.IRQPendCount);
+		}
 	}
 
-	// The delay to sync CPU and DMA which Snes9x cannot emulate.
-	// Some games need really severe delay timing...
-	if (match_na("BATTLE GRANDPRIX")) // Battle Grandprix
+	if (!Settings.DisableGameSpecificHacks)
 	{
-		Timings.DMACPUSync = 20;
-		printf("DMA sync: %d\n", Timings.DMACPUSync);
-	}
-
-	// Opcode-based emulators cannot escape from "reading $4211/BPL" infinite loop...
-	// The true IRQ can be triggered inside an opcode.
-	if (match_na("TRAVERSE")) // Traverse - Starlight & Prairie
-	{
-		Timings.IRQPendCount = 1;
-		printf("IRQ count hack: %d\n", Timings.IRQPendCount);
-	}
-
-	// An infinite loop reads $4212 and waits V-blank end, whereas VIRQ is set V=0.
-	// If Snes9x succeeds to escape from the loop before jumping into the IRQ handler, the game goes further.
-	// If Snes9x jumps into the IRQ handler before escaping from the loop,
-	// Snes9x cannot escape from the loop permanently because the RTI is in the next V-blank.
-	if (match_na("Aero the AcroBat 2"))
-	{
-		Timings.IRQPendCount = 2;
-		printf("IRQ count hack: %d\n", Timings.IRQPendCount);
+		// XXX: What's happening?
+		if (match_na("X-MEN")) // Spider-Man and the X-Men
+		{
+			Settings.BlockInvalidVRAMAccess = FALSE;
+			printf("Invalid VRAM access hack\n");
+		}
 	}
 
 	//// CPU speed-ups (CPU_Shutdown())
@@ -3877,36 +3891,42 @@ void CMemory::ApplyROMFixes (void)
 		// Super Shougi 3 - Kitaihei (J)
 	}
 
-	//// SRAM fixes
+	//// SRAM initial value
 
-	if (match_na("HITOMI3"))
+	if (!Settings.DisableGameSpecificHacks)
 	{
-		SRAMSize = 1;
-		SRAMMask = ((1 << (SRAMSize + 3)) * 128) - 1;
+		if (match_na("HITOMI3"))
+		{
+			SRAMSize = 1;
+			SRAMMask = ((1 << (SRAMSize + 3)) * 128) - 1;
+		}
+
+		// SRAM value fixes
+		if (match_na("SUPER DRIFT OUT")      || // Super Drift Out
+			match_na("SATAN IS OUR FATHER!") ||
+			match_na("goemon 4"))               // Ganbare Goemon Kirakira Douchuu
+			SNESGameFixes.SRAMInitialValue = 0x00;
+
+		// Additional game fixes by sanmaiwashi ...
+		// XXX: unnecessary?
+		if (match_na("SFX \xC5\xB2\xC4\xB6\xDE\xDD\xC0\xDE\xD1\xD3\xC9\xB6\xDE\xC0\xD8 1")) // SD Gundam Gaiden - Knight Gundam Monogatari
+			SNESGameFixes.SRAMInitialValue = 0x6b;
+
+		// others: BS and ST-01x games are 0x00.
 	}
 
-	// SRAM value fixes
-	if (match_na("SUPER DRIFT OUT")      || // Super Drift Out
-		match_na("SATAN IS OUR FATHER!") ||
-		match_na("goemon 4"))               // Ganbare Goemon Kirakira Douchuu
-		SNESGameFixes.SRAMInitialValue = 0x00;
+	//// OAM hacks :(
 
-    // Additional game fixes by sanmaiwashi ...
-	// XXX: unnecessary?
-    if (match_na("SFX \xC5\xB2\xC4\xB6\xDE\xDD\xC0\xDE\xD1\xD3\xC9\xB6\xDE\xC0\xD8 1")) // SD Gundam Gaiden - Knight Gundam Monogatari
-    	SNESGameFixes.SRAMInitialValue = 0x6b;
-
-	// others: BS and ST-01x games are 0x00.
-
-	//// Specific game fixes
-
-	// OAM hacks because we don't fully understand the behavior of the SNES.
-	// Totally wacky display in 2P mode...
-	// seems to need a disproven behavior, so we're definitely overlooking some other bug?
-	if (match_nn("UNIRACERS")) // Uniracers
+	if (!Settings.DisableGameSpecificHacks)
 	{
-		SNESGameFixes.Uniracers = TRUE;
-		printf("Applied Uniracers hack.\n");
+		// OAM hacks because we don't fully understand the behavior of the SNES.
+		// Totally wacky display in 2P mode...
+		// seems to need a disproven behavior, so we're definitely overlooking some other bug?
+		if (match_nn("UNIRACERS")) // Uniracers
+		{
+			SNESGameFixes.Uniracers = TRUE;
+			printf("Applied Uniracers hack.\n");
+		}
 	}
 }
 

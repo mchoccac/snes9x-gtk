@@ -59,7 +59,7 @@ namespace JMA
     size_t file_block_size = charp_to_uint(uint_buffer);
 
     //Currently at the end of the file, so that's the file size
-    size_t jma_file_size = stream.tellg();
+    size_t jma_file_size = (size_t) stream.tellg();
 
     //The file block can't be larger than the JMA file without it's header.
     //This if can probably be improved

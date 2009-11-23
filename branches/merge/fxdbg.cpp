@@ -185,6 +185,7 @@
   (See the diffrence of how the values vPipe1 and vPipe2 are read, compared to the values vByte1 and vByte2)
 */
 
+/*
 static const char	*fx_apvMnemonicTable[] =
 {
 	// ALT0 Table
@@ -1347,8 +1348,9 @@ static const char	*fx_apvMnemonicTable[] =
 	"lm r14, ($%04x)",
 	"lm r15, ($%04x)"
 };
+*/
 
-
+/*
 static void FxPipeString (char *pvString)
 {
 	uint32		vOpcode = (GSU.vStatusReg & 0x300) | ((uint32) PIPE);
@@ -1402,5 +1404,6 @@ static void FxPipeString (char *pvString)
 	else										// Normal instruction
 		strcpy(p, m);
 }
+*/
 
 #endif

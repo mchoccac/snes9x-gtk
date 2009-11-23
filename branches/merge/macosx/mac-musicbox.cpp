@@ -174,7 +174,6 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "apu.h"
-#include "soundux.h"
 #include "snapshot.h"
 
 #include <pthread.h>
@@ -187,24 +186,21 @@
 #include "mac-stringtools.h"
 #include "mac-musicbox.h"
 
-const float	mbxOffsetX   = 0.0,
-			mbxOffsetY   = 0.0,
-			mbxBarWidth  = 12.0,
-			mbxBarHeight = 128.0,
-			mbxBarSpace  = 2.0,
-			mbxLRSpace   = 20.0,
-			mbxRightBarX = (mbxLRSpace + (mbxBarWidth * 8.0 + mbxBarSpace * 7.0)),
-			yyscale      = (128.0 / (sqrt(64.0)));
+const float	mbxOffsetX   = 0.0f,
+			mbxOffsetY   = 0.0f,
+			mbxBarWidth  = 12.0f,
+			mbxBarHeight = 128.0f,
+			mbxBarSpace  = 2.0f,
+			mbxLRSpace   = 20.0f,
+			mbxRightBarX = (mbxLRSpace + (mbxBarWidth * 8.0f + mbxBarSpace * 7.0f)),
+			yyscale      = (float) (128.0 / sqrt(64.0));
 
 extern char				gMacRomName[ROM_NAME_LEN];
 
 volatile Boolean		mboxPause = false;
 
-static SAPU				*StoredAPU;
-static SAPURegisters	*StoredAPURegisters;
-static SSoundData		*StoredSoundData;
-static uint8			*StoredIAPURAM;
-static int32			oldCPUCycles, oldNextAPUTimerPos, oldAPUTimerCounter;
+static uint8			storedSoundSnapshot[SPC_SAVE_STATE_BLOCK_SIZE];
+static int32			oldCPUCycles;
 
 static short			mbxOpenedHeight, mbxClosedHeight;
 static float			mbxMarginX, mbxMarginY, mbxViewWidth, mbxViewHeight;
@@ -214,6 +210,8 @@ static short			prevLVol[8], prevRVol[8];
 static long long		barTimeL[8], barTimeR[8];
 
 static pthread_t		mbxThread;
+
+static uint16			stereo_switch;
 
 static volatile Boolean	stopNow, showIndicator, mbxFinished;
 
@@ -285,7 +283,9 @@ void MusicBoxDialog (void)
 			mboxPause = false;
 			mbxFinished = false;
 			showIndicator = false;
-			so.stereo_switch = ~0;
+
+			stereo_switch = ~0;
+			spc_core->dsp_set_stereo_switch(stereo_switch);
 
 			for (int i = 0; i < MAC_MAX_PLAYERS; i++)
 				controlPad[i] = 0;
@@ -300,14 +300,6 @@ void MusicBoxDialog (void)
 				cid.signature = 'HEAD';
 				HIViewFindByID(root, cid, &ctl);
 				EnableControl(ctl);
-
-				StoredAPU          = new SAPU;
-				StoredAPURegisters = new SAPURegisters;
-				StoredSoundData    = new SSoundData;
-				StoredIAPURAM      = new uint8[0x10000];
-
-				if (!StoredAPU || !StoredAPURegisters || !StoredSoundData || !StoredIAPURAM)
-					QuitWithFatalError(0, "musicbox 01");
 
 				SPCPlayFreeze();
 			}
@@ -366,8 +358,8 @@ void MusicBoxDialog (void)
 			HIViewGetBounds(paneView, &bounds);
 			mbxViewWidth  = bounds.size.width;
 			mbxViewHeight = bounds.size.height;
-			mbxMarginY = (mbxViewHeight - mbxBarHeight) / 2.0;
-			mbxMarginX = (mbxViewWidth - ((mbxBarWidth * 8.0 + mbxBarSpace * 7.0) * 2.0 + mbxLRSpace)) / 2.0;
+			mbxMarginY = (mbxViewHeight - mbxBarHeight) / 2.0f;
+			mbxMarginX = (mbxViewWidth - ((mbxBarWidth * 8.0f + mbxBarSpace * 7.0f) * 2.0f + mbxLRSpace)) / 2.0f;
 
 			if (imageView)
 			{
@@ -465,19 +457,13 @@ void MusicBoxDialog (void)
 
 			CFRelease(tWindowRef);
 
-			so.stereo_switch = ~0;
+			stereo_switch = ~0;
+			spc_core->dsp_set_stereo_switch(stereo_switch);
 
 			mbxFinished = true;
 
 			if (musicboxmode == kMBXSoundEmulation)
-			{
  				SPCPlayDefrost();
-
-				delete    StoredAPU;
-				delete    StoredAPURegisters;
-				delete    StoredSoundData;
-				delete [] StoredIAPURAM;
-			}
 			else
 				MusicBoxForceDefrost();
 		}
@@ -491,17 +477,19 @@ void MusicBoxDialog (void)
 
 static pascal OSStatus MusicBoxEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *userData)
 {
-    OSStatus	err, result = eventNotHandledErr;
+	OSStatus	err, result = eventNotHandledErr;
 	WindowRef	tWindowRef = (WindowRef) userData;
 
 	switch (GetEventClass(inEvent))
 	{
 		case kEventClassCommand:
+		{
 			switch (GetEventKind(inEvent))
 			{
 				HICommand	cmd;
 
 				case kEventCommandUpdateStatus:
+				{
 					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &cmd);
 					if (err == noErr && cmd.commandID == 'clos')
 					{
@@ -510,8 +498,10 @@ static pascal OSStatus MusicBoxEventHandler (EventHandlerCallRef inHandlerCallRe
 					}
 
 					break;
+				}
 
 				case kEventCommandProcess:
+				{
 					err = GetEventParameter(inEvent, kEventParamDirectObject, typeHICommand, NULL, sizeof(HICommand), NULL, &cmd);
 					if (err == noErr)
 					{
@@ -521,30 +511,33 @@ static pascal OSStatus MusicBoxEventHandler (EventHandlerCallRef inHandlerCallRe
 
 						switch (cmd.commandID)
 						{
-							case 'bar1': so.stereo_switch ^= (1 <<  0);	result = noErr;	break;
-							case 'bar2': so.stereo_switch ^= (1 <<  1);	result = noErr;	break;
-							case 'bar3': so.stereo_switch ^= (1 <<  2);	result = noErr;	break;
-							case 'bar4': so.stereo_switch ^= (1 <<  3);	result = noErr;	break;
-							case 'bar5': so.stereo_switch ^= (1 <<  4);	result = noErr;	break;
-							case 'bar6': so.stereo_switch ^= (1 <<  5);	result = noErr;	break;
-							case 'bar7': so.stereo_switch ^= (1 <<  6);	result = noErr;	break;
-							case 'bar8': so.stereo_switch ^= (1 <<  7);	result = noErr;	break;
-							case 'bar9': so.stereo_switch ^= (1 <<  8);	result = noErr;	break;
-							case 'bara': so.stereo_switch ^= (1 <<  9);	result = noErr;	break;
-							case 'barb': so.stereo_switch ^= (1 << 10);	result = noErr;	break;
-							case 'barc': so.stereo_switch ^= (1 << 11);	result = noErr;	break;
-							case 'bard': so.stereo_switch ^= (1 << 12);	result = noErr;	break;
-							case 'bare': so.stereo_switch ^= (1 << 13);	result = noErr;	break;
-							case 'barf': so.stereo_switch ^= (1 << 14);	result = noErr;	break;
-							case 'bar0': so.stereo_switch ^= (1 << 15);	result = noErr;	break;
+							case 'bar1': stereo_switch ^= (1 <<  0);	result = noErr;	break;
+							case 'bar2': stereo_switch ^= (1 <<  1);	result = noErr;	break;
+							case 'bar3': stereo_switch ^= (1 <<  2);	result = noErr;	break;
+							case 'bar4': stereo_switch ^= (1 <<  3);	result = noErr;	break;
+							case 'bar5': stereo_switch ^= (1 <<  4);	result = noErr;	break;
+							case 'bar6': stereo_switch ^= (1 <<  5);	result = noErr;	break;
+							case 'bar7': stereo_switch ^= (1 <<  6);	result = noErr;	break;
+							case 'bar8': stereo_switch ^= (1 <<  7);	result = noErr;	break;
+							case 'bar9': stereo_switch ^= (1 <<  8);	result = noErr;	break;
+							case 'bara': stereo_switch ^= (1 <<  9);	result = noErr;	break;
+							case 'barb': stereo_switch ^= (1 << 10);	result = noErr;	break;
+							case 'barc': stereo_switch ^= (1 << 11);	result = noErr;	break;
+							case 'bard': stereo_switch ^= (1 << 12);	result = noErr;	break;
+							case 'bare': stereo_switch ^= (1 << 13);	result = noErr;	break;
+							case 'barf': stereo_switch ^= (1 << 14);	result = noErr;	break;
+							case 'bar0': stereo_switch ^= (1 << 15);	result = noErr;	break;
 
 							case 'Paus':
+							{
 								mboxPause = !mboxPause;
 								S9xSetSoundMute(mboxPause);
 								result = noErr;
 								break;
+							}
 
 							case 'Tr_i':
+							{
 								showIndicator = !showIndicator;
 
 								root = HIViewGetRoot(tWindowRef);
@@ -575,29 +568,40 @@ static pascal OSStatus MusicBoxEventHandler (EventHandlerCallRef inHandlerCallRe
 
 								result = noErr;
 								break;
+							}
 
 							case 'DONE':
+							{
 								QuitAppModalLoopForWindow(tWindowRef);
 								result = noErr;
 								break;
+							}
 
 							case 'HEAD':
+							{
 								showIndicator = !showIndicator;
 								SPCPlayDefrost();
 								showIndicator = !showIndicator;
 								result = noErr;
 								break;
+							}
 
 							case 'S_EF':
+							{
 								HideWindow(tWindowRef);
 								showIndicator = !showIndicator;
 								ConfigureSoundEffects();
 								showIndicator = !showIndicator;
 								ShowWindow(tWindowRef);
 								result = noErr;
+							}
 						}
+
+						spc_core->dsp_set_stereo_switch(stereo_switch);
 					}
+				}
 			}
+		}
 	}
 
 	return (result);
@@ -624,7 +628,7 @@ static void * SoundTask (void *)
 		Microseconds((UnsignedWide *) &curt);
 
 		if (last > curt)
-			usleep(last - curt);
+			usleep((useconds_t) (last - curt));
 	}
 
 	return (NULL);
@@ -634,13 +638,11 @@ static void SPCPlayExec (void)
 {
 	for (int v = 0; v < Timings.V_Max; v++)
 	{
-		S9xAPUExecute();
-		APU.Cycles -= (Timings.H_Max << SNES_APU_ACCURACY);
-		APU.NextAPUTimerPos -= (Timings.H_Max << SNES_APU_ACCURACY);
+		CPU.Cycles = Timings.H_Max;
+		S9xAPUEndScanline();
+		CPU.Cycles = 0;
+		S9xAPUSetReferenceTime(0);
 	}
-
-	APURegisters.PC = IAPU.PC - IAPU.RAM;
-    S9xAPUPackStatus();
 }
 
 static void MusicBoxForceFreeze (void)
@@ -666,75 +668,21 @@ static void MusicBoxForceDefrost (void)
 
 static void SPCPlayFreeze (void)
 {
-	S9xSetSoundMute(true);
-
-	oldNextAPUTimerPos = APU.NextAPUTimerPos;
-	oldAPUTimerCounter = APU.APUTimerCounter;
-	oldCPUCycles       = CPU.Cycles;
-
-	memcpy(StoredAPU,          &APU,          sizeof(SAPU));
-	memcpy(StoredAPURegisters, &APURegisters, sizeof(SAPURegisters));
-	memcpy(StoredSoundData,    &SoundData,    sizeof(SSoundData));
-	memcpy(StoredIAPURAM,      IAPU.RAM,      0x10000);
-
-	S9xSetSoundMute(false);
-
-	APU.Cycles = 0;
-	APU.NextAPUTimerPos = 0;
+	oldCPUCycles = CPU.Cycles;
 	CPU.Cycles = Timings.H_Max;
 
-	IAPU.APUExecuting = true;
+	S9xSetSoundMute(true);
+	S9xAPUSaveState(storedSoundSnapshot);
+	S9xSetSoundMute(false);
 }
 
 static void SPCPlayDefrost (void)
 {
-	uint16	savedswitch;
+	CPU.Cycles = oldCPUCycles;
 
-	savedswitch = so.stereo_switch;
-
-	S9xResetAPU();
-    S9xSetSoundMute(true);
-
-	memcpy(&APU,          StoredAPU,          sizeof(SAPU));
-	memcpy(&APURegisters, StoredAPURegisters, sizeof(SAPURegisters));
-	memcpy(&SoundData,    StoredSoundData,    sizeof(SSoundData));
-	memcpy(IAPU.RAM,      StoredIAPURAM,      0x10000);
-
-	if (!mbxFinished)
-	{
-		for (int i = 0; i < 4; i++)
-			APU.OutPorts[i] = IAPU.RAM[0xf4 + i];
-
-		for (int i = 0; i < 3; i++)
-		{
-			if (IAPU.RAM[0xfa + i] == 0)
-				APU.TimerTarget[i] = 0x100;
-			else
-				APU.TimerTarget[i] = IAPU.RAM[0xfa + i];
-		}
-
-		S9xSetAPUControl(IAPU.RAM[0xf1] & 0xcf);   // Don't reset I/O ports
-	}
-
+	S9xSetSoundMute(true);
+	S9xAPULoadState(storedSoundSnapshot);
 	S9xSetSoundMute(false);
-
-	IAPU.PC = IAPU.RAM + APURegisters.PC;
-	S9xAPUUnpackStatus();
-
-	if (APUCheckDirectPage())
-	    IAPU.DirectPage = IAPU.RAM + 0x100;
-	else
-	    IAPU.DirectPage = IAPU.RAM;
-
-	IAPU.APUExecuting = true;
-
-	APU.NextAPUTimerPos = oldNextAPUTimerPos;
-	APU.APUTimerCounter = oldAPUTimerCounter;
-	CPU.Cycles          = oldCPUCycles;
-
-	S9xSoundPostLoadState(SNAPSHOT_VERSION);
-
-	so.stereo_switch = savedswitch;
 }
 
 static void MusicBoxInitIndicator (void)
@@ -779,7 +727,7 @@ static pascal OSStatus IndicatorEventHandler (EventHandlerCallRef inHandlerCallR
 
 						HIViewGetBounds(view, &bounds);
 						CGContextTranslateCTM(ctx, 0, bounds.size.height);
-						CGContextScaleCTM(ctx, 1.0, -1.0);
+						CGContextScaleCTM(ctx, 1.0f, -1.0f);
 						MusicBoxDrawIndicator(view, ctx);
 
 						result = noErr;
@@ -797,7 +745,7 @@ static void MusicBoxDrawIndicator (HIViewRef view, CGContextRef mboxctx)
 
 	// Bar
 
-	const float	length[] = { 1.0, 1.0 };
+	const float	length[] = { 1.0f, 1.0f };
 
 	CGContextSetLineWidth(mboxctx, mbxBarWidth);
 	CGContextSetLineDash(mboxctx, 0, length, 2);
@@ -805,13 +753,13 @@ static void MusicBoxDrawIndicator (HIViewRef view, CGContextRef mboxctx)
 
 	CGContextBeginPath(mboxctx);
 
-	float   x = mbxOffsetX + mbxMarginX + mbxBarWidth / 2.0;
+	float   x = mbxOffsetX + mbxMarginX + mbxBarWidth / 2.0f;
 
 	for (int h = 0; h < 8; h++)
 	{
 		// Inactive
 
-		CGContextSetRGBStrokeColor(mboxctx, (196.0 / 256.0), (200.0 / 256.0), (176.0 / 256.0), 1.0);
+		CGContextSetRGBStrokeColor(mboxctx, (196.0f / 256.0f), (200.0f / 256.0f), (176.0f / 256.0f), 1.0f);
 
 		CGContextMoveToPoint   (mboxctx, x,                mbxOffsetY + mbxMarginY);
 		CGContextAddLineToPoint(mboxctx, x,                mbxOffsetY + mbxMarginY + mbxBarHeight);
@@ -823,10 +771,8 @@ static void MusicBoxDrawIndicator (HIViewRef view, CGContextRef mboxctx)
 
 		// Max
 
-		Channel	*ch = &SoundData.channels[h];
-
-		short		vl = (ch->xenvx * ch->volume_left ) >> 11;
-		short		vr = (ch->xenvx * ch->volume_right) >> 11;
+		short		vl = (spc_core->dsp_reg_value(h, 0x00) * spc_core->dsp_envx_value(h)) >> 11;
+		short		vr = (spc_core->dsp_reg_value(h, 0x01) * spc_core->dsp_envx_value(h)) >> 11;
 		long long	currentTime;
 
 		if (vl <= 0) vl = 0; else if (vl > 64) vl = 64; else vl = (short) (yyscale * sqrt((double) vl)) & (~0 << 1);
@@ -847,7 +793,7 @@ static void MusicBoxDrawIndicator (HIViewRef view, CGContextRef mboxctx)
 		else
 		if ((prevLMax[h] > 0) && (barTimeL[h] + 1000000 > currentTime))
 		{
-			CGContextSetRGBStrokeColor(mboxctx, (22.0 / 256.0), (156.0 / 256.0), (20.0 / 256.0), (float) (barTimeL[h] + 1000000 - currentTime) / 1000000.0);
+			CGContextSetRGBStrokeColor(mboxctx, (22.0f / 256.0f), (156.0f / 256.0f), (20.0f / 256.0f), (float) (barTimeL[h] + 1000000 - currentTime) / 1000000.0f);
 
 			CGContextMoveToPoint   (mboxctx, x, mbxOffsetY + mbxMarginY + (float) (prevLMax[h] - 2));
 			CGContextAddLineToPoint(mboxctx, x, mbxOffsetY + mbxMarginY + (float) (prevLMax[h]    ));
@@ -869,7 +815,7 @@ static void MusicBoxDrawIndicator (HIViewRef view, CGContextRef mboxctx)
 		else
 		if ((prevRMax[h] > 0) && (barTimeR[h] + 1000000 > currentTime))
 		{
-			CGContextSetRGBStrokeColor(mboxctx, (22.0 / 256.0), (156.0 / 256.0), (20.0 / 256.0), (float) (barTimeR[h] + 1000000 - currentTime) / 1000000.0);
+			CGContextSetRGBStrokeColor(mboxctx, (22.0f / 256.0f), (156.0f / 256.0f), (20.0f / 256.0f), (float) (barTimeR[h] + 1000000 - currentTime) / 1000000.0f);
 
 			CGContextMoveToPoint   (mboxctx, x + mbxRightBarX, mbxOffsetY + mbxMarginY + (float) (prevRMax[h] - 2));
 			CGContextAddLineToPoint(mboxctx, x + mbxRightBarX, mbxOffsetY + mbxMarginY + (float) (prevRMax[h]    ));
@@ -883,7 +829,7 @@ static void MusicBoxDrawIndicator (HIViewRef view, CGContextRef mboxctx)
 
 		// Active
 
-		CGContextSetRGBStrokeColor(mboxctx, (22.0 / 256.0), (22.0 / 256.0), (20.0 / 256.0), 1.0);
+		CGContextSetRGBStrokeColor(mboxctx, (22.0f / 256.0f), (22.0f / 256.0f), (20.0f / 256.0f), 1.0f);
 
 		CGContextMoveToPoint   (mboxctx, x,                mbxOffsetY + mbxMarginY);
 		CGContextAddLineToPoint(mboxctx, x,                mbxOffsetY + mbxMarginY + (float) vl);

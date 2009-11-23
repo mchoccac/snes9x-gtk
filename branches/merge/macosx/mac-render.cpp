@@ -173,7 +173,7 @@
 
 #include "snes9x.h"
 #include "memmap.h"
-#include "soundux.h"
+#include "apu.h"
 #include "display.h"
 #include "blit.h"
 
@@ -311,8 +311,9 @@ static GLint				glSwapInterval    = 0;
 static GLint				agSwapInterval    = 0;
 #ifdef MAC_LEOPARD_TIGER_PANTHER_SUPPORT
 static CFDictionaryRef		oldDisplayMode;
-#endif
+#else
 static CGDisplayModeRef		oldDisplayModeRef;
+#endif
 static CGImageRef			cgGameImage       = NULL,
 							cgBlitImage       = NULL;
 
@@ -513,7 +514,7 @@ void DrawPauseScreen (CGContextRef ctx, HIRect bounds)
 		float	rx, ry;
 		int		ofs;
 
-		rx = bounds.size.width / 512.0;
+		rx = bounds.size.width / 512.0f;
 
 		if (!drawoverscan)
 		{
@@ -534,7 +535,7 @@ void DrawPauseScreen (CGContextRef ctx, HIRect bounds)
 			ry = bounds.size.height / (float) kMacWindowHeight;
 		}
 
-		CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+		CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 		CGContextFillRect(ctx, bounds);
 
 		crt = CGRectMake(0, 0, right - left, bottom - top);
@@ -544,7 +545,7 @@ void DrawPauseScreen (CGContextRef ctx, HIRect bounds)
 		crt.origin.y = (float) (int) (ry * (float) ofs);
 		CGContextDrawImage(ctx, crt, image);
 
-		CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 0.5);
+		CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 0.5f);
 		CGContextFillRect(ctx, bounds);
 
 		CGImageRelease(image);
@@ -603,7 +604,7 @@ void ClearGFXScreen (void)
 		glViewport(0, 0, (GLsizei) gWindowRect.size.width, (GLsizei) gWindowRect.size.height);
 	}
 
-	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 	for (int i = 0; i < 2; i++)
 	{
@@ -625,60 +626,55 @@ static void S9xInitFullScreen (void)
 	width  = autoRes ? 640 : CGDisplayPixelsWide(gGameDisplayID);
 	height = autoRes ? 480 : CGDisplayPixelsHigh(gGameDisplayID);
 
-	if (systemVersion >= 0x1060)
-	{
-		oldDisplayModeRef = CGDisplayCopyDisplayMode(gGameDisplayID);
-
-		CGDisplayCapture(gGameDisplayID);
-
-		if (autoRes || !gl32bit)
-		{
-			CGError				err;
-			CGDisplayModeRef	mode;
-			CFArrayRef			array;
-			CFStringRef			pixenc, pix;
-			CFIndex				n, i;
-			size_t				w, h;
-			bool				r;
-
-			pixenc = gl32bit ? CFSTR(IO32BitDirectPixels) : CFSTR(IO16BitDirectPixels);
-
-			array = CGDisplayCopyAllDisplayModes(gGameDisplayID, NULL);
-			n = CFArrayGetCount(array);
-
-			for (i = 0; i < n; i++)
-			{
-				mode = (CGDisplayModeRef) CFArrayGetValueAtIndex(array, i);
-
-				w   = CGDisplayModeGetWidth(mode);
-				h   = CGDisplayModeGetHeight(mode);
-				pix = CGDisplayModeCopyPixelEncoding(mode);
-				r   = CFStringCompare(pix, pixenc, 0) == kCFCompareEqualTo;
-				CFRelease(pix);
-
-				if (w == width && h == height && r)
-					break;
-			}
-
-			if (i < n)
-				err = CGDisplaySetDisplayMode(gGameDisplayID, mode, NULL);
-
-			CFRelease(array);
-		}
-	}
 #ifdef MAC_LEOPARD_TIGER_PANTHER_SUPPORT
-	else
+	CFDictionaryRef	mode;
+	boolean_t		exactMatch;
+	size_t			depth = gl32bit ? 32 : 16;
+
+	oldDisplayMode = CGDisplayCurrentMode(gGameDisplayID);
+
+	mode = CGDisplayBestModeForParameters(gGameDisplayID, depth, width, height, &exactMatch);
+
+	CGDisplayCapture(gGameDisplayID);
+	CGDisplaySwitchToMode(gGameDisplayID, mode);
+#else
+	oldDisplayModeRef = CGDisplayCopyDisplayMode(gGameDisplayID);
+
+	CGDisplayCapture(gGameDisplayID);
+
+	if (autoRes || !gl32bit)
 	{
-		CFDictionaryRef	mode;
-		boolean_t		exactMatch;
-		size_t			depth = gl32bit ? 32 : 16;
+		CGError				err;
+		CGDisplayModeRef	mode;
+		CFArrayRef			array;
+		CFStringRef			pixenc, pix;
+		CFIndex				n, i;
+		size_t				w, h;
+		bool				r;
 
-		oldDisplayMode = CGDisplayCurrentMode(gGameDisplayID);
+		pixenc = gl32bit ? CFSTR(IO32BitDirectPixels) : CFSTR(IO16BitDirectPixels);
 
-		mode = CGDisplayBestModeForParameters(gGameDisplayID, depth, width, height, &exactMatch);
+		array = CGDisplayCopyAllDisplayModes(gGameDisplayID, NULL);
+		n = CFArrayGetCount(array);
 
-		CGDisplayCapture(gGameDisplayID);
-		CGDisplaySwitchToMode(gGameDisplayID, mode);
+		for (i = 0; i < n; i++)
+		{
+			mode = (CGDisplayModeRef) CFArrayGetValueAtIndex(array, i);
+
+			w   = CGDisplayModeGetWidth(mode);
+			h   = CGDisplayModeGetHeight(mode);
+			pix = CGDisplayModeCopyPixelEncoding(mode);
+			r   = CFStringCompare(pix, pixenc, 0) == kCFCompareEqualTo;
+			CFRelease(pix);
+
+			if (w == width && h == height && r)
+				break;
+		}
+
+		if (i < n)
+			err = CGDisplaySetDisplayMode(gGameDisplayID, mode, NULL);
+
+		CFRelease(array);
 	}
 #endif
 
@@ -705,16 +701,13 @@ static void S9xDeinitFullScreen (void)
 	CGAssociateMouseAndMouseCursorPosition(true);
 	CGDisplayShowCursor(gGameDisplayID);
 
-	if (systemVersion >= 0x1060)
-	{
-		CGError	err;
-
-		err = CGDisplaySetDisplayMode(gGameDisplayID, oldDisplayModeRef, NULL);
-		CGDisplayModeRelease(oldDisplayModeRef);
-	}
 #ifdef MAC_LEOPARD_TIGER_PANTHER_SUPPORT
-	else
-		CGDisplaySwitchToMode(gGameDisplayID, oldDisplayMode);
+	CGDisplaySwitchToMode(gGameDisplayID, oldDisplayMode);
+#else
+	CGError	err;
+
+	err = CGDisplaySetDisplayMode(gGameDisplayID, oldDisplayModeRef, NULL);
+	CGDisplayModeRelease(oldDisplayModeRef);
 #endif
 
 	CGDisplayRelease(gGameDisplayID);
@@ -728,57 +721,52 @@ static void S9xInitWindowMode (void)
 	width  = CGDisplayPixelsWide(gGameDisplayID);
 	height = CGDisplayPixelsHigh(gGameDisplayID);
 
-	if (systemVersion >= 0x1060)
-	{
-		oldDisplayModeRef = CGDisplayCopyDisplayMode(gGameDisplayID);
-
-		if (autoRes || !gl32bit)
-		{
-			CGError				err;
-			CGDisplayModeRef	mode;
-			CFArrayRef			array;
-			CFStringRef			pixenc, pix;
-			CFIndex				n, i;
-			size_t				w, h;
-			bool				r;
-
-			pixenc = gl32bit ? CFSTR(IO32BitDirectPixels) : CFSTR(IO16BitDirectPixels);
-
-			array = CGDisplayCopyAllDisplayModes(gGameDisplayID, NULL);
-			n = CFArrayGetCount(array);
-
-			for (i = 0; i < n; i++)
-			{
-				mode = (CGDisplayModeRef) CFArrayGetValueAtIndex(array, i);
-
-				w   = CGDisplayModeGetWidth(mode);
-				h   = CGDisplayModeGetHeight(mode);
-				pix = CGDisplayModeCopyPixelEncoding(mode);
-				r   = CFStringCompare(pix, pixenc, 0) == kCFCompareEqualTo;
-				CFRelease(pix);
-
-				if (w == width && h == height && r)
-					break;
-			}
-
-			if (i < n)
-				err = CGDisplaySetDisplayMode(gGameDisplayID, mode, NULL);
-
-			CFRelease(array);
-		}
-	}
 #ifdef MAC_LEOPARD_TIGER_PANTHER_SUPPORT
-	else
+	CFDictionaryRef	mode;
+	boolean_t		exactMatch;
+	size_t			depth = gl32bit ? 32 : 16;
+
+	oldDisplayMode = CGDisplayCurrentMode(gGameDisplayID);
+
+	mode = CGDisplayBestModeForParameters(gGameDisplayID, depth, width, height, &exactMatch);
+
+	CGDisplaySwitchToMode(gGameDisplayID, mode);
+#else
+	oldDisplayModeRef = CGDisplayCopyDisplayMode(gGameDisplayID);
+
+	if (autoRes || !gl32bit)
 	{
-		CFDictionaryRef	mode;
-		boolean_t		exactMatch;
-		size_t			depth = gl32bit ? 32 : 16;
+		CGError				err;
+		CGDisplayModeRef	mode;
+		CFArrayRef			array;
+		CFStringRef			pixenc, pix;
+		CFIndex				n, i;
+		size_t				w, h;
+		bool				r;
 
-		oldDisplayMode = CGDisplayCurrentMode(gGameDisplayID);
+		pixenc = gl32bit ? CFSTR(IO32BitDirectPixels) : CFSTR(IO16BitDirectPixels);
 
-		mode = CGDisplayBestModeForParameters(gGameDisplayID, depth, width, height, &exactMatch);
+		array = CGDisplayCopyAllDisplayModes(gGameDisplayID, NULL);
+		n = CFArrayGetCount(array);
 
-		CGDisplaySwitchToMode(gGameDisplayID, mode);
+		for (i = 0; i < n; i++)
+		{
+			mode = (CGDisplayModeRef) CFArrayGetValueAtIndex(array, i);
+
+			w   = CGDisplayModeGetWidth(mode);
+			h   = CGDisplayModeGetHeight(mode);
+			pix = CGDisplayModeCopyPixelEncoding(mode);
+			r   = CFStringCompare(pix, pixenc, 0) == kCFCompareEqualTo;
+			CFRelease(pix);
+
+			if (w == width && h == height && r)
+				break;
+		}
+
+		if (i < n)
+			err = CGDisplaySetDisplayMode(gGameDisplayID, mode, NULL);
+
+		CFRelease(array);
 	}
 #endif
 
@@ -793,16 +781,13 @@ static void S9xInitWindowMode (void)
 
 static void S9xDeinitWindowMode (void)
 {
-	if (systemVersion >= 0x1060)
-	{
-		CGError	err;
-
-		err = CGDisplaySetDisplayMode(gGameDisplayID, oldDisplayModeRef, NULL);
-		CGDisplayModeRelease(oldDisplayModeRef);
-	}
 #ifdef MAC_LEOPARD_TIGER_PANTHER_SUPPORT
-	else
-		CGDisplaySwitchToMode(gGameDisplayID, oldDisplayMode);
+	CGDisplaySwitchToMode(gGameDisplayID, oldDisplayMode);
+#else
+	CGError	err;
+
+	err = CGDisplaySetDisplayMode(gGameDisplayID, oldDisplayModeRef, NULL);
+	CGDisplayModeRelease(oldDisplayModeRef);
 #endif
 
 	UpdateGameWindow();
@@ -832,11 +817,10 @@ static void S9xInitOpenGLFullScreen (void)
 	CGLSetParameter(glContext, kCGLCPSwapInterval, &glSwapInterval);
 	CGLSetCurrentContext(glContext);
 
-	if (systemVersion >= 0x1060)
-		CGLSetFullScreenOnDisplay(glContext, CGDisplayIDToOpenGLDisplayMask(gGameDisplayID));
 #ifdef MAC_LEOPARD_TIGER_PANTHER_SUPPORT
-	else
-		CGLSetFullScreen(glContext);
+	CGLSetFullScreen(glContext);
+#else
+	CGLSetFullScreenOnDisplay(glContext, CGDisplayIDToOpenGLDisplayMask(gGameDisplayID));
 #endif
 
 	glScreenW = CGDisplayPixelsWide(gGameDisplayID);
@@ -990,10 +974,10 @@ static void S9xInitOpenGLContext (void)
 	}
 	else
 	{
-		OpenGL.vertex[kGL256256][0] = 0.0;						OpenGL.vertex[kGL256256][1] = 0.0;
-		OpenGL.vertex[kGL256256][2] = 1.0;						OpenGL.vertex[kGL256256][3] = 0.0;
-		OpenGL.vertex[kGL256256][4] = 1.0;						OpenGL.vertex[kGL256256][5] = 1.0;
-		OpenGL.vertex[kGL256256][6] = 0.0;						OpenGL.vertex[kGL256256][7] = 1.0;
+		OpenGL.vertex[kGL256256][0] = 0.0f;						OpenGL.vertex[kGL256256][1] = 0.0f;
+		OpenGL.vertex[kGL256256][2] = 1.0f;						OpenGL.vertex[kGL256256][3] = 0.0f;
+		OpenGL.vertex[kGL256256][4] = 1.0f;						OpenGL.vertex[kGL256256][5] = 1.0f;
+		OpenGL.vertex[kGL256256][6] = 0.0f;						OpenGL.vertex[kGL256256][7] = 1.0f;
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGL256256]);
@@ -1024,10 +1008,10 @@ static void S9xInitOpenGLContext (void)
 	}
 	else
 	{
-		OpenGL.vertex[kGL512256][0] = 0.0;						OpenGL.vertex[kGL512256][1] = 0.0;
-		OpenGL.vertex[kGL512256][2] = 1.0;						OpenGL.vertex[kGL512256][3] = 0.0;
-		OpenGL.vertex[kGL512256][4] = 1.0;						OpenGL.vertex[kGL512256][5] = 1.0;
-		OpenGL.vertex[kGL512256][6] = 0.0;						OpenGL.vertex[kGL512256][7] = 1.0;
+		OpenGL.vertex[kGL512256][0] = 0.0f;						OpenGL.vertex[kGL512256][1] = 0.0f;
+		OpenGL.vertex[kGL512256][2] = 1.0f;						OpenGL.vertex[kGL512256][3] = 0.0f;
+		OpenGL.vertex[kGL512256][4] = 1.0f;						OpenGL.vertex[kGL512256][5] = 1.0f;
+		OpenGL.vertex[kGL512256][6] = 0.0f;						OpenGL.vertex[kGL512256][7] = 1.0f;
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGL512256]);
@@ -1058,10 +1042,10 @@ static void S9xInitOpenGLContext (void)
 	}
 	else
 	{
-		OpenGL.vertex[kGL512512][0] = 0.0;						OpenGL.vertex[kGL512512][1] = 0.0;
-		OpenGL.vertex[kGL512512][2] = 1.0;						OpenGL.vertex[kGL512512][3] = 0.0;
-		OpenGL.vertex[kGL512512][4] = 1.0;						OpenGL.vertex[kGL512512][5] = 1.0;
-		OpenGL.vertex[kGL512512][6] = 0.0;						OpenGL.vertex[kGL512512][7] = 1.0;
+		OpenGL.vertex[kGL512512][0] = 0.0f;						OpenGL.vertex[kGL512512][1] = 0.0f;
+		OpenGL.vertex[kGL512512][2] = 1.0f;						OpenGL.vertex[kGL512512][3] = 0.0f;
+		OpenGL.vertex[kGL512512][4] = 1.0f;						OpenGL.vertex[kGL512512][5] = 1.0f;
+		OpenGL.vertex[kGL512512][6] = 0.0f;						OpenGL.vertex[kGL512512][7] = 1.0f;
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGL512512]);
@@ -1092,10 +1076,10 @@ static void S9xInitOpenGLContext (void)
 	}
 	else
 	{
-		OpenGL.vertex[kGLBlit2x][0] = 0.0;						OpenGL.vertex[kGLBlit2x][1] = 0.0;
-		OpenGL.vertex[kGLBlit2x][2] = 1.0;						OpenGL.vertex[kGLBlit2x][3] = 0.0;
-		OpenGL.vertex[kGLBlit2x][4] = 1.0;						OpenGL.vertex[kGLBlit2x][5] = 1.0;
-		OpenGL.vertex[kGLBlit2x][6] = 0.0;						OpenGL.vertex[kGLBlit2x][7] = 1.0;
+		OpenGL.vertex[kGLBlit2x][0] = 0.0f;						OpenGL.vertex[kGLBlit2x][1] = 0.0f;
+		OpenGL.vertex[kGLBlit2x][2] = 1.0f;						OpenGL.vertex[kGLBlit2x][3] = 0.0f;
+		OpenGL.vertex[kGLBlit2x][4] = 1.0f;						OpenGL.vertex[kGLBlit2x][5] = 1.0f;
+		OpenGL.vertex[kGLBlit2x][6] = 0.0f;						OpenGL.vertex[kGLBlit2x][7] = 1.0f;
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGLBlit2x]);
@@ -1126,10 +1110,10 @@ static void S9xInitOpenGLContext (void)
 	}
 	else
 	{
-		OpenGL.vertex[kGLBlit3x][0] = 0.0;						OpenGL.vertex[kGLBlit3x][1] = 0.0;
-		OpenGL.vertex[kGLBlit3x][2] = SNES_WIDTH * 3 / 1024.0;	OpenGL.vertex[kGLBlit3x][3] = 0.0;
-		OpenGL.vertex[kGLBlit3x][4] = SNES_WIDTH * 3 / 1024.0;	OpenGL.vertex[kGLBlit3x][5] = SNES_HEIGHT_EXTENDED * 3 / 1024.0;
-		OpenGL.vertex[kGLBlit3x][6] = 0.0;						OpenGL.vertex[kGLBlit3x][7] = SNES_HEIGHT_EXTENDED * 3 / 1024.0;
+		OpenGL.vertex[kGLBlit3x][0] = 0.0f;						OpenGL.vertex[kGLBlit3x][1] = 0.0f;
+		OpenGL.vertex[kGLBlit3x][2] = SNES_WIDTH * 3 / 1024.0f;	OpenGL.vertex[kGLBlit3x][3] = 0.0f;
+		OpenGL.vertex[kGLBlit3x][4] = SNES_WIDTH * 3 / 1024.0f;	OpenGL.vertex[kGLBlit3x][5] = SNES_HEIGHT_EXTENDED * 3 / 1024.0f;
+		OpenGL.vertex[kGLBlit3x][6] = 0.0f;						OpenGL.vertex[kGLBlit3x][7] = SNES_HEIGHT_EXTENDED * 3 / 1024.0f;
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGLBlit3x]);
@@ -1160,10 +1144,10 @@ static void S9xInitOpenGLContext (void)
 	}
 	else
 	{
-		OpenGL.vertex[kGLBlit4x][0] = 0.0;						OpenGL.vertex[kGLBlit4x][1] = 0.0;
-		OpenGL.vertex[kGLBlit4x][2] = 1.0;						OpenGL.vertex[kGLBlit4x][3] = 0.0;
-		OpenGL.vertex[kGLBlit4x][4] = 1.0;						OpenGL.vertex[kGLBlit4x][5] = 1.0;
-		OpenGL.vertex[kGLBlit4x][6] = 0.0;						OpenGL.vertex[kGLBlit4x][7] = 1.0;
+		OpenGL.vertex[kGLBlit4x][0] = 0.0f;						OpenGL.vertex[kGLBlit4x][1] = 0.0f;
+		OpenGL.vertex[kGLBlit4x][2] = 1.0f;						OpenGL.vertex[kGLBlit4x][3] = 0.0f;
+		OpenGL.vertex[kGLBlit4x][4] = 1.0f;						OpenGL.vertex[kGLBlit4x][5] = 1.0f;
+		OpenGL.vertex[kGLBlit4x][6] = 0.0f;						OpenGL.vertex[kGLBlit4x][7] = 1.0f;
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGLBlit4x]);
@@ -1206,28 +1190,28 @@ static void S9xInitOpenGLContext (void)
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
 		scTexArray[kSC2xNormal] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
-		GLMakeTextureMesh(scTexArray[kSC2xNormal], kSCMeshX, kSCMeshY, 1.0, 224.0 / 256.0);
+		GLMakeTextureMesh(scTexArray[kSC2xNormal], kSCMeshX, kSCMeshY, 1.0f, 224.0f / 256.0f);
 
 		scTexArray[kSC2xExtend] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
-		GLMakeTextureMesh(scTexArray[kSC2xExtend], kSCMeshX, kSCMeshY, 1.0, 239.0 / 256.0);
+		GLMakeTextureMesh(scTexArray[kSC2xExtend], kSCMeshX, kSCMeshY, 1.0f, 239.0f / 256.0f);
 
 		scTexArray[kSC2xNHiRes] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
-		GLMakeTextureMesh(scTexArray[kSC2xNHiRes], kSCMeshX, kSCMeshY, 1.0, 224.0 / 512.0);
+		GLMakeTextureMesh(scTexArray[kSC2xNHiRes], kSCMeshX, kSCMeshY, 1.0f, 224.0f / 512.0f);
 
 		scTexArray[kSC2xEHiRes] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
-		GLMakeTextureMesh(scTexArray[kSC2xEHiRes], kSCMeshX, kSCMeshY, 1.0, 239.0 / 512.0);
+		GLMakeTextureMesh(scTexArray[kSC2xEHiRes], kSCMeshX, kSCMeshY, 1.0f, 239.0f / 512.0f);
 
 		scTexArray[kSC3xNormal] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
-		GLMakeTextureMesh(scTexArray[kSC3xNormal], kSCMeshX, kSCMeshY, 768.0 / 1024.0, 672.0 / 1024.0);
+		GLMakeTextureMesh(scTexArray[kSC3xNormal], kSCMeshX, kSCMeshY, 768.0f / 1024.0f, 672.0f / 1024.0f);
 
 		scTexArray[kSC3xExtend] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
-		GLMakeTextureMesh(scTexArray[kSC3xExtend], kSCMeshX, kSCMeshY, 768.0 / 1024.0, 717.0 / 1024.0);
+		GLMakeTextureMesh(scTexArray[kSC3xExtend], kSCMeshX, kSCMeshY, 768.0f / 1024.0f, 717.0f / 1024.0f);
 
 		scTexArray[kSC3xNHiRes] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
-		GLMakeTextureMesh(scTexArray[kSC3xNHiRes], kSCMeshX, kSCMeshY, 768.0 / 1024.0, 672.0 / 2048.0);
+		GLMakeTextureMesh(scTexArray[kSC3xNHiRes], kSCMeshX, kSCMeshY, 768.0f / 1024.0f, 672.0f / 2048.0f);
 
 		scTexArray[kSC3xEHiRes] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
-		GLMakeTextureMesh(scTexArray[kSC3xEHiRes], kSCMeshX, kSCMeshY, 768.0 / 1024.0, 717.0 / 2048.0);
+		GLMakeTextureMesh(scTexArray[kSC3xEHiRes], kSCMeshX, kSCMeshY, 768.0f / 1024.0f, 717.0f / 2048.0f);
 
 		scScnArray = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 3];
 		GLMakeScreenMesh(scScnArray, kSCMeshX, kSCMeshY);
@@ -1245,7 +1229,7 @@ static void S9xInitOpenGLContext (void)
 		glViewport(0, 0, (GLsizei) gWindowRect.size.width, (GLsizei) gWindowRect.size.height);
 	}
 
-	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 	for (int i = 0; i < 2; i++)
 	{
@@ -1337,7 +1321,7 @@ void S9xInitDisplay (int argc, char **argv)
 
 	glScreenBounds = CGDisplayBounds(gGameDisplayID);
 
-	unlimitedCursor = CGPointMake(0.0, 0.0);
+	unlimitedCursor = CGPointMake(0.0f, 0.0f);
 
 	imageWidth[0] = imageHeight[0] = 0;
 	imageWidth[1] = imageHeight[1] = 0;
@@ -1396,7 +1380,7 @@ void S9xInitDisplay (int argc, char **argv)
 		}
 	}
 
-	S9xSetSoundMute(!Settings.APUEnabled);
+	S9xSetSoundMute(false);
 	Microseconds((UnsignedWide *) &lastFrame);
 
 	windowResizeCount = 1;
@@ -1479,7 +1463,7 @@ bool8 S9xContinueUpdate (int width, int height)
 
 void S9xPutImage (int width, int height)
 {
-	static float	fps   = 0.0;
+	static float	fps   = 0.0f;
 	static long		count = 0;
 	static char		text[32];
 
@@ -1496,7 +1480,7 @@ void S9xPutImage (int width, int height)
 		delta = 1000000 * (bencht2.tv_sec - bencht1.tv_sec) + (bencht2.tv_usec - bencht1.tv_usec);
 		if (delta > 1000000)
 		{
-			fps = (1000000.0 * (float) count) / (float) delta;
+			fps = (1000000.0f * (float) count) / (float) delta;
 			count = 0;
 
 			gettimeofday(&bencht1, NULL);
@@ -1587,7 +1571,7 @@ static void S9xPutImageOpenGL (int width, int height)
 
 			if (glstretch)
 			{
-				float   fpw = (float) glScreenH / vh * 512.0;
+				float   fpw = (float) glScreenH / vh * 512.0f;
 				int		pw  = (int) (fpw + ((float) glScreenW - fpw) * (float) macAspectRatio / 100.0);
 
 				glViewport((glScreenW - pw) >> 1, 0, pw, glScreenH);
@@ -1608,14 +1592,14 @@ static void S9xPutImageOpenGL (int width, int height)
 			else
 				glViewport(0, 0, ww, wh);
 
-			glClearColor(0.0, 0.0, 0.0, 0.0);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
 
 		windowResizeCount--;
 
 		textureNum = (width <= 256) ? kGL256256 : ((height <= 256) ? kGL512256 : kGL512512);
-		OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = OpenGL.rangeExt ? height : (vh / 512.0);
+		OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = OpenGL.rangeExt ? height : (vh / 512.0f);
 
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
 		glBindTexture(OpenGL.target, OpenGL.textures[textureNum]);
@@ -1631,13 +1615,13 @@ static void S9xPutImageOpenGL (int width, int height)
 		glBegin(GL_QUADS);
 
 		glTexCoord2fv(&OpenGL.vertex[textureNum][6]);
-		glVertex2f(-1.0, -1.0);
+		glVertex2f(-1.0f, -1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][4]);
-		glVertex2f( 1.0, -1.0);
+		glVertex2f( 1.0f, -1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][2]);
-		glVertex2f( 1.0,  1.0);
+		glVertex2f( 1.0f,  1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][0]);
-		glVertex2f(-1.0,  1.0);
+		glVertex2f(-1.0f,  1.0f);
 
 		glEnd();
 	}
@@ -1794,7 +1778,7 @@ static void S9xPutImageCoreImage (int width, int height)
 
 			if (glstretch)
 			{
-				float   fpw = (float) glScreenH / vh * 512.0;
+				float   fpw = (float) glScreenH / vh * 512.0f;
 				int		pw  = (int) (fpw + ((float) glScreenW - fpw) * (float) macAspectRatio / 100.0);
 
 				glViewport((glScreenW - pw) >> 1, 0, pw, glScreenH);
@@ -1815,7 +1799,7 @@ static void S9xPutImageCoreImage (int width, int height)
 			else
 				glViewport(0, 0, ww, wh);
 
-			glClearColor(0.0, 0.0, 0.0, 0.0);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
 
@@ -1867,7 +1851,7 @@ static void S9xPutImageOverscanOpenGL (int width, int height)
 
 			if (glstretch)
 			{
-				float   fpw = (float) glScreenH / vh * 512.0;
+				float   fpw = (float) glScreenH / vh * 512.0f;
 				int		pw  = (int) (fpw + ((float) glScreenW - fpw) * (float) macAspectRatio / 100.0);
 
 				glViewport((glScreenW - pw) >> 1, 0, pw, glScreenH);
@@ -1885,14 +1869,14 @@ static void S9xPutImageOverscanOpenGL (int width, int height)
 
 			glViewport(0, 0, ww, wh);
 
-			glClearColor(0.0, 0.0, 0.0, 0.0);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
 
 		windowResizeCount--;
 
 		textureNum = (width <= 256) ? kGL256256 : ((height <= 256) ? kGL512256 : kGL512512);
-		OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = OpenGL.rangeExt ? ((height > 256) ? vh : SNES_HEIGHT_EXTENDED) : (vh / 512.0);
+		OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = OpenGL.rangeExt ? ((height > 256) ? vh : SNES_HEIGHT_EXTENDED) : (vh / 512.0f);
 
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
 		glBindTexture(OpenGL.target, OpenGL.textures[textureNum]);
@@ -1908,13 +1892,13 @@ static void S9xPutImageOverscanOpenGL (int width, int height)
 		glBegin(GL_QUADS);
 
 		glTexCoord2fv(&OpenGL.vertex[textureNum][6]);
-		glVertex2f(-1.0, -1.0);
+		glVertex2f(-1.0f, -1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][4]);
-		glVertex2f( 1.0, -1.0);
+		glVertex2f( 1.0f, -1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][2]);
-		glVertex2f( 1.0,  1.0);
+		glVertex2f( 1.0f,  1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][0]);
-		glVertex2f(-1.0,  1.0);
+		glVertex2f(-1.0f,  1.0f);
 
 		glEnd();
 	}
@@ -2092,7 +2076,7 @@ static void S9xPutImageOverscanCoreImage (int width, int height)
 
 			if (glstretch)
 			{
-				float   fpw = (float) glScreenH / vh * 512.0;
+				float   fpw = (float) glScreenH / vh * 512.0f;
 				int		pw  = (int) (fpw + ((float) glScreenW - fpw) * (float) macAspectRatio / 100.0);
 
 				glViewport((glScreenW - pw) >> 1, 0, pw, glScreenH);
@@ -2110,7 +2094,7 @@ static void S9xPutImageOverscanCoreImage (int width, int height)
 
 			glViewport(0, 0, ww, wh);
 
-			glClearColor(0.0, 0.0, 0.0, 0.0);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
 
@@ -2178,7 +2162,7 @@ static void S9xPutImageBlitGL2 (int blit_width, int blit_height)
 			else
 				glViewport(0, 0, ww, wh);
 
-			glClearColor(0.0, 0.0, 0.0, 0.0);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
 
@@ -2219,13 +2203,13 @@ static void S9xPutImageBlitGL2 (int blit_width, int blit_height)
 		glBegin(GL_QUADS);
 
 		glTexCoord2fv(&OpenGL.vertex[textureNum][6]);
-		glVertex2f(-1.0, -1.0);
+		glVertex2f(-1.0f, -1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][4]);
-		glVertex2f( 1.0, -1.0);
+		glVertex2f( 1.0f, -1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][2]);
-		glVertex2f( 1.0,  1.0);
+		glVertex2f( 1.0f,  1.0f);
 		glTexCoord2fv(&OpenGL.vertex[textureNum][0]);
-		glVertex2f(-1.0,  1.0);
+		glVertex2f(-1.0f,  1.0f);
 
 		glEnd();
 	}
@@ -2309,7 +2293,7 @@ static void S9xPutImageBlitGL2CoreImage (int blit_width, int blit_height)
 			else
 				glViewport(0, 0, ww, wh);
 
-			glClearColor(0.0, 0.0, 0.0, 0.0);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
 
@@ -2347,7 +2331,7 @@ static void GLMakeScreenMesh (GLfloat *vertex3D, int meshx, int meshy)
 	float   warp;
 
 	v = vertex3D;
-	warp = macCurvatureWarp * 0.001;
+	warp = macCurvatureWarp * 0.001f;
 
 	for (int y = 0; y < meshy; y++)
 	{
@@ -2355,17 +2339,17 @@ static void GLMakeScreenMesh (GLfloat *vertex3D, int meshx, int meshy)
 		{
 			float	u1, v1, v2;
 
-			u1 = -1.0 + 2.0 / (float) meshx * (float)  x;
-			v1 = -1.0 + 2.0 / (float) meshy * (float)  y;
-			v2 = -1.0 + 2.0 / (float) meshy * (float) (y + 1);
+			u1 = -1.0f + 2.0f / (float) meshx * (float)  x;
+			v1 = -1.0f + 2.0f / (float) meshy * (float)  y;
+			v2 = -1.0f + 2.0f / (float) meshy * (float) (y + 1);
 
 			*v++ = u1;
 			*v++ = v2;
-			*v++ = -1.0 - (u1 * u1 + v2 * v2) * warp;
+			*v++ = -1.0f - (u1 * u1 + v2 * v2) * warp;
 
 			*v++ = u1;
 			*v++ = v1;
-			*v++ = -1.0 - (u1 * u1 + v1 * v1) * warp;
+			*v++ = -1.0f - (u1 * u1 + v1 * v1) * warp;
 		}
 	}
 }

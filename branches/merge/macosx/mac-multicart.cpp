@@ -508,7 +508,7 @@ static pascal OSStatus MultiCartPaneEventHandler (EventHandlerCallRef inHandlerR
 
 							HIViewGetBounds(view, &bounds);
 
-							CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
+							CGContextSetRGBFillColor(ctx, 1.0f, 1.0f, 1.0f, 1.0f);
 							CGContextFillRect(ctx, bounds);
 
 							info.version   = 0;

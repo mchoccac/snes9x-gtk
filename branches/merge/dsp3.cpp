@@ -297,7 +297,7 @@ static const uint16	DSP3_DataROM[1024] =
 };
 
 static bool8 DSP3_GetBits (uint8);
-static void DSP3_MemorySize (void);
+//static void DSP3_MemorySize (void);
 static void DSP3_TestMemory (void);
 static void DSP3_DumpDataROM (void);
 static void DSP3_MemoryDump (void);
@@ -316,7 +316,7 @@ static void DSP3_OP07 (void);
 static void DSP3_OP07_A (void);
 static void DSP3_OP07_B (void);
 static void DSP3_OP0C (void);
-static void DSP3_OP0C_A (void);
+//static void DSP3_OP0C_A (void);
 static void DSP3_OP10 (void);
 static void DSP3_OP1C (void);
 static void DSP3_OP1C_A (void);
@@ -345,11 +345,13 @@ void DSP3_Reset (void)
 	SetDSP3 = &DSP3_Command;
 }
 
+/*
 static void DSP3_MemorySize (void)
 {
 	DSP3.DR = 0x0300;
 	SetDSP3 = &DSP3_Reset;
 }
+*/
 
 static void DSP3_TestMemory (void)
 {
@@ -1124,12 +1126,14 @@ static void DSP3_OP10 (void)
 		DSP3.DR = DSP3.DR;
 }
 
+/*
 static void DSP3_OP0C_A (void)
 {
 	// absorb 2 bytes
 	DSP3.DR = 0;
 	SetDSP3 = &DSP3_Reset;
 }
+*/
 
 static void DSP3_OP0C (void)
 {

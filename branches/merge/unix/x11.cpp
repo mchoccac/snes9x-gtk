@@ -228,7 +228,7 @@ struct GUIData
 #endif
 };
 
-static struct GUIData		GUI;
+static struct GUIData	GUI;
 
 typedef	std::pair<std::string, std::string>	strpair_t;
 extern	std::vector<strpair_t>				keymaps;
@@ -272,25 +272,27 @@ static void Convert16To24Packed (int, int);
 
 void S9xExtraDisplayUsage (void)
 {
-	S9xMessage(S9X_INFO, S9X_USAGE, "-set-repeat                     Allow altering keyboard auto-repeat");
+	/*                               12345678901234567890123456789012345678901234567890123456789012345678901234567890 */
+
+	S9xMessage(S9X_INFO, S9X_USAGE, "-setrepeat                      Allow altering keyboard auto-repeat");
 	S9xMessage(S9X_INFO, S9X_USAGE, "");
-	S9xMessage(S9X_INFO, S9X_USAGE, "-y1                             Video mode: Blocky (default)");
-	S9xMessage(S9X_INFO, S9X_USAGE, "-y2                             Video mode: TV");
-	S9xMessage(S9X_INFO, S9X_USAGE, "-y3                             Video mode: Smooth");
-	S9xMessage(S9X_INFO, S9X_USAGE, "-y4                             Video mode: SuperEagle");
-	S9xMessage(S9X_INFO, S9X_USAGE, "-y5                             Video mode: 2xSaI");
-	S9xMessage(S9X_INFO, S9X_USAGE, "-y6                             Video mode: Super2xSaI");
-	S9xMessage(S9X_INFO, S9X_USAGE, "-y7                             Video mode: EPX");
-	S9xMessage(S9X_INFO, S9X_USAGE, "-y8                             Video mode: hq2x");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-v1                             Video mode: Blocky (default)");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-v2                             Video mode: TV");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-v3                             Video mode: Smooth");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-v4                             Video mode: SuperEagle");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-v5                             Video mode: 2xSaI");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-v6                             Video mode: Super2xSaI");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-v7                             Video mode: EPX");
+	S9xMessage(S9X_INFO, S9X_USAGE, "-v8                             Video mode: hq2x");
 	S9xMessage(S9X_INFO, S9X_USAGE, "");
 }
 
 void S9xParseDisplayArg (char **argv, int &i, int argc)
 {
-	if (strcasecmp(argv[i], "-set-repeat") == 0)
+	if (!strcasecmp(argv[i], "-setrepeat"))
 		GUI.no_repeat = FALSE;
 	else
-	if (strncasecmp(argv[i], "-y", 2) == 0)
+	if (!strncasecmp(argv[i], "-v", 2))
 	{
 		switch (argv[i][2])
 		{
@@ -313,7 +315,7 @@ const char * S9xParseDisplayConfig (ConfigFile &conf, int pass)
 	if (pass != 1)
 		return ("Unix/X11");
 
-	if (!conf.GetBool("Controls::ClearAll", false))
+	if (!conf.GetBool("Unix::ClearAllControls", false))
 	{
 		keymaps.push_back(strpair_t("K00:k",            "Joypad1 Right"));
 		keymaps.push_back(strpair_t("K00:Right",        "Joypad1 Right"));
@@ -361,8 +363,6 @@ const char * S9xParseDisplayConfig (ConfigFile &conf, int pass)
 		keymaps.push_back(strpair_t("K00:Insert",       "Joypad2 L"));
 		keymaps.push_back(strpair_t("K00:Delete",       "Joypad2 R"));
 
-		keymaps.push_back(strpair_t("K00:bracketleft",  "InterpolateSound"));
-		keymaps.push_back(strpair_t("K00:bracketright", "SynchronizeSound"));
 		keymaps.push_back(strpair_t("K00:A+F4",         "SoundChannel0"));
 		keymaps.push_back(strpair_t("K00:C+F4",         "SoundChannel0"));
 		keymaps.push_back(strpair_t("K00:A+F5",         "SoundChannel1"));
@@ -414,7 +414,6 @@ const char * S9xParseDisplayConfig (ConfigFile &conf, int pass)
 		keymaps.push_back(strpair_t("K00:S+F9",         "QuickSave008"));
 
 		keymaps.push_back(strpair_t("K00:Scroll_Lock",  "Pause"));
-		keymaps.push_back(strpair_t("K00:Pause",        "Pause"));
 		keymaps.push_back(strpair_t("K00:CS+Escape",    "Reset"));
 		keymaps.push_back(strpair_t("K00:S+Escape",     "SoftReset"));
 		keymaps.push_back(strpair_t("K00:Escape",       "ExitEmu"));

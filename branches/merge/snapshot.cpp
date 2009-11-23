@@ -306,6 +306,11 @@ enum
 	#field \
 }
 
+struct SDMASnapshot
+{
+	struct SDMA	dma[8];
+};
+
 struct SnapshotMovieInfo
 {
 	uint32	MovieInputDataSize;
@@ -315,112 +320,93 @@ struct SnapshotScreenshotInfo
 {
 	uint16	Width;
 	uint16	Height;
-	uint8	Data[MAX_SNES_WIDTH * MAX_SNES_HEIGHT * 3];
 	uint8	Interlaced;
+	uint8	Data[MAX_SNES_WIDTH * MAX_SNES_HEIGHT * 3];
 };
-
-struct SDMASnapshot
-{
-	struct SDMA	dma[8];
-};
-
-#define APU_OLDCYCLES_OBSOLETE_VALUE	-99999999
 
 static struct Obsolete
 {
-	uint8	SPPU_Joypad1ButtonReadPos;
-	uint8	SPPU_Joypad2ButtonReadPos;
-	uint8	SPPU_Joypad3ButtonReadPos;
-	uint8	SPPU_MouseSpeed[2];
-	uint8	SAPU_Flags;
-	int32	SAPU_OldCycles;
+	uint8	reserved;
 }	Obsolete;
 
-#undef STRUCT
-#define STRUCT struct SCPUState
+#define STRUCT	struct SCPUState
 
 static FreezeData	SnapCPU[] =
 {
-	INT_ENTRY(1, Flags),
-	INT_ENTRY(1, BranchSkip),
-	DELETED_INT_ENTRY(1, 4, NMIActive, 1),
-	INT_ENTRY(1, IRQActive),
-	INT_ENTRY(1, WaitingForInterrupt),
-	INT_ENTRY(1, WhichEvent),
-	INT_ENTRY(1, Cycles),
-	INT_ENTRY(1, NextEvent),
-	INT_ENTRY(1, V_Counter),
-	INT_ENTRY(1, MemSpeed),
-	INT_ENTRY(1, MemSpeedx2),
-	INT_ENTRY(1, FastROMSpeed),
-	INT_ENTRY(3, InDMAorHDMA),
-	INT_ENTRY(3, InWRAMDMAorHDMA),
-	INT_ENTRY(3, PBPCAtOpcodeStart),
-	INT_ENTRY(3, WaitAddress),
-	INT_ENTRY(3, WaitCounter),
-	DELETED_INT_ENTRY(3, 4, AutoSaveTimer, 4),
-	DELETED_INT_ENTRY(3, 4, SRAMModified, 1),
-	DELETED_INT_ENTRY(3, 4, BRKTriggered, 1),
-	DELETED_INT_ENTRY(3, 6, TriedInterleavedMode2, 1),
-	INT_ENTRY(4, IRQPending),
-	INT_ENTRY(4, InDMA),
-	INT_ENTRY(4, InHDMA),
-	INT_ENTRY(4, HDMARanInDMA),
-	INT_ENTRY(4, PrevCycles)
+	INT_ENTRY(6, Cycles),
+	INT_ENTRY(6, PrevCycles),
+	INT_ENTRY(6, V_Counter),
+	INT_ENTRY(6, Flags),
+	INT_ENTRY(6, IRQActive),
+	INT_ENTRY(6, IRQPending),
+	INT_ENTRY(6, MemSpeed),
+	INT_ENTRY(6, MemSpeedx2),
+	INT_ENTRY(6, FastROMSpeed),
+	INT_ENTRY(6, InDMA),
+	INT_ENTRY(6, InHDMA),
+	INT_ENTRY(6, InDMAorHDMA),
+	INT_ENTRY(6, InWRAMDMAorHDMA),
+	INT_ENTRY(6, HDMARanInDMA),
+	INT_ENTRY(6, WhichEvent),
+	INT_ENTRY(6, NextEvent),
+	INT_ENTRY(6, WaitingForInterrupt),
+	INT_ENTRY(6, WaitAddress),
+	INT_ENTRY(6, WaitCounter),
+	INT_ENTRY(6, PBPCAtOpcodeStart)
 };
 
 #undef STRUCT
-#define STRUCT struct SRegisters
+#define STRUCT	struct SRegisters
 
 static FreezeData	SnapRegisters[] =
 {
-	INT_ENTRY(1, PB),
-	INT_ENTRY(1, DB),
-	INT_ENTRY(1, P.W),
-	INT_ENTRY(1, A.W),
-	INT_ENTRY(1, D.W),
-	INT_ENTRY(1, S.W),
-	INT_ENTRY(1, X.W),
-	INT_ENTRY(1, Y.W),
-	INT_ENTRY(1, PCw)
+	INT_ENTRY(6, PB),
+	INT_ENTRY(6, DB),
+	INT_ENTRY(6, P.W),
+	INT_ENTRY(6, A.W),
+	INT_ENTRY(6, D.W),
+	INT_ENTRY(6, S.W),
+	INT_ENTRY(6, X.W),
+	INT_ENTRY(6, Y.W),
+	INT_ENTRY(6, PCw)
 };
 
 #undef STRUCT
-#define STRUCT struct SPPU
+#define STRUCT	struct SPPU
 
 static FreezeData	SnapPPU[] =
 {
-	INT_ENTRY(1, BGMode),
-	INT_ENTRY(1, BG3Priority),
-	INT_ENTRY(1, Brightness),
-	INT_ENTRY(1, VMA.High),
-	INT_ENTRY(1, VMA.Increment),
-	INT_ENTRY(1, VMA.Address),
-	INT_ENTRY(1, VMA.Mask1),
-	INT_ENTRY(1, VMA.FullGraphicCount),
-	INT_ENTRY(1, VMA.Shift),
+	INT_ENTRY(6, VMA.High),
+	INT_ENTRY(6, VMA.Increment),
+	INT_ENTRY(6, VMA.Address),
+	INT_ENTRY(6, VMA.Mask1),
+	INT_ENTRY(6, VMA.FullGraphicCount),
+	INT_ENTRY(6, VMA.Shift),
+	INT_ENTRY(6, WRAM),
 #define O(N) \
-	INT_ENTRY(1, BG[N].SCBase), \
-	INT_ENTRY(1, BG[N].VOffset), \
-	INT_ENTRY(1, BG[N].HOffset), \
-	INT_ENTRY(1, BG[N].BGSize), \
-	INT_ENTRY(1, BG[N].NameBase), \
-	INT_ENTRY(1, BG[N].SCSize)
+	INT_ENTRY(6, BG[N].SCBase), \
+	INT_ENTRY(6, BG[N].HOffset), \
+	INT_ENTRY(6, BG[N].VOffset), \
+	INT_ENTRY(6, BG[N].BGSize), \
+	INT_ENTRY(6, BG[N].NameBase), \
+	INT_ENTRY(6, BG[N].SCSize)
 	O(0), O(1), O(2), O(3),
 #undef O
-	INT_ENTRY(1, CGFLIP),
-	ARRAY_ENTRY(1, CGDATA, 256, uint16_ARRAY_V),
-	INT_ENTRY(1, FirstSprite),
-	INT_ENTRY(3, LastSprite),
+	INT_ENTRY(6, BGMode),
+	INT_ENTRY(6, BG3Priority),
+	INT_ENTRY(6, CGFLIP),
+	INT_ENTRY(6, CGFLIPRead),
+	INT_ENTRY(6, CGADD),
+	ARRAY_ENTRY(6, CGDATA, 256, uint16_ARRAY_V),
 #define O(N) \
-	INT_ENTRY(1, OBJ[N].HPos), \
-	INT_ENTRY(1, OBJ[N].VPos), \
-	INT_ENTRY(1, OBJ[N].Name), \
-	INT_ENTRY(1, OBJ[N].VFlip), \
-	INT_ENTRY(1, OBJ[N].HFlip), \
-	INT_ENTRY(1, OBJ[N].Priority), \
-	INT_ENTRY(1, OBJ[N].Palette), \
-	INT_ENTRY(1, OBJ[N].Size)
+	INT_ENTRY(6, OBJ[N].HPos), \
+	INT_ENTRY(6, OBJ[N].VPos), \
+	INT_ENTRY(6, OBJ[N].HFlip), \
+	INT_ENTRY(6, OBJ[N].VFlip), \
+	INT_ENTRY(6, OBJ[N].Name), \
+	INT_ENTRY(6, OBJ[N].Priority), \
+	INT_ENTRY(6, OBJ[N].Palette), \
+	INT_ENTRY(6, OBJ[N].Size)
 	O(  0), O(  1), O(  2), O(  3), O(  4), O(  5), O(  6), O(  7),
 	O(  8), O(  9), O( 10), O( 11), O( 12), O( 13), O( 14), O( 15),
 	O( 16), O( 17), O( 18), O( 19), O( 20), O( 21), O( 22), O( 23),
@@ -438,478 +424,254 @@ static FreezeData	SnapPPU[] =
 	O(112), O(113), O(114), O(115), O(116), O(117), O(118), O(119),
 	O(120), O(121), O(122), O(123), O(124), O(125), O(126), O(127),
 #undef O
-	INT_ENTRY(1, OAMPriorityRotation),
-	INT_ENTRY(1, OAMAddr),
-	INT_ENTRY(1, OAMFlip),
-	INT_ENTRY(1, OAMTileAddress),
-	INT_ENTRY(1, IRQVBeamPos),
-	INT_ENTRY(1, IRQHBeamPos),
-	INT_ENTRY(1, VBeamPosLatched),
-	INT_ENTRY(1, HBeamPosLatched),
-	INT_ENTRY(1, HBeamFlip),
-	INT_ENTRY(1, VBeamFlip),
-	INT_ENTRY(1, HVBeamCounterLatched),
-	INT_ENTRY(1, MatrixA),
-	INT_ENTRY(1, MatrixB),
-	INT_ENTRY(1, MatrixC),
-	INT_ENTRY(1, MatrixD),
-	INT_ENTRY(1, CentreX),
-	INT_ENTRY(1, CentreY),
-	INT_ENTRY(2, M7HOFS),
-	INT_ENTRY(2, M7VOFS),
-	OBSOLETE_INT_ENTRY(1, 2, SPPU_Joypad1ButtonReadPos),
-	OBSOLETE_INT_ENTRY(1, 2, SPPU_Joypad2ButtonReadPos),
-	OBSOLETE_INT_ENTRY(1, 2, SPPU_Joypad3ButtonReadPos),
-	INT_ENTRY(1, CGADD),
-	INT_ENTRY(1, FixedColourRed),
-	INT_ENTRY(1, FixedColourGreen),
-	INT_ENTRY(1, FixedColourBlue),
-	INT_ENTRY(1, SavedOAMAddr),
-	INT_ENTRY(1, ScreenHeight),
-	INT_ENTRY(1, WRAM),
-	DELETED_INT_ENTRY(3, 3, BG_Forced, 1),
-	INT_ENTRY(1, ForcedBlanking),
-	INT_ENTRY(3, OBJThroughMain),
-	INT_ENTRY(3, OBJThroughSub),
-	INT_ENTRY(1, OBJNameSelect),
-	INT_ENTRY(1, OBJSizeSelect),
-	INT_ENTRY(1, OBJNameBase),
-	INT_ENTRY(3, OBJAddition),
-	INT_ENTRY(1, OAMReadFlip),
-	INT_ENTRY(1, VTimerEnabled),
-	INT_ENTRY(1, HTimerEnabled),
-	INT_ENTRY(1, HTimerPosition),
-	INT_ENTRY(1, Mosaic),
-	INT_ENTRY(3, MosaicStart),
-	INT_ENTRY(1, Mode7HFlip),
-	INT_ENTRY(1, Mode7VFlip),
-	INT_ENTRY(1, Mode7Repeat),
-	INT_ENTRY(1, Window1Left),
-	INT_ENTRY(1, Window1Right),
-	INT_ENTRY(1, Window2Left),
-	INT_ENTRY(1, Window2Right),
+	INT_ENTRY(6, OBJThroughMain),
+	INT_ENTRY(6, OBJThroughSub),
+	INT_ENTRY(6, OBJAddition),
+	INT_ENTRY(6, OBJNameBase),
+	INT_ENTRY(6, OBJNameSelect),
+	INT_ENTRY(6, OBJSizeSelect),
+	INT_ENTRY(6, OAMAddr),
+	INT_ENTRY(6, SavedOAMAddr),
+	INT_ENTRY(6, OAMPriorityRotation),
+	INT_ENTRY(6, OAMFlip),
+	INT_ENTRY(6, OAMReadFlip),
+	INT_ENTRY(6, OAMTileAddress),
+	INT_ENTRY(6, OAMWriteRegister),
+	ARRAY_ENTRY(6, OAMData, 512 + 32, uint8_ARRAY_V),
+	INT_ENTRY(6, FirstSprite),
+	INT_ENTRY(6, LastSprite),
+	INT_ENTRY(6, HTimerEnabled),
+	INT_ENTRY(6, VTimerEnabled),
+	INT_ENTRY(6, HTimerPosition),
+	INT_ENTRY(6, VTimerPosition),
+	INT_ENTRY(6, IRQHBeamPos),
+	INT_ENTRY(6, IRQVBeamPos),
+	INT_ENTRY(6, HBeamFlip),
+	INT_ENTRY(6, VBeamFlip),
+	INT_ENTRY(6, HBeamPosLatched),
+	INT_ENTRY(6, VBeamPosLatched),
+	INT_ENTRY(6, GunHLatch),
+	INT_ENTRY(6, GunVLatch),
+	INT_ENTRY(6, HVBeamCounterLatched),
+	INT_ENTRY(6, Mode7HFlip),
+	INT_ENTRY(6, Mode7VFlip),
+	INT_ENTRY(6, Mode7Repeat),
+	INT_ENTRY(6, MatrixA),
+	INT_ENTRY(6, MatrixB),
+	INT_ENTRY(6, MatrixC),
+	INT_ENTRY(6, MatrixD),
+	INT_ENTRY(6, CentreX),
+	INT_ENTRY(6, CentreY),
+	INT_ENTRY(6, M7HOFS),
+	INT_ENTRY(6, M7VOFS),
+	INT_ENTRY(6, Mosaic),
+	INT_ENTRY(6, MosaicStart),
+	ARRAY_ENTRY(6, BGMosaic, 4, uint8_ARRAY_V),
+	INT_ENTRY(6, Window1Left),
+	INT_ENTRY(6, Window1Right),
+	INT_ENTRY(6, Window2Left),
+	INT_ENTRY(6, Window2Right),
+	INT_ENTRY(6, RecomputeClipWindows),
 #define O(N) \
-	INT_ENTRY(3, ClipCounts[N]), \
-	INT_ENTRY(1, ClipWindowOverlapLogic[N]), \
-	INT_ENTRY(1, ClipWindow1Enable[N]), \
-	INT_ENTRY(1, ClipWindow2Enable[N]), \
-	INT_ENTRY(1, ClipWindow1Inside[N]), \
-	INT_ENTRY(1, ClipWindow2Inside[N])
+	INT_ENTRY(6, ClipCounts[N]), \
+	INT_ENTRY(6, ClipWindowOverlapLogic[N]), \
+	INT_ENTRY(6, ClipWindow1Enable[N]), \
+	INT_ENTRY(6, ClipWindow2Enable[N]), \
+	INT_ENTRY(6, ClipWindow1Inside[N]), \
+	INT_ENTRY(6, ClipWindow2Inside[N])
 	O(0), O(1), O(2), O(3), O(4), O(5),
 #undef O
-	INT_ENTRY(3, RecomputeClipWindows),
-	INT_ENTRY(1, CGFLIPRead),
-	INT_ENTRY(1, Need16x8Mulitply),
-	ARRAY_ENTRY(1, BGMosaic, 4, uint8_ARRAY_V),
-	ARRAY_ENTRY(1, OAMData, 512 + 32, uint8_ARRAY_V),
-	INT_ENTRY(1, Need16x8Mulitply),
-	OBSOLETE_ARRAY_ENTRY(1, 2, SPPU_MouseSpeed, 2, uint8_ARRAY_V),
-	INT_ENTRY(2, OAMWriteRegister),
-	INT_ENTRY(2, BGnxOFSbyte),
-	INT_ENTRY(2, M7byte),
-	INT_ENTRY(2, OpenBus1),
-	INT_ENTRY(2, OpenBus2),
-	INT_ENTRY(3, GunVLatch),
-	INT_ENTRY(3, GunHLatch),
-	INT_ENTRY(2, VTimerPosition),
-	INT_ENTRY(5, HDMA),
-	INT_ENTRY(5, HDMAEnded)
+	INT_ENTRY(6, ForcedBlanking),
+	INT_ENTRY(6, FixedColourRed),
+	INT_ENTRY(6, FixedColourGreen),
+	INT_ENTRY(6, FixedColourBlue),
+	INT_ENTRY(6, Brightness),
+	INT_ENTRY(6, ScreenHeight),
+	INT_ENTRY(6, Need16x8Mulitply),
+	INT_ENTRY(6, BGnxOFSbyte),
+	INT_ENTRY(6, M7byte),
+	INT_ENTRY(6, HDMA),
+	INT_ENTRY(6, HDMAEnded),
+	INT_ENTRY(6, OpenBus1),
+	INT_ENTRY(6, OpenBus2)
 };
 
 #undef STRUCT
-#define STRUCT struct SDMASnapshot
+#define STRUCT	struct SDMASnapshot
 
 static FreezeData	SnapDMA[] =
 {
 #define O(N) \
-	INT_ENTRY(1, dma[N].ReverseTransfer), \
-	INT_ENTRY(1, dma[N].AAddressFixed), \
-	INT_ENTRY(1, dma[N].AAddressDecrement), \
-	INT_ENTRY(1, dma[N].TransferMode), \
-	INT_ENTRY(1, dma[N].ABank), \
-	INT_ENTRY(1, dma[N].AAddress), \
-	INT_ENTRY(1, dma[N].Address), \
-	INT_ENTRY(1, dma[N].BAddress), \
-	DELETED_INT_ENTRY(1, 2, dma[N].TransferBytes, 2), \
-	INT_ENTRY(1, dma[N].HDMAIndirectAddressing), \
-	INT_ENTRY(1, dma[N].DMACount_Or_HDMAIndirectAddress), \
-	INT_ENTRY(1, dma[N].IndirectBank), \
-	INT_ENTRY(1, dma[N].Repeat), \
-	INT_ENTRY(1, dma[N].LineCount), \
-	INT_ENTRY(1, dma[N].DoTransfer), \
-	INT_ENTRY(2, dma[N].UnknownByte), \
-	INT_ENTRY(2, dma[N].UnusedBit43x0)
+	INT_ENTRY(6, dma[N].ReverseTransfer), \
+	INT_ENTRY(6, dma[N].HDMAIndirectAddressing), \
+	INT_ENTRY(6, dma[N].UnusedBit43x0), \
+	INT_ENTRY(6, dma[N].AAddressFixed), \
+	INT_ENTRY(6, dma[N].AAddressDecrement), \
+	INT_ENTRY(6, dma[N].TransferMode), \
+	INT_ENTRY(6, dma[N].BAddress), \
+	INT_ENTRY(6, dma[N].AAddress), \
+	INT_ENTRY(6, dma[N].ABank), \
+	INT_ENTRY(6, dma[N].DMACount_Or_HDMAIndirectAddress), \
+	INT_ENTRY(6, dma[N].IndirectBank), \
+	INT_ENTRY(6, dma[N].Address), \
+	INT_ENTRY(6, dma[N].Repeat), \
+	INT_ENTRY(6, dma[N].LineCount), \
+	INT_ENTRY(6, dma[N].UnknownByte), \
+	INT_ENTRY(6, dma[N].DoTransfer)
 	O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7)
 #undef O
 };
 
-/* Begin old APU 1.51 sound structures */
-
-struct SOldAPU
-{
-    int32  OldCycles; // unused
-    bool8  ShowROM;
-    uint32 Flags;
-    uint8  KeyedChannels;
-    uint8  OutPorts [4];
-    uint8  DSP [0x80];
-    uint8  ExtraRAM [64];
-    uint16 Timer [3];
-    uint16 TimerTarget [3];
-    bool8  TimerEnabled [3];
-    bool8  TimerValueWritten [3];
-    int32  Cycles;
-};
-
-typedef union
-{
-#ifdef LSB_FIRST
-    struct { uint8 A, Y; } B;
-#else
-    struct { uint8 Y, A; } B;
-#endif
-    uint16 W;
-} OldYAndA;
-
-struct SOldAPURegisters
-{
-    uint8  P;
-    OldYAndA YA;
-    uint8  X;
-    uint8  S;
-    uint16  PC;
-};
-
-// For backward compatibility ------------------------------
-
-typedef struct
-{
-    int32   state;
-    int32   type;
-    int16   volume_left;
-    int16   volume_right;
-    uint32  hertz;
-    uint32  frequency;
-    uint32  count;
-    bool8   loop;
-    int32   envx;
-    int16   left_vol_level;
-    int16   right_vol_level;
-    int16   envx_target;
-    uint32  env_error;
-    uint32  erate;
-    int32   direction;
-    uint32  attack_rate;
-    uint32  decay_rate;
-    uint32  sustain_rate;
-    uint32  release_rate;
-    uint32  sustain_level;
-    int16   sample;
-    int16   decoded[16];
-    int16   previous16[2];
-    int16   *block;
-    uint16  sample_number;
-    bool8   last_block;
-    bool8   needs_decode;
-    uint32  block_pointer;
-    uint32  sample_pointer;
-    int32   *echo_buf_ptr;
-    int32   mode;
-    int32   envxx;
-    int16   next_sample;
-    int32   interpolate;
-    int32   previous[2];
-    uint32  dummy[8];
-    int32   nb_index;
-    int16   nb_sample[4];
-    int16   out_sample;
-    int32   xenvx;
-    int32   xenvx_target;
-    int32   xenv_count;
-    int32   xenv_rate;
-    int32   xsmp_count;
-    int32   xattack_rate;
-    int32   xdecay_rate;
-    int32   xsustain_rate;
-    int32   xsustain_level;
-}   OldCh;
-
-typedef struct
-{
-    int16   master_volume_left;
-    int16   master_volume_right;
-    int16   echo_volume_left;
-    int16   echo_volume_right;
-    int32   echo_enable;
-    int32   echo_feedback;
-    int32   echo_ptr;
-    int32   echo_buffer_size;
-    int32   echo_write_enabled;
-    int32   echo_channel_enable;
-    int32   pitch_mod;
-    uint32  dummy[3];
-    OldCh   channels[8];
-    bool8   no_filter;
-    int32   master_volume[2];
-    int32   echo_volume[2];
-    int32   noise_hertz;
-    int32   noise_count;
-    int32   noise_rate;
-}   SOldSoundData;
-
-struct SOldAPU DummyAPU;
-struct SOldAPURegisters DummyAPURegisters;
-
 #undef STRUCT
-#define STRUCT struct SOldAPU
-
-static FreezeData SnapOldAPU [] = {
-    INT_ENTRY(1, OldCycles),
-    INT_ENTRY(1, ShowROM),
-    OBSOLETE_INT_ENTRY(1,2, SAPU_Flags),
-    INT_ENTRY(2, Flags),
-    INT_ENTRY(1, KeyedChannels),
-    ARRAY_ENTRY(1, OutPorts, 4, uint8_ARRAY_V),
-    ARRAY_ENTRY(1, DSP, 0x80, uint8_ARRAY_V),
-    ARRAY_ENTRY(1, ExtraRAM, 64, uint8_ARRAY_V),
-    ARRAY_ENTRY(1, Timer, 3, uint16_ARRAY_V),
-    ARRAY_ENTRY(1, TimerTarget, 3, uint16_ARRAY_V),
-    ARRAY_ENTRY(1, TimerEnabled, 3, uint8_ARRAY_V),
-    ARRAY_ENTRY(1, TimerValueWritten, 3, uint8_ARRAY_V),
-    INT_ENTRY(4, Cycles),
-};
-
-#undef STRUCT
-#define STRUCT struct SOldAPURegisters
-
-static FreezeData SnapOldAPURegisters [] = {
-    INT_ENTRY(1, P),
-    INT_ENTRY(1, YA.W),
-    INT_ENTRY(1, X),
-    INT_ENTRY(1, S),
-    INT_ENTRY(1, PC),
-};
-
-#undef STRUCT
-#define STRUCT SOldSoundData
-
-static FreezeData   SnapOldSoundData[] =
-{
-    INT_ENTRY(1, master_volume_left),
-    INT_ENTRY(1, master_volume_right),
-    INT_ENTRY(1, echo_volume_left),
-    INT_ENTRY(1, echo_volume_right),
-    INT_ENTRY(1, echo_enable),
-    INT_ENTRY(1, echo_feedback),
-    INT_ENTRY(1, echo_ptr),
-    INT_ENTRY(1, echo_buffer_size),
-    INT_ENTRY(1, echo_write_enabled),
-    INT_ENTRY(1, echo_channel_enable),
-    INT_ENTRY(1, pitch_mod),
-    ARRAY_ENTRY(1, dummy, 3, uint32_ARRAY_V),
-#define O(N) \
-    INT_ENTRY(1, channels[N].state), \
-    INT_ENTRY(1, channels[N].type), \
-    INT_ENTRY(1, channels[N].volume_left), \
-    INT_ENTRY(1, channels[N].volume_right), \
-    INT_ENTRY(1, channels[N].hertz), \
-    INT_ENTRY(1, channels[N].count), \
-    INT_ENTRY(1, channels[N].loop), \
-    INT_ENTRY(1, channels[N].envx), \
-    INT_ENTRY(1, channels[N].left_vol_level), \
-    INT_ENTRY(1, channels[N].right_vol_level), \
-    INT_ENTRY(1, channels[N].envx_target), \
-    INT_ENTRY(1, channels[N].env_error), \
-    INT_ENTRY(1, channels[N].erate), \
-    INT_ENTRY(1, channels[N].direction), \
-    INT_ENTRY(1, channels[N].attack_rate), \
-    INT_ENTRY(1, channels[N].decay_rate), \
-    INT_ENTRY(1, channels[N].sustain_rate), \
-    INT_ENTRY(1, channels[N].release_rate), \
-    INT_ENTRY(1, channels[N].sustain_level), \
-    INT_ENTRY(1, channels[N].sample), \
-    ARRAY_ENTRY(1, channels[N].decoded, 16, uint16_ARRAY_V), \
-    ARRAY_ENTRY(1, channels[N].previous16, 2, uint16_ARRAY_V), \
-    INT_ENTRY(1, channels[N].sample_number), \
-    INT_ENTRY(1, channels[N].last_block), \
-    INT_ENTRY(1, channels[N].needs_decode), \
-    INT_ENTRY(1, channels[N].block_pointer), \
-    INT_ENTRY(1, channels[N].sample_pointer), \
-    INT_ENTRY(1, channels[N].mode)
-    O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7),
-#undef O
-    INT_ENTRY(2, noise_rate),
-#define O(N) \
-    INT_ENTRY(2, channels[N].out_sample), \
-    INT_ENTRY(2, channels[N].xenvx), \
-    INT_ENTRY(2, channels[N].xenvx_target), \
-    INT_ENTRY(2, channels[N].xenv_count), \
-    INT_ENTRY(2, channels[N].xenv_rate), \
-    INT_ENTRY(2, channels[N].xattack_rate), \
-    INT_ENTRY(2, channels[N].xdecay_rate), \
-    INT_ENTRY(2, channels[N].xsustain_rate), \
-    INT_ENTRY(2, channels[N].xsustain_level)
-    O(0), O(1), O(2), O(3), O(4), O(5), O(6), O(7),
-#undef O
-    INT_ENTRY(4, noise_count),
-    INT_ENTRY(4, no_filter),
-    INT_ENTRY(4, echo_volume[0]),
-    INT_ENTRY(4, echo_volume[1]),
-    INT_ENTRY(4, master_volume[0]),
-    INT_ENTRY(4, master_volume[1]),
-};
-
-/* End old APU structures */
-
-#undef STRUCT
-#define STRUCT struct STimings
-
-static FreezeData	SnapTimings[] =
-{
-	INT_ENTRY(2, H_Max_Master),
-	INT_ENTRY(2, H_Max),
-	INT_ENTRY(2, V_Max_Master),
-	INT_ENTRY(2, V_Max),
-	INT_ENTRY(2, HBlankStart),
-	INT_ENTRY(2, HBlankEnd),
-	INT_ENTRY(2, HDMAInit),
-	INT_ENTRY(2, HDMAStart),
-	INT_ENTRY(2, NMITriggerPos),
-	INT_ENTRY(2, WRAMRefreshPos),
-	INT_ENTRY(2, RenderPos),
-	INT_ENTRY(2, InterlaceField),
-	INT_ENTRY(4, DMACPUSync),
-	INT_ENTRY(6, NMIDMADelay),
-	INT_ENTRY(6, IRQPendCount)
-};
-
-#undef STRUCT
-#define STRUCT struct SControlSnapshot
+#define STRUCT	struct SControlSnapshot
 
 static FreezeData	SnapControls[] =
 {
-	INT_ENTRY(2, ver),
-	ARRAY_ENTRY(2, port1_read_idx, 2, uint8_ARRAY_V),
-	ARRAY_ENTRY(2, dummy1, 4, uint8_ARRAY_V),
-	ARRAY_ENTRY(2, port2_read_idx, 2, uint8_ARRAY_V),
-	ARRAY_ENTRY(2, dummy2, 4, uint8_ARRAY_V),
-	ARRAY_ENTRY(2, mouse_speed, 2, uint8_ARRAY_V),
-	INT_ENTRY(2, justifier_select),
-	ARRAY_ENTRY(2, dummy3, 8, uint8_ARRAY_V),
-	INT_ENTRY(4, pad_read),
-	INT_ENTRY(4, pad_read_last),
-	ARRAY_ENTRY(3, internal, 60, uint8_ARRAY_V)
+	INT_ENTRY(6, ver),
+	ARRAY_ENTRY(6, port1_read_idx, 2, uint8_ARRAY_V),
+	ARRAY_ENTRY(6, dummy1, 4, uint8_ARRAY_V),
+	ARRAY_ENTRY(6, port2_read_idx, 2, uint8_ARRAY_V),
+	ARRAY_ENTRY(6, dummy2, 4, uint8_ARRAY_V),
+	ARRAY_ENTRY(6, mouse_speed, 2, uint8_ARRAY_V),
+	INT_ENTRY(6, justifier_select),
+	ARRAY_ENTRY(6, dummy3, 8, uint8_ARRAY_V),
+	INT_ENTRY(6, pad_read),
+	INT_ENTRY(6, pad_read_last),
+	ARRAY_ENTRY(6, internal, 60, uint8_ARRAY_V)
+};
+
+#undef STRUCT
+#define STRUCT	struct STimings
+
+static FreezeData	SnapTimings[] =
+{
+	INT_ENTRY(6, H_Max_Master),
+	INT_ENTRY(6, H_Max),
+	INT_ENTRY(6, V_Max_Master),
+	INT_ENTRY(6, V_Max),
+	INT_ENTRY(6, HBlankStart),
+	INT_ENTRY(6, HBlankEnd),
+	INT_ENTRY(6, HDMAInit),
+	INT_ENTRY(6, HDMAStart),
+	INT_ENTRY(6, NMITriggerPos),
+	INT_ENTRY(6, WRAMRefreshPos),
+	INT_ENTRY(6, RenderPos),
+	INT_ENTRY(6, InterlaceField),
+	INT_ENTRY(6, DMACPUSync),
+	INT_ENTRY(6, NMIDMADelay),
+	INT_ENTRY(6, IRQPendCount),
+	INT_ENTRY(6, APUSpeedup)
 };
 
 #ifndef ZSNES_FX
 
 #undef STRUCT
-#define STRUCT struct FxRegs_s
+#define STRUCT	struct FxRegs_s
 
 static FreezeData	SnapFX[] =
 {
-	INT_ENTRY(4, vColorReg),
-	INT_ENTRY(4, vPlotOptionReg),
-	INT_ENTRY(4, vStatusReg),
-	INT_ENTRY(4, vPrgBankReg),
-	INT_ENTRY(4, vRomBankReg),
-	INT_ENTRY(4, vRamBankReg),
-	INT_ENTRY(4, vCacheBaseReg),
-	INT_ENTRY(4, vCacheFlags),
-	INT_ENTRY(4, vLastRamAdr),
-	INT_ENTRY(4, vPipeAdr),
-	INT_ENTRY(4, vSign),
-	INT_ENTRY(4, vZero),
-	INT_ENTRY(4, vCarry),
-	INT_ENTRY(4, vOverflow),
-	INT_ENTRY(4, vErrorCode),
-	INT_ENTRY(4, vIllegalAddress),
-	INT_ENTRY(4, vBreakPoint),
-	INT_ENTRY(4, vStepPoint),
-	INT_ENTRY(4, nRamBanks),
-	INT_ENTRY(4, nRomBanks),
-	INT_ENTRY(4, vMode),
-	INT_ENTRY(4, vPrevMode),
-	INT_ENTRY(4, vScreenHeight),
-	INT_ENTRY(4, vScreenRealHeight),
-	INT_ENTRY(4, vPrevScreenHeight),
-	INT_ENTRY(4, vScreenSize),
-	INT_ENTRY(4, vCounter),
-	INT_ENTRY(4, vInstCount),
-	INT_ENTRY(4, vSCBRDirty),
-	INT_ENTRY(4, vRomBuffer),
-	INT_ENTRY(4, vPipe),
-	INT_ENTRY(4, bCacheActive),
-	INT_ENTRY(4, bBreakPoint),
-	ARRAY_ENTRY(4, avCacheBackup, 512, uint8_ARRAY_V),
-	ARRAY_ENTRY(4, avReg, 16, uint32_ARRAY_V),
-	ARRAY_ENTRY(4, x, 32, uint32_ARRAY_V),
-	POINTER_ENTRY(4, pvScreenBase, pvRam),
-	POINTER_ENTRY(4, pvPrgBank, apvRomBank),
-	POINTER_ENTRY(4, pvDreg, avReg),
-	POINTER_ENTRY(4, pvSreg, avReg),
+	ARRAY_ENTRY(6, avReg, 16, uint32_ARRAY_V),
+	INT_ENTRY(6, vColorReg),
+	INT_ENTRY(6, vPlotOptionReg),
+	INT_ENTRY(6, vStatusReg),
+	INT_ENTRY(6, vPrgBankReg),
+	INT_ENTRY(6, vRomBankReg),
+	INT_ENTRY(6, vRamBankReg),
+	INT_ENTRY(6, vCacheBaseReg),
+	INT_ENTRY(6, vCacheFlags),
+	INT_ENTRY(6, vLastRamAdr),
+	POINTER_ENTRY(6, pvDreg, avReg),
+	POINTER_ENTRY(6, pvSreg, avReg),
+	INT_ENTRY(6, vRomBuffer),
+	INT_ENTRY(6, vPipe),
+	INT_ENTRY(6, vPipeAdr),
+	INT_ENTRY(6, vSign),
+	INT_ENTRY(6, vZero),
+	INT_ENTRY(6, vCarry),
+	INT_ENTRY(6, vOverflow),
+	INT_ENTRY(6, vErrorCode),
+	INT_ENTRY(6, vIllegalAddress),
+	INT_ENTRY(6, bBreakPoint),
+	INT_ENTRY(6, vBreakPoint),
+	INT_ENTRY(6, vStepPoint),
+	INT_ENTRY(6, nRamBanks),
+	INT_ENTRY(6, nRomBanks),
+	INT_ENTRY(6, vMode),
+	INT_ENTRY(6, vPrevMode),
+	POINTER_ENTRY(6, pvScreenBase, pvRam),
 #define O(N) \
-	POINTER_ENTRY(4, apvScreen[N], pvRam)
+	POINTER_ENTRY(6, apvScreen[N], pvRam)
 	O(  0), O(  1), O(  2), O(  3), O(  4), O(  5), O(  6), O(  7),
 	O(  8), O(  9), O( 10), O( 11), O( 12), O( 13), O( 14), O( 15),
 	O( 16), O( 17), O( 18), O( 19), O( 20), O( 21), O( 22), O( 23),
 	O( 24), O( 25), O( 26), O( 27), O( 28), O( 29), O( 30), O( 31),
 #undef O
-	POINTER_ENTRY(4, pvRamBank, apvRamBank),
-	POINTER_ENTRY(4, pvRomBank, apvRomBank),
-	POINTER_ENTRY(4, pvCache, pvRegisters),
+	ARRAY_ENTRY(6, x, 32, uint32_ARRAY_V),
+	INT_ENTRY(6, vScreenHeight),
+	INT_ENTRY(6, vScreenRealHeight),
+	INT_ENTRY(6, vPrevScreenHeight),
+	INT_ENTRY(6, vScreenSize),
+	POINTER_ENTRY(6, pvRamBank, apvRamBank),
+	POINTER_ENTRY(6, pvRomBank, apvRomBank),
+	POINTER_ENTRY(6, pvPrgBank, apvRomBank),
 #define O(N) \
-	POINTER_ENTRY(4, apvRamBank[N], pvRam)
-	O(0), O(1), O(2), O(3)
+	POINTER_ENTRY(6, apvRamBank[N], pvRam)
+	O(0), O(1), O(2), O(3),
 #undef O
+	INT_ENTRY(6, bCacheActive),
+	POINTER_ENTRY(6, pvCache, pvRegisters),
+	ARRAY_ENTRY(6, avCacheBackup, 512, uint8_ARRAY_V),
+	INT_ENTRY(6, vCounter),
+	INT_ENTRY(6, vInstCount),
+	INT_ENTRY(6, vSCBRDirty)
 };
+
 #endif
 
 #undef STRUCT
-#define STRUCT struct SSA1
+#define STRUCT	struct SSA1
 
 static FreezeData	SnapSA1[] =
 {
-	INT_ENTRY(1, Flags),
-	DELETED_INT_ENTRY(1, 6, NMIActive, 1),
-	INT_ENTRY(1, IRQActive),
-	INT_ENTRY(1, WaitingForInterrupt),
-	INT_ENTRY(1, op1),
-	INT_ENTRY(1, op2),
-	INT_ENTRY(1, arithmetic_op),
-	INT_ENTRY(1, sum),
-	INT_ENTRY(1, overflow),
-	INT_ENTRY(3, CPUExecuting),
-	INT_ENTRY(3, ShiftedPB),
-	INT_ENTRY(3, ShiftedDB),
-	INT_ENTRY(3, Executing),
-	INT_ENTRY(3, Waiting),
-	INT_ENTRY(3, PBPCAtOpcodeStart),
-	INT_ENTRY(3, WaitAddress),
-	INT_ENTRY(3, WaitCounter),
-	INT_ENTRY(3, VirtualBitmapFormat),
-	INT_ENTRY(3, in_char_dma),
-	INT_ENTRY(3, variable_bit_pos)
+	INT_ENTRY(6, CPUExecuting),
+	INT_ENTRY(6, ShiftedPB),
+	INT_ENTRY(6, ShiftedDB),
+	INT_ENTRY(6, Flags),
+	INT_ENTRY(6, IRQActive),
+	INT_ENTRY(6, Waiting),
+	INT_ENTRY(6, WaitingForInterrupt),
+	INT_ENTRY(6, WaitAddress),
+	INT_ENTRY(6, WaitCounter),
+	INT_ENTRY(6, PBPCAtOpcodeStart),
+	INT_ENTRY(6, Executing),
+	INT_ENTRY(6, overflow),
+	INT_ENTRY(6, in_char_dma),
+	INT_ENTRY(6, op1),
+	INT_ENTRY(6, op2),
+	INT_ENTRY(6, arithmetic_op),
+	INT_ENTRY(6, sum),
+	INT_ENTRY(6, VirtualBitmapFormat),
+	INT_ENTRY(6, variable_bit_pos)
 };
 
 #undef STRUCT
-#define STRUCT struct SSA1Registers
+#define STRUCT	struct SSA1Registers
 
 static FreezeData	SnapSA1Registers[] =
 {
-	INT_ENTRY(1, PB),
-	INT_ENTRY(1, DB),
-	INT_ENTRY(1, P.W),
-	INT_ENTRY(1, A.W),
-	INT_ENTRY(1, D.W),
-	INT_ENTRY(1, S.W),
-	INT_ENTRY(1, X.W),
-	INT_ENTRY(1, Y.W),
-	INT_ENTRY(1, PCw)
+	INT_ENTRY(6, PB),
+	INT_ENTRY(6, DB),
+	INT_ENTRY(6, P.W),
+	INT_ENTRY(6, A.W),
+	INT_ENTRY(6, D.W),
+	INT_ENTRY(6, S.W),
+	INT_ENTRY(6, X.W),
+	INT_ENTRY(6, Y.W),
+	INT_ENTRY(6, PCw)
 };
 
 #undef STRUCT
-#define STRUCT struct SDSP1
+#define STRUCT	struct SDSP1
 
 static FreezeData	SnapDSP1[] =
 {
@@ -1107,7 +869,7 @@ static FreezeData	SnapDSP1[] =
 };
 
 #undef STRUCT
-#define STRUCT struct SDSP2
+#define STRUCT	struct SDSP2
 
 static FreezeData	SnapDSP2[] =
 {
@@ -1132,7 +894,7 @@ static FreezeData	SnapDSP2[] =
 };
 
 #undef STRUCT
-#define STRUCT struct SDSP4
+#define STRUCT	struct SDSP4
 
 static FreezeData	SnapDSP4[] =
 {
@@ -1205,7 +967,7 @@ static FreezeData	SnapDSP4[] =
 };
 
 #undef STRUCT
-#define STRUCT struct SST010
+#define STRUCT	struct SST010
 
 static FreezeData	SnapST010[] =
 {
@@ -1217,7 +979,7 @@ static FreezeData	SnapST010[] =
 };
 
 #undef STRUCT
-#define STRUCT struct SOBC1
+#define STRUCT	struct SOBC1
 
 static FreezeData	SnapOBC1[] =
 {
@@ -1227,7 +989,7 @@ static FreezeData	SnapOBC1[] =
 };
 
 #undef STRUCT
-#define STRUCT struct SSPC7110Snapshot
+#define STRUCT	struct SSPC7110Snapshot
 
 static FreezeData	SnapSPC7110Snap[] =
 {
@@ -1301,7 +1063,7 @@ static FreezeData	SnapSPC7110Snap[] =
 };
 
 #undef STRUCT
-#define STRUCT struct SSRTCSnapshot
+#define STRUCT	struct SSRTCSnapshot
 
 static FreezeData	SnapSRTCSnap[] =
 {
@@ -1310,63 +1072,44 @@ static FreezeData	SnapSRTCSnap[] =
 };
 
 #undef STRUCT
-#define STRUCT struct SRTCData
-
-static FreezeData	SnapRTCData[] =
-{
-	ARRAY_ENTRY(6, reg, 20, uint8_ARRAY_V),
-};
-
-#undef STRUCT
-#define STRUCT struct SBSX
+#define STRUCT	struct SBSX
 
 static FreezeData	SnapBSX[] =
 {
-	INT_ENTRY(2, dirty),
-	INT_ENTRY(2, dirty2),
-	INT_ENTRY(2, bootup),
-	INT_ENTRY(2, flash_enable),
-	INT_ENTRY(2, write_enable),
-	INT_ENTRY(2, read_enable),
-	INT_ENTRY(2, flash_command),
-	INT_ENTRY(2, old_write),
-	INT_ENTRY(2, new_write),
-	INT_ENTRY(2, out_index),
-	ARRAY_ENTRY(2, output, 32, uint8_ARRAY_V),
-	ARRAY_ENTRY(2, PPU, 32, uint8_ARRAY_V),
-	ARRAY_ENTRY(2, MMC, 16, uint8_ARRAY_V),
-	ARRAY_ENTRY(2, prevMMC, 16, uint8_ARRAY_V),
-	ARRAY_ENTRY(2, test2192, 32, uint8_ARRAY_V)
+	INT_ENTRY(6, dirty),
+	INT_ENTRY(6, dirty2),
+	INT_ENTRY(6, bootup),
+	INT_ENTRY(6, flash_enable),
+	INT_ENTRY(6, write_enable),
+	INT_ENTRY(6, read_enable),
+	INT_ENTRY(6, flash_command),
+	INT_ENTRY(6, old_write),
+	INT_ENTRY(6, new_write),
+	INT_ENTRY(6, out_index),
+	ARRAY_ENTRY(6, output, 32, uint8_ARRAY_V),
+	ARRAY_ENTRY(6, PPU, 32, uint8_ARRAY_V),
+	ARRAY_ENTRY(6, MMC, 16, uint8_ARRAY_V),
+	ARRAY_ENTRY(6, prevMMC, 16, uint8_ARRAY_V),
+	ARRAY_ENTRY(6, test2192, 32, uint8_ARRAY_V)
 };
 
 #undef STRUCT
-#define STRUCT struct SnapshotMovieInfo
-
-static FreezeData	SnapMovie[] =
-{
-	INT_ENTRY(1, MovieInputDataSize)
-};
-
-#undef STRUCT
-#define STRUCT struct SnapshotScreenshotInfo
+#define STRUCT	struct SnapshotScreenshotInfo
 
 static FreezeData	SnapScreenshot[] =
 {
-	INT_ENTRY(4, Width),
-	INT_ENTRY(4, Height),
-	ARRAY_ENTRY(4, Data, MAX_SNES_WIDTH * MAX_SNES_HEIGHT * 3, uint8_ARRAY_V),
-	INT_ENTRY(4, Interlaced)
+	INT_ENTRY(6, Width),
+	INT_ENTRY(6, Height),
+	INT_ENTRY(6, Interlaced),
+	ARRAY_ENTRY(6, Data, MAX_SNES_WIDTH * MAX_SNES_HEIGHT * 3, uint8_ARRAY_V)
 };
 
-// deleted blocks
-static FreezeData	SnapIPPU[] =
-{
-	DELETED_ARRAY_ENTRY(3, 4, Junk, 2, uint32_ARRAY_V)
-};
+#undef STRUCT
+#define STRUCT	struct SnapshotMovieInfo
 
-static FreezeData	SnapGFX[] =
+static FreezeData	SnapMovie[] =
 {
-	DELETED_ARRAY_ENTRY(3, 4, Junk, 22 + 256 + MAX_SNES_WIDTH * MAX_SNES_HEIGHT * 2, uint8_ARRAY_V)
+	INT_ENTRY(6, MovieInputDataSize)
 };
 
 static int UnfreezeBlock (STREAM, const char *, uint8 *, int);
@@ -1434,9 +1177,6 @@ bool8 S9xUnfreezeGame (const char *filename)
 	if (S9xOpenSnapshotFile(filename, TRUE, &stream))
 	{
 		int	result;
-
-		ZeroMemory(&Obsolete, sizeof(Obsolete));
-		Obsolete.SAPU_OldCycles = APU_OLDCYCLES_OBSOLETE_VALUE;
 
 		result = S9xUnfreezeFromStream(stream);
 		S9xCloseSnapshotFile(stream);
@@ -1519,35 +1259,33 @@ void S9xFreezeToStream (STREAM stream)
 
 	FreezeStruct(stream, "PPU", &PPU, SnapPPU, COUNT(SnapPPU));
 
-	struct SDMASnapshot dma_snap;
+	struct SDMASnapshot	dma_snap;
 	for (int d = 0; d < 8; d++)
 		dma_snap.dma[d] = DMA[d];
 	FreezeStruct(stream, "DMA", &dma_snap, SnapDMA, COUNT(SnapDMA));
 
-	FreezeBlock(stream, "VRA", Memory.VRAM, 0x10000);
+	FreezeBlock (stream, "VRA", Memory.VRAM, 0x10000);
 
-	FreezeBlock(stream, "RAM", Memory.RAM, 0x20000);
+	FreezeBlock (stream, "RAM", Memory.RAM, 0x20000);
 
-	FreezeBlock(stream, "SRA", Memory.SRAM, 0x20000);
+	FreezeBlock (stream, "SRA", Memory.SRAM, 0x20000);
 
-	FreezeBlock(stream, "FIL", Memory.FillRAM, 0x8000);
+	FreezeBlock (stream, "FIL", Memory.FillRAM, 0x8000);
 
-        /* Obsoleted */
-        FreezeStruct(stream, "APU", &DummyAPU, SnapOldAPU, COUNT(SnapOldAPU));
+	uint8	soundsnapshot[SPC_SAVE_STATE_BLOCK_SIZE];
+	S9xAPUSaveState(soundsnapshot);
+	FreezeBlock (stream, "SND", soundsnapshot, SPC_SAVE_STATE_BLOCK_SIZE);
 
-        FreezeStruct(stream, "ARE", &DummyAPURegisters, SnapOldAPURegisters, COUNT(SnapOldAPURegisters));
-
-        unsigned char zeroblock[0x10000];
-        memset (zeroblock, 0, 0x10000);
-        FreezeBlock(stream, "ARA", zeroblock, 0x10000);
-
-        /* End obsoleted */
-
-	struct SControlSnapshot ctl_snap;
+	struct SControlSnapshot	ctl_snap;
 	S9xControlPreSaveState(&ctl_snap);
 	FreezeStruct(stream, "CTL", &ctl_snap, SnapControls, COUNT(SnapControls));
 
 	FreezeStruct(stream, "TIM", &Timings, SnapTimings, COUNT(SnapTimings));
+
+#ifndef ZSNES_FX
+	if (Settings.SuperFX)
+		FreezeStruct(stream, "SFX", &GSU, SnapFX, COUNT(SnapFX));
+#endif
 
 	if (Settings.SA1)
 	{
@@ -1556,45 +1294,52 @@ void S9xFreezeToStream (STREAM stream)
 		FreezeStruct(stream, "SAR", &SA1Registers, SnapSA1Registers, COUNT(SnapSA1Registers));
 	}
 
-	if (Settings.BS)
-		FreezeStruct(stream, "BSX", &BSX, SnapBSX, COUNT(SnapBSX));
+	if (Settings.DSP == 1)
+		FreezeStruct(stream, "DP1", &DSP1, SnapDSP1, COUNT(SnapDSP1));
 
-	if (S9xMovieActive())
-	{
-		uint8	*movie_freeze_buf;
-		uint32	movie_freeze_size;
+	if (Settings.DSP == 2)
+		FreezeStruct(stream, "DP2", &DSP2, SnapDSP2, COUNT(SnapDSP2));
 
-		S9xMovieFreeze(&movie_freeze_buf, &movie_freeze_size);
-		if (movie_freeze_buf)
-		{
-			struct SnapshotMovieInfo mi;
-
-			mi.MovieInputDataSize = movie_freeze_size;
-			FreezeStruct(stream, "MOV", &mi, SnapMovie, COUNT(SnapMovie));
-			FreezeBlock(stream, "MID", movie_freeze_buf, movie_freeze_size);
-
-			delete [] movie_freeze_buf;
-		}
-	}
+	if (Settings.DSP == 4)
+		FreezeStruct(stream, "DP4", &DSP4, SnapDSP4, COUNT(SnapDSP4));
 
 	if (Settings.C4)
 #ifndef ZSNES_C4
-		FreezeBlock(stream, "CX4", Memory.C4RAM, 8192);
+		FreezeBlock (stream, "CX4", Memory.C4RAM, 8192);
 #else
-	{
-		if (C4Ram)
-			FreezeBlock(stream, "CX4", C4Ram, 8192);
-	}
+		FreezeBlock (stream, "CX4", C4Ram, 8192);
 #endif
 
-#ifndef ZSNES_FX
-	if (Settings.SuperFX)
-		FreezeStruct(stream, "SFX", &GSU, SnapFX, COUNT(SnapFX));
-#endif
+	if (Settings.SETA == ST_010)
+		FreezeStruct(stream, "ST0", &ST010, SnapST010, COUNT(SnapST010));
+
+	if (Settings.OBC1)
+	{
+		FreezeStruct(stream, "OBC", &OBC1, SnapOBC1, COUNT(SnapOBC1));
+		FreezeBlock (stream, "OBM", Memory.OBC1RAM, 8192);
+	}
+
+	if (Settings.SPC7110)
+	{
+		S9xSPC7110PreSaveState();
+		FreezeStruct(stream, "S71", &s7snap, SnapSPC7110Snap, COUNT(SnapSPC7110Snap));
+	}
+
+	if (Settings.SRTC)
+	{
+		S9xSRTCPreSaveState();
+		FreezeStruct(stream, "SRT", &srtcsnap, SnapSRTCSnap, COUNT(SnapSRTCSnap));
+	}
+
+	if (Settings.SRTC || Settings.SPC7110RTC)
+		FreezeBlock (stream, "CLK", RTCData.reg, 20);
+
+	if (Settings.BS)
+		FreezeStruct(stream, "BSX", &BSX, SnapBSX, COUNT(SnapBSX));
 
 	if (Settings.SnapshotScreenshots)
 	{
-		SnapshotScreenshotInfo *ssi = new SnapshotScreenshotInfo;
+		SnapshotScreenshotInfo	*ssi = new SnapshotScreenshotInfo;
 
 		ssi->Width  = min(IPPU.RenderedScreenWidth,  MAX_SNES_WIDTH);
 		ssi->Height = min(IPPU.RenderedScreenHeight, MAX_SNES_HEIGHT);
@@ -1623,46 +1368,23 @@ void S9xFreezeToStream (STREAM stream)
 		delete ssi;
 	}
 
-        /* Replaced new 1.52 block with new apu block */
-        unsigned char soundsnapshot[SPC_SAVE_STATE_BLOCK_SIZE];
-        S9xAPUSaveState (soundsnapshot);
-        FreezeBlock (stream, "SND", soundsnapshot, SPC_SAVE_STATE_BLOCK_SIZE);
-/*
-        S9xSoundPreSaveState();
-        FreezeStruct(stream, "SND", &SoundData, SnapSoundData, COUNT(SnapSoundData));
-*/
-	if (Settings.DSP == 1)
-		FreezeStruct(stream, "DP1", &DSP1, SnapDSP1, COUNT(SnapDSP1));
-
-	if (Settings.DSP == 2)
-		FreezeStruct(stream, "DP2", &DSP2, SnapDSP2, COUNT(SnapDSP2));
-
-	if (Settings.DSP == 4)
-		FreezeStruct(stream, "DP4", &DSP4, SnapDSP4, COUNT(SnapDSP4));
-
-	if (Settings.SETA == ST_010)
-		FreezeStruct(stream, "ST0", &ST010, SnapST010, COUNT(SnapST010));
-
-	if (Settings.OBC1)
+	if (S9xMovieActive())
 	{
-		FreezeStruct(stream, "OBC", &OBC1, SnapOBC1, COUNT(SnapOBC1));
-		FreezeBlock(stream, "OBM", Memory.OBC1RAM, 8192);
-	}
+		uint8	*movie_freeze_buf;
+		uint32	movie_freeze_size;
 
-	if (Settings.SPC7110)
-	{
-		S9xSPC7110PreSaveState();
-		FreezeStruct(stream, "S71", &s7snap, SnapSPC7110Snap, COUNT(SnapSPC7110Snap));
-	}
+		S9xMovieFreeze(&movie_freeze_buf, &movie_freeze_size);
+		if (movie_freeze_buf)
+		{
+			struct SnapshotMovieInfo mi;
 
-	if (Settings.SRTC)
-	{
-		S9xSRTCPreSaveState();
-		FreezeStruct(stream, "SRT", &srtcsnap, SnapSRTCSnap, COUNT(SnapSRTCSnap));
-	}
+			mi.MovieInputDataSize = movie_freeze_size;
+			FreezeStruct(stream, "MOV", &mi, SnapMovie, COUNT(SnapMovie));
+			FreezeBlock (stream, "MID", movie_freeze_buf, movie_freeze_size);
 
-	if (Settings.SRTC || Settings.SPC7110RTC)
-		FreezeStruct(stream, "CLK", &RTCData, SnapRTCData, COUNT(SnapRTCData));
+			delete [] movie_freeze_buf;
+		}
+	}
 
 #ifdef ZSNES_FX
 	if (Settings.SuperFX)
@@ -1701,18 +1423,16 @@ int S9xUnfreezeFromStream (STREAM stream)
 	uint8	*local_ram           = NULL;
 	uint8	*local_sram          = NULL;
 	uint8	*local_fillram       = NULL;
-	uint8	*local_apu           = NULL;
-	uint8	*local_apu_registers = NULL;
-	uint8	*local_apu_ram       = NULL;
 	uint8	*local_apu_sound     = NULL;
-	uint8	*local_apu_oldsound  = NULL;
 	uint8	*local_control_data  = NULL;
 	uint8	*local_timing_data   = NULL;
+	uint8	*local_superfx       = NULL;
 	uint8	*local_sa1           = NULL;
 	uint8	*local_sa1_registers = NULL;
 	uint8	*local_dsp1          = NULL;
 	uint8	*local_dsp2          = NULL;
 	uint8	*local_dsp4          = NULL;
+	uint8	*local_cx4_data      = NULL;
 	uint8	*local_st010         = NULL;
 	uint8	*local_obc1          = NULL;
 	uint8	*local_obc1_data     = NULL;
@@ -1720,12 +1440,8 @@ int S9xUnfreezeFromStream (STREAM stream)
 	uint8	*local_srtc          = NULL;
 	uint8	*local_rtc_data      = NULL;
 	uint8	*local_bsx_data      = NULL;
-	uint8	*local_cx4_data      = NULL;
-	uint8	*local_superfx       = NULL;
-	uint8	*local_movie_data    = NULL;
 	uint8	*local_screenshot    = NULL;
-	uint8	*local_dummy1        = NULL;
-	uint8	*local_dummy2        = NULL;
+	uint8	*local_movie_data    = NULL;
 
 	do
 	{
@@ -1745,46 +1461,39 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeBlockCopy(stream, "VRA", &local_vram, 0x10000);
+		result = UnfreezeBlockCopy (stream, "VRA", &local_vram, 0x10000);
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeBlockCopy(stream, "RAM", &local_ram, 0x20000);
+		result = UnfreezeBlockCopy (stream, "RAM", &local_ram, 0x20000);
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeBlockCopy(stream, "SRA", &local_sram, 0x20000);
+		result = UnfreezeBlockCopy (stream, "SRA", &local_sram, 0x20000);
 		if (result != SUCCESS)
 			break;
 
-		result = UnfreezeBlockCopy(stream, "FIL", &local_fillram, 0x8000);
+		result = UnfreezeBlockCopy (stream, "FIL", &local_fillram, 0x8000);
 		if (result != SUCCESS)
 			break;
 
-                result = UnfreezeStructCopy(stream, "APU", &local_apu, SnapOldAPU, COUNT(SnapOldAPU), version);
-                if (result != SUCCESS)
-                        break;
-
-                result = UnfreezeStructCopy(stream, "ARE", &local_apu_registers, SnapOldAPURegisters, COUNT(SnapOldAPURegisters), version);
-                if (result != SUCCESS)
-                        break;
-
-		result = UnfreezeBlockCopy(stream, "ARA", &local_apu_ram, 0x10000);
+		result = UnfreezeBlockCopy (stream, "SND", &local_apu_sound, SPC_SAVE_STATE_BLOCK_SIZE);
 		if (result != SUCCESS)
-			break;
-
-		// sound DSP snapshot older than 1.52
-		result = UnfreezeStructCopy(stream, "SOU", &local_apu_oldsound, SnapOldSoundData, COUNT(SnapOldSoundData), version);
-		if (result != SUCCESS && version <= 4)
 			break;
 
 		result = UnfreezeStructCopy(stream, "CTL", &local_control_data, SnapControls, COUNT(SnapControls), version);
-		if (result != SUCCESS && version >= 2)
+		if (result != SUCCESS)
 			break;
 
 		result = UnfreezeStructCopy(stream, "TIM", &local_timing_data, SnapTimings, COUNT(SnapTimings), version);
-		if (result != SUCCESS && version >= 2)
+		if (result != SUCCESS)
 			break;
+
+	#ifndef ZSNES_FX
+		result = UnfreezeStructCopy(stream, "SFX", &local_superfx, SnapFX, COUNT(SnapFX), version);
+		if (result != SUCCESS && Settings.SuperFX)
+			break;
+	#endif
 
 		result = UnfreezeStructCopy(stream, "SA1", &local_sa1, SnapSA1, COUNT(SnapSA1), version);
 		if (result != SUCCESS && Settings.SA1)
@@ -1794,9 +1503,51 @@ int S9xUnfreezeFromStream (STREAM stream)
 		if (result != SUCCESS && Settings.SA1)
 			break;
 
-		result = UnfreezeStructCopy(stream, "BSX", &local_bsx_data, SnapBSX, COUNT(SnapBSX), version);
-		if (result != SUCCESS && version >= 2 && Settings.BS)
+		result = UnfreezeStructCopy(stream, "DP1", &local_dsp1, SnapDSP1, COUNT(SnapDSP1), version);
+		if (result != SUCCESS && Settings.DSP == 1)
 			break;
+
+		result = UnfreezeStructCopy(stream, "DP2", &local_dsp2, SnapDSP2, COUNT(SnapDSP2), version);
+		if (result != SUCCESS && Settings.DSP == 2)
+			break;
+
+		result = UnfreezeStructCopy(stream, "DP4", &local_dsp4, SnapDSP4, COUNT(SnapDSP4), version);
+		if (result != SUCCESS && Settings.DSP == 4)
+			break;
+
+		result = UnfreezeBlockCopy (stream, "CX4", &local_cx4_data, 8192);
+		if (result != SUCCESS && Settings.C4)
+			break;
+
+		result = UnfreezeStructCopy(stream, "ST0", &local_st010, SnapST010, COUNT(SnapST010), version);
+		if (result != SUCCESS && Settings.SETA == ST_010)
+			break;
+
+		result = UnfreezeStructCopy(stream, "OBC", &local_obc1, SnapOBC1, COUNT(SnapOBC1), version);
+		if (result != SUCCESS && Settings.OBC1)
+			break;
+
+		result = UnfreezeBlockCopy (stream, "OBM", &local_obc1_data, 8192);
+		if (result != SUCCESS && Settings.OBC1)
+			break;
+
+		result = UnfreezeStructCopy(stream, "S71", &local_spc7110, SnapSPC7110Snap, COUNT(SnapSPC7110Snap), version);
+		if (result != SUCCESS && Settings.SPC7110)
+			break;
+
+		result = UnfreezeStructCopy(stream, "SRT", &local_srtc, SnapSRTCSnap, COUNT(SnapSRTCSnap), version);
+		if (result != SUCCESS && Settings.SRTC)
+			break;
+
+		result = UnfreezeBlockCopy (stream, "CLK", &local_rtc_data, 20);
+		if (result != SUCCESS && (Settings.SRTC || Settings.SPC7110RTC))
+			break;
+
+		result = UnfreezeStructCopy(stream, "BSX", &local_bsx_data, SnapBSX, COUNT(SnapBSX), version);
+		if (result != SUCCESS && Settings.BS)
+			break;
+
+		result = UnfreezeStructCopy(stream, "SHO", &local_screenshot, SnapScreenshot, COUNT(SnapScreenshot), version);
 
 		SnapshotMovieInfo	mi;
 
@@ -1829,80 +1580,15 @@ int S9xUnfreezeFromStream (STREAM stream)
 			}
 		}
 
-		result = UnfreezeBlockCopy(stream, "CX4", &local_cx4_data, 8192);
-		if (result != SUCCESS && version >= 4 && Settings.C4)
-			break;
-
-	#ifndef ZSNES_FX
-		result = UnfreezeStructCopy(stream, "SFX", &local_superfx, SnapFX, COUNT(SnapFX), version);
-		if (result != SUCCESS && version >= 4 && Settings.SuperFX)
-			break;
-	#endif
-
-		// obsolete
-		result = UnfreezeStructCopy(stream, "IPU", &local_dummy1, SnapIPPU, COUNT(SnapIPPU), version);
-		result = UnfreezeStructCopy(stream, "GFX", &local_dummy2, SnapGFX, COUNT(SnapGFX), version);
-
-		result = UnfreezeStructCopy(stream, "SHO", &local_screenshot, SnapScreenshot, COUNT(SnapScreenshot), version);
-
-                // Changed to new APU
-                result = UnfreezeBlockCopy(stream, "SND", &local_apu_sound, SPC_SAVE_STATE_BLOCK_SIZE);
-		if (result != SUCCESS && version >= 6)
-			break;
-
-		// DSP1 snapshot from 1.52, incompatible with 1.51.
-		result = UnfreezeStructCopy(stream, "DP1", &local_dsp1, SnapDSP1, COUNT(SnapDSP1), version);
-		if (result != SUCCESS && version >= 6 && Settings.DSP == 1)
-			break;
-
-		// DSP2 snapshot from 1.52
-		result = UnfreezeStructCopy(stream, "DP2", &local_dsp2, SnapDSP2, COUNT(SnapDSP2), version);
-		if (result != SUCCESS && version >= 6 && Settings.DSP == 2)
-			break;
-
-		// DSP4 snapshot from 1.52
-		result = UnfreezeStructCopy(stream, "DP4", &local_dsp4, SnapDSP4, COUNT(SnapDSP4), version);
-		if (result != SUCCESS && version >= 6 && Settings.DSP == 4)
-			break;
-
-		// ST010 snapshot from 1.52
-		result = UnfreezeStructCopy(stream, "ST0", &local_st010, SnapST010, COUNT(SnapST010), version);
-		if (result != SUCCESS && version >= 6 && Settings.SETA == ST_010)
-			break;
-
-		// OBC1 snapshot from 1.52
-		result = UnfreezeStructCopy(stream, "OBC", &local_obc1, SnapOBC1, COUNT(SnapOBC1), version);
-		if (result != SUCCESS && version >= 6 && Settings.OBC1)
-			break;
-
-		result = UnfreezeBlockCopy(stream, "OBM", &local_obc1_data, 8192);
-		if (result != SUCCESS && version >= 6 && Settings.OBC1)
-			break;
-
-		// SPC7110 snapshot from 1.52, incompatible with 1.51.
-		result = UnfreezeStructCopy(stream, "S71", &local_spc7110, SnapSPC7110Snap, COUNT(SnapSPC7110Snap), version);
-		if (result != SUCCESS && Settings.SPC7110)
-			break;
-
-		// SRTC snapshot from 1.52
-		result = UnfreezeStructCopy(stream, "SRT", &local_srtc, SnapSRTCSnap, COUNT(SnapSRTCSnap), version);
-		if (result != SUCCESS && Settings.SRTC)
-			break;
-
-		// RTC snapshot from 1.52
-		result = UnfreezeStructCopy(stream, "CLK", &local_rtc_data, SnapRTCData, COUNT(SnapRTCData), version);
-		if (result != SUCCESS && (Settings.SRTC || Settings.SPC7110RTC))
-			break;
-
 		result = SUCCESS;
 	} while (false);
 
 	if (result == SUCCESS)
 	{
-		S9xSetSoundMute(TRUE);
-
 		uint32 old_flags     = CPU.Flags;
 		uint32 sa1_old_flags = SA1.Flags;
+
+		S9xSetSoundMute(TRUE);
 
 		S9xReset();
 
@@ -1912,7 +1598,7 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		UnfreezeStructFromCopy(&PPU, SnapPPU, COUNT(SnapPPU), local_ppu, version);
 
-		struct SDMASnapshot dma_snap;
+		struct SDMASnapshot	dma_snap;
 		UnfreezeStructFromCopy(&dma_snap, SnapDMA, COUNT(SnapDMA), local_dma, version);
 
 		memcpy(Memory.VRAM, local_vram, 0x10000);
@@ -1923,44 +1609,23 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		memcpy(Memory.FillRAM, local_fillram, 0x8000);
 
-                /*
-		UnfreezeStructFromCopy(&APU, SnapAPU, COUNT(SnapAPU), local_apu, version);
+		S9xAPULoadState(local_apu_sound);
 
-		UnfreezeStructFromCopy(&APURegisters, SnapAPURegisters, COUNT(SnapAPURegisters), local_apu_registers, version);
+		struct SControlSnapshot	ctl_snap;
+		UnfreezeStructFromCopy(&ctl_snap, SnapControls, COUNT(SnapControls), local_control_data, version);
 
-                memcpy(IAPU.RAM, local_apu_ram, 0x10000); */
+		UnfreezeStructFromCopy(&Timings, SnapTimings, COUNT(SnapTimings), local_timing_data, version);
 
-		if (local_apu_sound)
-                        S9xAPULoadState (local_apu_sound);
-
-                /* if (local_apu_oldsound)
-                        UnfreezeStructFromCopy(&OldSoundData, SnapOldSoundData, COUNT(SnapOldSoundData), local_apu_oldsound, version); */
-
-		struct SControlSnapshot ctl_snap;
-		if (local_control_data)
-			UnfreezeStructFromCopy(&ctl_snap, SnapControls, COUNT(SnapControls), local_control_data, version);
-
-		if (local_timing_data)
-			UnfreezeStructFromCopy(&Timings, SnapTimings, COUNT(SnapTimings), local_timing_data, version);
+	#ifndef ZSNES_FX
+		if (local_superfx)
+			UnfreezeStructFromCopy(&GSU, SnapFX, COUNT(SnapFX), local_superfx, version);
+	#endif
 
 		if (local_sa1)
 			UnfreezeStructFromCopy(&SA1, SnapSA1, COUNT(SnapSA1), local_sa1, version);
 
 		if (local_sa1_registers)
 			UnfreezeStructFromCopy(&SA1Registers, SnapSA1Registers, COUNT(SnapSA1Registers), local_sa1_registers, version);
-
-		if (local_bsx_data)
-			UnfreezeStructFromCopy(&BSX, SnapBSX, COUNT(SnapBSX), local_bsx_data, version);
-
-		if (local_cx4_data)
-	#ifndef ZSNES_C4
-			memcpy(Memory.C4RAM, local_cx4_data, 8192);
-	#else
-		{
-			if (C4Ram)
-				memcpy(C4Ram, local_cx4_data, 8192);
-		}
-	#endif
 
 		if (local_dsp1)
 			UnfreezeStructFromCopy(&DSP1, SnapDSP1, COUNT(SnapDSP1), local_dsp1, version);
@@ -1970,6 +1635,13 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		if (local_dsp4)
 			UnfreezeStructFromCopy(&DSP4, SnapDSP4, COUNT(SnapDSP4), local_dsp4, version);
+
+		if (local_cx4_data)
+	#ifndef ZSNES_C4
+			memcpy(Memory.C4RAM, local_cx4_data, 8192);
+	#else
+			memcpy(C4Ram, local_cx4_data, 8192);
+	#endif
 
 		if (local_st010)
 			UnfreezeStructFromCopy(&ST010, SnapST010, COUNT(SnapST010), local_st010, version);
@@ -1987,12 +1659,10 @@ int S9xUnfreezeFromStream (STREAM stream)
 			UnfreezeStructFromCopy(&srtcsnap, SnapSRTCSnap, COUNT(SnapSRTCSnap), local_srtc, version);
 
 		if (local_rtc_data)
-			UnfreezeStructFromCopy(&RTCData, SnapRTCData, COUNT(SnapRTCData), local_rtc_data, version);
+			memcpy(RTCData.reg, local_rtc_data, 20);
 
-	#ifndef ZSNES_FX
-		if (local_superfx)
-			UnfreezeStructFromCopy(&GSU, SnapFX, COUNT(SnapFX), local_superfx, version);
-	#endif
+		if (local_bsx_data)
+			UnfreezeStructFromCopy(&BSX, SnapBSX, COUNT(SnapBSX), local_bsx_data, version);
 
 		CPU.Flags |= old_flags & (DEBUG_MODE_FLAG | TRACE_FLAG | SINGLE_STEP_FLAG | FRAME_ADVANCE_FLAG);
 		ICPU.ShiftedPB = Registers.PB << 16;
@@ -2016,49 +1686,34 @@ int S9xUnfreezeFromStream (STREAM stream)
 		uint8 hdma_byte = Memory.FillRAM[0x420c];
 		S9xSetCPU(hdma_byte, 0x420c);
 
-		if (version < 2)
-		{
-			for (int d = 0; d < 8; d++)
-			{
-				DMA[d].UnknownByte = Memory.FillRAM[0x430b + (d << 4)];
-				DMA[d].UnusedBit43x0 = (Memory.FillRAM[0x4300 + (d << 4)] & 0x20) ? 1 : 0;
-			}
-
-			PPU.M7HOFS = PPU.BG[0].HOffset;
-			PPU.M7VOFS = PPU.BG[0].VOffset;
-
-			if (Memory.FillRAM[0x4213] == 0)
-			{
-				// most likely an old savestate
-				Memory.FillRAM[0x4213] = Memory.FillRAM[0x4201];
-				if (Memory.FillRAM[0x4213] == 0)
-					Memory.FillRAM[0x4213] = Memory.FillRAM[0x4201] = 0xFF;
-			}
-
-			// Assuming the old savesate was made outside S9xMainLoop().
-			// V=0 and HDMA was already initialized.
-			CPU.WhichEvent = HC_HDMA_INIT_EVENT;
-			CPU.NextEvent = Timings.HDMAInit;
-			S9xReschedule();
-			S9xUpdateHVTimerPosition();
-
-			ZeroMemory(&ctl_snap, sizeof(ctl_snap));
-			ctl_snap.ver = 0;
-			ctl_snap.port1_read_idx[0] = Obsolete.SPPU_Joypad1ButtonReadPos;
-			ctl_snap.port2_read_idx[0] = Obsolete.SPPU_Joypad2ButtonReadPos;
-			ctl_snap.port2_read_idx[1] = Obsolete.SPPU_Joypad3ButtonReadPos;
-			// Old snes9x used MouseSpeed[0] for both mice. Weird.
-			ctl_snap.mouse_speed[0] = ctl_snap.mouse_speed[1] = Obsolete.SPPU_MouseSpeed[0];
-			ctl_snap.justifier_select = 0;
-		}
-
 		S9xControlPostLoadState(&ctl_snap);
+
+	#ifndef ZSNES_FX
+		if (local_superfx)
+		{
+			GSU.pfPlot = fx_PlotTable[GSU.vMode];
+			GSU.pfRpix = fx_PlotTable[GSU.vMode + 5];
+
+			// Sanity check for 64-bit register offset problem
+			if (GSU.pvSreg < &GSU.avReg[0] || GSU.pvSreg >= ((uint32 *) &GSU.avReg[0]) + 16)
+				GSU.pvSreg = &GSU.avReg[0];
+
+			if (GSU.pvDreg < &GSU.avReg[0] || GSU.pvDreg >= ((uint32 *) &GSU.avReg[0]) + 16)
+				GSU.pvDreg = &GSU.avReg[0];
+		}
+	#else
+		if (Settings.SuperFX)
+			S9xSuperFXPostLoadState();
+	#endif
 
 		if (local_sa1 && local_sa1_registers)
 		{
 			SA1.Flags |= sa1_old_flags & TRACE_FLAG;
 			S9xSA1PostLoadState();
 		}
+
+		if (Settings.SDD1)
+			S9xSDD1PostLoadState();
 
 		if (local_spc7110)
 			S9xSPC7110PostLoadState(version);
@@ -2068,33 +1723,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 		if (local_bsx_data)
 			S9xBSXPostLoadState();
-
-	#ifndef ZSNES_FX
-		if (local_superfx)
-		{
-			GSU.pfPlot = fx_PlotTable[GSU.vMode];
-			GSU.pfRpix = fx_PlotTable[GSU.vMode + 5];
-
-                        /* Sanity check for 64-bit register offset problem */
-                        if (GSU.pvSreg <  &GSU.avReg[0] ||
-                            GSU.pvSreg >= ((uint32 *) &GSU.avReg[0]) + 16)
-                        {
-                            GSU.pvSreg = &GSU.avReg[0];
-                        }
-
-                        if (GSU.pvDreg <  &GSU.avReg[0] ||
-                            GSU.pvDreg >= ((uint32 *) &GSU.avReg[0]) + 16)
-                        {
-                            GSU.pvDreg = &GSU.avReg[0];
-                        }
-		}
-	#else
-		if (Settings.SuperFX)
-			S9xSuperFXPostLoadState();
-	#endif
-
-		if (Settings.SDD1)
-			S9xSDD1PostLoadState();
 
 		if (local_movie_data)
 		{
@@ -2177,18 +1805,16 @@ int S9xUnfreezeFromStream (STREAM stream)
 	if (local_ram)				delete [] local_ram;
 	if (local_sram)				delete [] local_sram;
 	if (local_fillram)			delete [] local_fillram;
-	if (local_apu)				delete [] local_apu;
-	if (local_apu_registers)	delete [] local_apu_registers;
-	if (local_apu_ram)			delete [] local_apu_ram;
 	if (local_apu_sound)		delete [] local_apu_sound;
-	if (local_apu_oldsound)		delete [] local_apu_oldsound;
 	if (local_control_data)		delete [] local_control_data;
 	if (local_timing_data)		delete [] local_timing_data;
+	if (local_superfx)			delete [] local_superfx;
 	if (local_sa1)				delete [] local_sa1;
 	if (local_sa1_registers)	delete [] local_sa1_registers;
 	if (local_dsp1)				delete [] local_dsp1;
 	if (local_dsp2)				delete [] local_dsp2;
 	if (local_dsp4)				delete [] local_dsp4;
+	if (local_cx4_data)			delete [] local_cx4_data;
 	if (local_st010)			delete [] local_st010;
 	if (local_obc1)				delete [] local_obc1;
 	if (local_obc1_data)		delete [] local_obc1_data;
@@ -2196,12 +1822,8 @@ int S9xUnfreezeFromStream (STREAM stream)
 	if (local_srtc)				delete [] local_srtc;
 	if (local_rtc_data)			delete [] local_rtc_data;
 	if (local_bsx_data)			delete [] local_bsx_data;
-	if (local_cx4_data)			delete [] local_cx4_data;
-	if (local_superfx)			delete [] local_superfx;
-	if (local_movie_data)		delete [] local_movie_data;
 	if (local_screenshot)		delete [] local_screenshot;
-	if (local_dummy1)			delete [] local_dummy1;
-	if (local_dummy2)			delete [] local_dummy2;
+	if (local_movie_data)		delete [] local_movie_data;
 
 	return (result);
 }
@@ -2621,26 +2243,23 @@ static void UnfreezeStructFromCopy (void *sbase, FreezeData *fields, int num_fie
 
 bool8 S9xSPCDump (const char *filename)
 {
-        FILE  *fs;
-        uint8 buf[SNES_SPC::spc_file_size];
+	FILE	*fs;
+	uint8	buf[SNES_SPC::spc_file_size];
 
-        fs = fopen (filename, "wb");
-        if (!fs)
-                return (FALSE);
+	fs = fopen(filename, "wb");
+	if (!fs)
+		return (FALSE);
 
-        S9xSetSoundMute (TRUE);
+	S9xSetSoundMute(TRUE);
 
-        spc_core->init_header (buf);
-        spc_core->save_spc (buf);
+	spc_core->init_header(buf);
+	spc_core->save_spc(buf);
 
-        if (fwrite (buf, SNES_SPC::spc_file_size, 1, fs) == 0)
-        {
-            /* Do Nothing */
-        }
+	fwrite(buf, SNES_SPC::spc_file_size, 1, fs);
 
-        fclose (fs);
+	fclose(fs);
 
-        S9xSetSoundMute (FALSE);
+	S9xSetSoundMute(FALSE);
 
-        return (TRUE);
+	return (TRUE);
 }

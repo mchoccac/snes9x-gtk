@@ -176,9 +176,7 @@
 
 enum
 {
-	kSoundWarning = 1,
-	kSoundHint,
-	kFolderFail,
+	kFolderFail = 3,
 	kFolderHint,
 	kBadRomWarning,
 	kBadRomHint,

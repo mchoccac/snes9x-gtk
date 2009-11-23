@@ -277,8 +277,9 @@ extern bool8			fullscreen, autoRes,
 						multiprocessor, ciFilterEnable;
 extern long				drawingMethod;
 extern int				videoMode;
-extern float			macSoundPitch;
 extern SInt32			macSoundVolume;
+extern uint32			macSoundBufferSize;
+extern bool8			macSoundLagEnable;
 extern uint16			aueffect;
 extern uint8			saveInROMFolder;
 extern int				macCurvatureWarp, macAspectRatio;

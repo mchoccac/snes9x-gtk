@@ -83,6 +83,7 @@ namespace JMA
     void retrieve_file_block() throw(jma_errors);
   };
 
+  time_t uint_to_time(unsigned short, unsigned short);
   const char *jma_error_text(jma_errors);
 }
 #endif

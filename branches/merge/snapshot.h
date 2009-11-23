@@ -162,7 +162,7 @@
 #ifndef _SNAPSHOT_H_
 #define _SNAPSHOT_H_
 
-#define SNAPSHOT_MAGIC			"#!snes9x"
+#define SNAPSHOT_MAGIC			"#!s9xsnp"
 #define SNAPSHOT_VERSION		6
 
 #define SUCCESS					1

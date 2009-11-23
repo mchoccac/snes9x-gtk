@@ -255,11 +255,12 @@ bool8 SNES9X_OpenCart (FSRef *inRef)
 
 	err = FSRefMakePath(&cartRef, (unsigned char *) filename, PATH_MAX);
 
+	SNES9X_InitSound();
+
 	if (Memory.LoadROM(filename))
 	{
 		cartOpen = true;
 
-		SNES9X_InitSound();
 		SNES9X_LoadSRAM();
 
 		ChangeTypeAndCreator(filename, 'CART', '~9X~');
@@ -323,11 +324,12 @@ bool8 SNES9X_OpenMultiCart (void)
 			r = CFStringGetCString(multiCartPath[i], cart[i], PATH_MAX, MAC_PATH_ENCODING);
 	}
 
+	SNES9X_InitSound();
+
 	if (Memory.LoadMultiCart(cart[0], cart[1]))
 	{
 		cartOpen = true;
 
-		SNES9X_InitSound();
 		SNES9X_LoadSRAM();
 
 		for (int i = 0; i < 2; i++)
@@ -612,5 +614,7 @@ void SNES9X_Quit (void)
 
 void SNES9X_InitSound (void)
 {
-	S9xInitSound(1, Settings.Stereo, 2048);
+	int	sample_count = macSoundBufferSize * Settings.SoundPlaybackRate / 1000;
+
+	S9xInitSound(sample_count, macSoundLagEnable ? sample_count / 2 : 0);
 }

@@ -1,7 +1,7 @@
 // SPC emulation state save/load: copy_state(), save_spc()
 // Separate file to avoid linking in unless needed
 
-// snes_spc 0.9.0. http://www.slack.net/~ant/
+// snes_spc 0.9.0. http://www.slack.net/‾ant/
 
 #include "SNES_SPC.h"
 
@@ -29,12 +29,12 @@ Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA */
 
 void SNES_SPC::save_regs( uint8_t out [reg_count] )
 {
-    // Use current timer counter values
-    for ( int i = 0; i < timer_count; i++ )
-            out [r_t0out + i] = m.timers [i].counter;
+	// Use current timer counter values
+	for ( int i = 0; i < timer_count; i++ )
+			out [r_t0out + i] = m.timers [i].counter;
 
-    // Last written values
-    memcpy( out, REGS, r_t0out );
+	// Last written values
+	memcpy( out, REGS, r_t0out );
 }
 
 void SNES_SPC::init_header( void* spc_out )
@@ -93,19 +93,19 @@ void SNES_SPC::copy_state( unsigned char** io, copy_func_t copy )
 	
 	{
 		// SMP registers
-                uint8_t regs [reg_count];
-                uint8_t regs_in [reg_count];
+		uint8_t regs [reg_count];
+		uint8_t regs_in [reg_count];
 
-                memcpy( regs, REGS, reg_count );
-                memcpy( regs_in, REGS_IN, reg_count );
+		memcpy( regs, REGS, reg_count );
+		memcpy( regs_in, REGS_IN, reg_count );
 
-                copier.copy( regs, sizeof regs );
-                copier.copy( regs_in, sizeof regs_in );
+		copier.copy( regs, sizeof regs );
+		copier.copy( regs_in, sizeof regs_in );
 
-                memcpy( REGS, regs, reg_count);
-                memcpy( REGS_IN, regs_in, reg_count );
+		memcpy( REGS, regs, reg_count);
+		memcpy( REGS_IN, regs_in, reg_count );
 
-                enable_rom( REGS [r_control] & 0x80 );
+		enable_rom( REGS [r_control] & 0x80 );
 	}
 	
 	// CPU registers
@@ -126,16 +126,16 @@ void SNES_SPC::copy_state( unsigned char** io, copy_func_t copy )
 	// Timers
 	for ( int i = 0; i < timer_count; i++ )
 	{
-            Timer* t = &m.timers [i];
-            t->period  = IF_0_THEN_256( REGS [r_t0target + i] );
-            t->enabled = REGS [r_control] >> i & 1;
-            SPC_COPY( int16_t, t->next_time );
-            SPC_COPY( uint8_t, t->divider );
-            SPC_COPY( uint8_t, t->counter );
-            copier.extra();
+		Timer* t = &m.timers [i];
+		t->period  = IF_0_THEN_256( REGS [r_t0target + i] );
+		t->enabled = REGS [r_control] >> i & 1;
+		SPC_COPY( int16_t, t->next_time );
+		SPC_COPY( uint8_t, t->divider );
+		SPC_COPY( uint8_t, t->counter );
+		copier.extra();
 	}
 
-        set_tempo( m.tempo );
+	set_tempo( m.tempo );
 
 	copier.extra();
 }

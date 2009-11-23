@@ -173,6 +173,7 @@
 
 #include "snes9x.h"
 #include "memmap.h"
+#include "apu.h"
 #include "snapshot.h"
 #include "cheats.h"
 #include "display.h"
@@ -938,10 +939,11 @@ static bool8 NPClientEndOpenROMImage (void)
 
 	err = FSRefMakePath(&cartRef, (unsigned char *) filename, PATH_MAX);
 
+	SNES9X_InitSound();
+
 	if (Memory.LoadROM(filename) /*&& (Memory.ROMCRC32 == nprominfo.crc32)*/)
 	{
 		ChangeTypeAndCreator(filename, 'CART', '~9X~');
-		SNES9X_InitSound();
 		cartOpen = true;
 		return (true);
 	}

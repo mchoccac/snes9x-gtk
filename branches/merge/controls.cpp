@@ -168,6 +168,7 @@
 
 #include "snes9x.h"
 #include "memmap.h"
+#include "apu.h"
 #include "snapshot.h"
 #include "controls.h"
 #include "crosshairs.h"
@@ -361,7 +362,6 @@ static const int	ptrspeeds[4] = { 1, 1, 4, 8 };
 	S(IncFrameRate), \
 	S(IncFrameTime), \
 	S(IncTurboSpeed), \
-	S(InterpolateSound), \
 	S(LoadFreezeFile), \
 	S(LoadMovie), \
 	S(LoadOopsFile), \
@@ -404,7 +404,6 @@ static const int	ptrspeeds[4] = { 1, 1, 4, 8 };
 	S(SoundChannel7), \
 	S(SoundChannelsOn), \
 	S(SwapJoypads), \
-	S(SynchronizeSound), \
 	S(ToggleBG0), \
 	S(ToggleBG1), \
 	S(ToggleBG2), \
@@ -873,8 +872,8 @@ void S9xGetController (int port, enum controllers *controller, int8 *id1, int8 *
 
 void S9xReportControllers (void)
 {
-	static char	buf[128];
-	char		*c = buf;
+	static char	mes[128];
+	char		*c = mes;
 
 	S9xVerifyControllers();
 
@@ -939,7 +938,7 @@ void S9xReportControllers (void)
 		}
 	}
 
-	S9xMessage(S9X_INFO, S9X_CONFIG_INFO, buf);
+	S9xMessage(S9X_INFO, S9X_CONFIG_INFO, mes);
 }
 
 char * S9xGetCommandName (s9xcommand_t command)
@@ -1123,9 +1122,9 @@ char * S9xGetCommandName (s9xcommand_t command)
 
 			bool	sep = false;
 
-			for (s9xcommand_t *c = multis[command.button.multi_idx]; c->multi_press != 3; c++)
+			for (s9xcommand_t *m = multis[command.button.multi_idx]; m->multi_press != 3; m++)
 			{
-				if (c->type == S9xNoMapping)
+				if (m->type == S9xNoMapping)
 				{
 					s += ";";
 					sep = false;
@@ -1133,10 +1132,10 @@ char * S9xGetCommandName (s9xcommand_t command)
 				else
 				{
 					if (sep)					s += ",";
-					if (c->multi_press == 1)	s += "+";
-					if (c->multi_press == 2)	s += "-";
+					if (m->multi_press == 1)	s += "+";
+					if (m->multi_press == 2)	s += "-";
 
-					s += S9xGetCommandName(*c);
+					s += S9xGetCommandName(*m);
 					sep = true;
 				}
 			}
@@ -2299,11 +2298,6 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 						S9xSetInfoString(buf);
 						break;
 
-					case InterpolateSound:
-						Settings.InterpolatedSound = !Settings.InterpolatedSound;
-						DisplayStateChange("Interpolated sound", Settings.InterpolatedSound);
-						break;
-
 					case LoadFreezeFile:
 						S9xUnfreezeGame(S9xChooseFilename(TRUE));
 						break;
@@ -2394,7 +2388,7 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 					}
 
 					case SaveSPC:
-						Settings.TakeSPCShapshot = TRUE;
+						S9xDumpSPCSnapshot();
 						break;
 
 					case Screenshot:
@@ -2417,11 +2411,6 @@ void S9xApplyCommand (s9xcommand_t cmd, int16 data1, int16 data2)
 					case SoundChannelsOn:
 						S9xToggleSoundChannel(8);
 						S9xSetInfoString("All sound channels on");
-						break;
-
-					case SynchronizeSound:
-						Settings.SoundSync = !Settings.SoundSync;
-						DisplayStateChange("Synchronised sound", Settings.SoundSync);
 						break;
 
 					case ToggleBG0:

@@ -163,13 +163,14 @@
 #include "memmap.h"
 #include "cpuops.h"
 #include "dma.h"
+#include "apu/apu.h"
 #include "fxemu.h"
 #include "snapshot.h"
-#include "apu/apu.h"
 #ifdef DEBUGGER
 #include "debug.h"
 #include "missing.h"
 #endif
+
 
 void S9xMainLoop (void)
 {
@@ -294,18 +295,18 @@ void S9xMainLoop (void)
 
 		while (CPU.Cycles >= CPU.NextEvent)
 			S9xDoHEventProcessing();
-    }
+	}
 
-    S9xPackStatus();
+	S9xPackStatus();
 
-    if (CPU.Flags & SCAN_KEYS_FLAG)
-    {
+	if (CPU.Flags & SCAN_KEYS_FLAG)
+	{
 	#ifdef DEBUGGER
 		if (!(CPU.Flags & FRAME_ADVANCE_FLAG))
 	#endif
 		S9xSyncSpeed();
 		CPU.Flags &= ~SCAN_KEYS_FLAG;
-    }
+	}
 }
 
 void S9xSetIRQ (uint32 source)
@@ -382,9 +383,9 @@ void S9xDoHEventProcessing (void)
 			S9xSuperFXExec();
 		#endif
 
-                        S9xAPUEndScanline ();
+			S9xAPUEndScanline();
 			CPU.Cycles -= Timings.H_Max;
-                        S9xAPUSetReferenceTime (CPU.Cycles);
+			S9xAPUSetReferenceTime(CPU.Cycles);
 
 			if ((Timings.NMITriggerPos != 0xffff) && (Timings.NMITriggerPos >= Timings.H_Max))
 				Timings.NMITriggerPos -= Timings.H_Max;

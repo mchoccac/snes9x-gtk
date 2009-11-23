@@ -331,10 +331,10 @@ void InitCheatFinder (void)
 
 	if (systemVersion >= 0x1050)
 	{
-		cfListLineCTFontRef = CTFontCreateWithName(CFSTR("Lucida Sans Typewriter Regular"), 11.0, NULL);
+		cfListLineCTFontRef = CTFontCreateWithName(CFSTR("Lucida Sans Typewriter Regular"), 11.0f, NULL);
 		if (cfListLineCTFontRef == NULL)
 		{
-			cfListLineCTFontRef = CTFontCreateWithName(CFSTR("Monaco"), 11.0, NULL);
+			cfListLineCTFontRef = CTFontCreateWithName(CFSTR("Monaco"), 11.0f, NULL);
 			if (cfListLineCTFontRef == NULL)
 				QuitWithFatalError(0, "cheatfinder 02");
 		}
@@ -463,9 +463,9 @@ void CheatFinder (void)
 						HIViewAddSubview(userpane, scrollview);
 						HIViewGetBounds(userpane, &frame);
 						cfListAddrColumnWidth = (int) (frame.size.width * 0.4);
-						frame.origin.y    += 16.0;
-						frame.size.height -= 16.0;
-						frame = CGRectInset(frame, 1.0, 1.0);
+						frame.origin.y    += 16.0f;
+						frame.size.height -= 16.0f;
+						frame = CGRectInset(frame, 1.0f, 1.0f);
 						HIViewSetFrame(scrollview, &frame);
 						HIViewSetVisible(scrollview, true);
 						cf.scroll = scrollview;
@@ -572,7 +572,7 @@ void CheatFinder (void)
 						pich = (float) (IPPU.RenderedScreenHeight >> ((IPPU.RenderedScreenHeight > 256) ? 1 : 0));
 
 						err = SetDrawerParent(cf.drawer, cf.main);
-						err = SetDrawerOffsets(cf.drawer, 0.0, (float) ((rct.bottom - rct.top) - (pich + 37)));
+						err = SetDrawerOffsets(cf.drawer, 0.0f, (float) ((rct.bottom - rct.top) - (pich + 37)));
 
 						image = CreateGameScreenCGImage();
 						if (image)
@@ -587,8 +587,8 @@ void CheatFinder (void)
 								HIImageViewSetScaleToFit(imageview, true);
 								HIViewSetVisible(imageview, true);
 
-								frame.origin.x = 8.0;
-								frame.origin.y = 8.0;
+								frame.origin.x = 8.0f;
+								frame.origin.y = 8.0f;
 								frame.size.width  = (float) SNES_WIDTH;
 								frame.size.height = pich;
 								HIViewSetFrame(imageview, &frame);
@@ -1416,7 +1416,7 @@ static void CheatFinderAddEntry (SInt64 value, char *description)
 	addr = cfAddress[cfListSelection];
 	v = (UInt32) (SInt32) value;
 
-	for (int i = 0; i < cfViewNumBytes; i++)
+	for (unsigned int i = 0; i < cfViewNumBytes; i++)
 	{
 		strcpy(Cheat.c[Cheat.num_cheats].name, description);
 		S9xAddCheat(true, true, addr + i + 0x7E0000, (UInt8) ((v & (0x000000FF << (i * 8))) >> (i * 8)));
@@ -1518,15 +1518,15 @@ static pascal OSStatus CheatFinderListFrameEventHandler (EventHandlerCallRef inH
 
 								CGContextSaveGState(ctx);
 
-								rct = CGRectInset(bounds, 1.0, 1.0);
+								rct = CGRectInset(bounds, 1.0f, 1.0f);
 								err = HIThemeDrawFrame(&rct, &frameinfo, ctx, kHIThemeOrientationNormal);
 
 								rct = bounds;
-								rct.size.height = 16.0;
-								rct.size.width  = (float) cfListAddrColumnWidth + 1.0;
+								rct.size.height = 16.0f;
+								rct.size.width  = (float) cfListAddrColumnWidth + 1.0f;
 								err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, NULL);
 
-								CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+								CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 
 								rct.size.width  = (float) cfListAddrColumnWidth;
 								rct.origin.y++;
@@ -1539,14 +1539,14 @@ static pascal OSStatus CheatFinderListFrameEventHandler (EventHandlerCallRef inH
 								}
 
 								rct = bounds;
-								rct.size.height = 16.0;
+								rct.size.height = 16.0f;
 								rct.size.width -= (float) cfListAddrColumnWidth;
 								rct.origin.x   += (float) cfListAddrColumnWidth;
 								err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, NULL);
 
-								CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+								CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 
-								rct.size.width -= 28.0;
+								rct.size.width -= 28.0f;
 								rct.origin.y++;
 								textinfo.horizontalFlushness = kHIThemeTextHorizontalFlushRight;
 								str = CFCopyLocalizedString(CFSTR("Value"), "value");
@@ -1557,9 +1557,9 @@ static pascal OSStatus CheatFinderListFrameEventHandler (EventHandlerCallRef inH
 								}
 
 								rct = bounds;
-								rct.size.height = 16.0;
-								rct.size.width  = 16.0;
-								rct.origin.x    = bounds.size.width - 16.0;
+								rct.size.height = 16.0f;
+								rct.size.width  = 16.0f;
+								rct.origin.x    = bounds.size.width - 16.0f;
 								err = HIThemeDrawButton(&rct, &buttoninfo, ctx, kHIThemeOrientationNormal, NULL);
 
 								CGContextRestoreGState(ctx);
@@ -1621,7 +1621,7 @@ static void CheatFinderListViewDraw (CGContextRef ctx, HIRect *bounds, ListViewD
 
 		if (init)
 		{
-			CGContextSetTextPosition(ctx, 0.0, 0.0);
+			CGContextSetTextPosition(ctx, 0.0f, 0.0f);
 
 			astr = CFAttributedStringCreate(kCFAllocatorDefault, CFSTR("FFFFFF"), attr);
 			line = CTLineCreateWithAttributedString(astr);
@@ -1644,12 +1644,12 @@ static void CheatFinderListViewDraw (CGContextRef ctx, HIRect *bounds, ListViewD
 		for (int i = start; i <= end; i++)
 		{
 			if ((i == val) && cfNumRows)
-				CGContextSetRGBFillColor(ctx,  59.0 / 256.0, 124.0 / 256.0, 212.0 / 256.0, 1.0);
+				CGContextSetRGBFillColor(ctx,  59.0f / 256.0f, 124.0f / 256.0f, 212.0f / 256.0f, 1.0f);
 			else
 			if ((i - start) % 2 == 0)
-				CGContextSetRGBFillColor(ctx, 256.0 / 256.0, 256.0 / 256.0, 256.0 / 256.0, 1.0);
+				CGContextSetRGBFillColor(ctx, 256.0f / 256.0f, 256.0f / 256.0f, 256.0f / 256.0f, 1.0f);
 			else
-				CGContextSetRGBFillColor(ctx, 237.0 / 256.0, 244.0 / 256.0, 254.0 / 256.0, 1.0);
+				CGContextSetRGBFillColor(ctx, 237.0f / 256.0f, 244.0f / 256.0f, 254.0f / 256.0f, 1.0f);
 
 			CGContextFillRect(ctx, lineBounds);
 
@@ -1663,7 +1663,7 @@ static void CheatFinderListViewDraw (CGContextRef ctx, HIRect *bounds, ListViewD
 					attr = CFDictionaryCreate(kCFAllocatorDefault, (const void **) &keys, (const void **) &wval, sizeof(keys) / sizeof(keys[0]), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 				}
 
-				f = -(y + 12.0);
+				f = -(y + 12.0f);
 
 				sprintf(t1, "%06lX", cfAddress[i] + 0x7E0000);
 				str = CFStringCreateWithCString(kCFAllocatorDefault, t1, MAC_PATH_ENCODING);
@@ -1763,12 +1763,12 @@ static void CheatFinderListViewDraw (CGContextRef ctx, HIRect *bounds, ListViewD
 		for (int i = start; i <= end; i++)
 		{
 			if ((i == val) && cfNumRows)
-				CGContextSetRGBFillColor(ctx,  59.0 / 256.0, 124.0 / 256.0, 212.0 / 256.0, 1.0);
+				CGContextSetRGBFillColor(ctx,  59.0f / 256.0f, 124.0f / 256.0f, 212.0f / 256.0f, 1.0f);
 			else
 			if ((i - start) % 2 == 0)
-				CGContextSetRGBFillColor(ctx, 256.0 / 256.0, 256.0 / 256.0, 256.0 / 256.0, 1.0);
+				CGContextSetRGBFillColor(ctx, 256.0f / 256.0f, 256.0f / 256.0f, 256.0f / 256.0f, 1.0f);
 			else
-				CGContextSetRGBFillColor(ctx, 237.0 / 256.0, 244.0 / 256.0, 254.0 / 256.0, 1.0);
+				CGContextSetRGBFillColor(ctx, 237.0f / 256.0f, 244.0f / 256.0f, 254.0f / 256.0f, 1.0f);
 
 			CGContextFillRect(ctx, lineBounds);
 
@@ -1777,9 +1777,9 @@ static void CheatFinderListViewDraw (CGContextRef ctx, HIRect *bounds, ListViewD
 				CGContextScaleCTM(ctx, 1, -1);
 
 				if (i == val)
-					CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
+					CGContextSetRGBFillColor(ctx, 1.0f, 1.0f, 1.0f, 1.0f);
 				else
-					CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+					CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 
 				f = Long2Fix(-((int) y + 12));
 
@@ -1863,7 +1863,7 @@ static void CheatFinderListViewScrollToThere (float where, ListViewData *myData)
 {
 	OSStatus	err;
 	EventRef	theEvent;
-	HIPoint		whereP = { 0.0, where };
+	HIPoint		whereP = { 0.0f, where };
 
 	err = CreateEvent(kCFAllocatorDefault, kEventCheatFinderList, kEventScrollableScrollThere, GetCurrentEventTime(), kEventAttributeUserEvent, &theEvent);
 	if (err == noErr)
@@ -1900,10 +1900,10 @@ static pascal OSStatus CheatFinderListViewHandler (EventHandlerCallRef inHandler
 						if (err == noErr)
 						{
 							data->view = epView;
-							data->originPoint.x   =  0.0;
-							data->originPoint.y   =  0.0;
-							data->lineSize.width  =  0.0;
-							data->lineSize.height = 16.0;
+							data->originPoint.x   =  0.0f;
+							data->originPoint.y   =  0.0f;
+							data->lineSize.width  =  0.0f;
+							data->lineSize.height = 16.0f;
 							data->inFocus = false;
 
 							SetControlID(epView, &kCheatFinderListViewID);

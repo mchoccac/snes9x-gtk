@@ -705,10 +705,10 @@ static void FilterUIAddSubviews (WindowRef window, HIViewRef parent)
 				HIViewSetID(ctl, cid);
 				HIViewSetCommandID(ctl, cid.signature);
 				err = HIViewAddSubview(parent, ctl);
-				frame.origin.x = 5.0;
+				frame.origin.x = 5.0f;
 				frame.origin.y = (float) (m * 28);
-				frame.size.width  = bounds.size.width - 10.0;
-				frame.size.height = 20.0;
+				frame.size.width  = bounds.size.width - 10.0f;
+				frame.size.height = 20.0f;
 				err = HIViewSetFrame(ctl, &frame);
 				m++;
 				
@@ -721,10 +721,10 @@ static void FilterUIAddSubviews (WindowRef window, HIViewRef parent)
 				err = CreateStaticTextControl(window, &rct, label, NULL, &ctl);
 				SetStaticTextTrunc(ctl, truncEnd, true);
 				err = HIViewAddSubview(parent, ctl);
-				frame.origin.x = 5.0;
+				frame.origin.x = 5.0f;
 				frame.origin.y = (float) (m * 28);
-				frame.size.width  = 120.0;
-				frame.size.height = 20.0;
+				frame.size.width  = 120.0f;
+				frame.size.height = 20.0f;
 				err = HIViewSetFrame(ctl, &frame);
 				
 				value = (SInt32) ((ciFilterParam[i].u.s.cur - ciFilterParam[i].u.s.min) / (ciFilterParam[i].u.s.max - ciFilterParam[i].u.s.min) * (float) FIXEDRANGE);
@@ -733,10 +733,10 @@ static void FilterUIAddSubviews (WindowRef window, HIViewRef parent)
 				HIViewSetID(ctl, cid);
 				HIViewSetCommandID(ctl, cid.signature);
 				err = HIViewAddSubview(parent, ctl);
-				frame.origin.x = 135.0;
-				frame.origin.y = (float) (m * 28) - 1.0;
-				frame.size.width  = bounds.size.width - 140.0;
-				frame.size.height = 20.0;
+				frame.origin.x = 135.0f;
+				frame.origin.y = (float) (m * 28) - 1.0f;
+				frame.size.width  = bounds.size.width - 140.0f;
+				frame.size.height = 20.0f;
 				err = HIViewSetFrame(ctl, &frame);
 				m++;
 				
@@ -751,10 +751,10 @@ static void FilterUIAddSubviews (WindowRef window, HIViewRef parent)
 				HIViewSetID(ctl, cid);
 				HIViewSetCommandID(ctl, cid.signature);
 				err = HIViewAddSubview(parent, ctl);
-				frame.origin.x = bounds.size.width - 180.0;
+				frame.origin.x = bounds.size.width - 180.0f;
 				frame.origin.y = (float) (m * 28);
-				frame.size.width  = 175.0;
-				frame.size.height = 20.0;
+				frame.size.width  = 175.0f;
+				frame.size.height = 20.0f;
 				err = HIViewSetFrame(ctl, &frame);
 				m++;
 				
@@ -776,16 +776,16 @@ static void FilterUIAddSubviews (WindowRef window, HIViewRef parent)
 		HIViewSetID(ctl, cid);
 		HIViewSetCommandID(ctl, cid.signature);
 		err = HIViewAddSubview(parent, ctl);
-		frame.origin.x = bounds.size.width - 180.0;
+		frame.origin.x = bounds.size.width - 180.0f;
 		frame.origin.y = (float) (m * 28 + 12);
-		frame.size.width  = 175.0;
-		frame.size.height = 20.0;
+		frame.size.width  = 175.0f;
+		frame.size.height = 20.0f;
 		err = HIViewSetFrame(ctl, &frame);
 		CFRelease(str);
-		bounds.size.height = frame.origin.y + 32.0;
+		bounds.size.height = frame.origin.y + 32.0f;
 	}
 	else
-		bounds.size.height = 4.0;
+		bounds.size.height = 4.0f;
 
 	err = HIViewSetFrame(parent, &bounds);
 }
@@ -914,9 +914,9 @@ static pascal OSStatus CoreImageFilterEventHandler (EventHandlerCallRef inHandle
 									
 									if ((err == noErr) && info.newColorChosen)
 									{
-										ciFilterParam[i].u.c.r = (float) info.theColor.color.rgb.red   / 65535.0;
-										ciFilterParam[i].u.c.g = (float) info.theColor.color.rgb.green / 65535.0;
-										ciFilterParam[i].u.c.b = (float) info.theColor.color.rgb.blue  / 65535.0;
+										ciFilterParam[i].u.c.r = (float) info.theColor.color.rgb.red   / 65535.0f;
+										ciFilterParam[i].u.c.g = (float) info.theColor.color.rgb.green / 65535.0f;
+										ciFilterParam[i].u.c.b = (float) info.theColor.color.rgb.blue  / 65535.0f;
 									}
 									
 									FilterParamToFilter();
@@ -944,11 +944,10 @@ void InitCoreImageContext (CGLContextObj cglctx, CGLPixelFormatObj cglpix)
 
 	cgColor = CGColorSpaceCreateDeviceRGB();
 
-	if (systemVersion >= 0x1060)
-		ciContext = [[CIContext contextWithCGLContext: cglctx pixelFormat: cglpix colorSpace: cgColor options: NULL] retain];
 #ifdef MAC_LEOPARD_TIGER_PANTHER_SUPPORT
-	else
-		ciContext = [[CIContext contextWithCGLContext: cglctx pixelFormat: cglpix options: NULL] retain];
+	ciContext = [[CIContext contextWithCGLContext: cglctx pixelFormat: cglpix options: NULL] retain];
+#else
+	ciContext = [[CIContext contextWithCGLContext: cglctx pixelFormat: cglpix colorSpace: cgColor options: NULL] retain];
 #endif
 
 	[pool release];

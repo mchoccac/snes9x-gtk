@@ -479,12 +479,9 @@ void S9xSetPPU (uint8 Byte, uint16 Address)
 		S9xTraceFormattedMessage("--- HDMA PPU %04X -> %02X", Address, Byte);
 #endif
 
-	if ((Address & 0xffc0) == 0x2140)
-	{
-            // APUIO0, APUIO1, APUIO2, APUIO3
-            // write_port will run the APU until given clock before writing value
-            S9xAPUWritePort (Address & 3, Byte);
-        }
+	if ((Address & 0xffc0) == 0x2140) // APUIO0, APUIO1, APUIO2, APUIO3
+		// write_port will run the APU until given clock before writing value
+		S9xAPUWritePort(Address & 3, Byte);
 	else
 	if (Address <= 0x2183)
 	{
@@ -1274,12 +1271,9 @@ uint8 S9xGetPPU (uint16 Address)
 		}
 	}
 
-	if ((Address & 0xffc0) == 0x2140)
-	{
-            // APUIO0, APUIO1, APUIO2, APUIO3
-            // read_port will run the APU until given APU time before reading value
-            return S9xAPUReadPort (Address & 3);
-	}
+	if ((Address & 0xffc0) == 0x2140) // APUIO0, APUIO1, APUIO2, APUIO3
+		// read_port will run the APU until given APU time before reading value
+		return (S9xAPUReadPort(Address & 3));
 	else
 	if (Address <= 0x2183)
     {
@@ -2042,8 +2036,6 @@ void S9xResetPPU (void)
 
 void S9xSoftResetPPU (void)
 {
-	int	c;
-
 	S9xControlsSoftReset();
 
 	PPU.VMA.High = 0;
@@ -2071,7 +2063,7 @@ void S9xSoftResetPPU (void)
 	PPU.CGFLIPRead = 0;
 	PPU.CGADD = 0;
 
-	for (c = 0; c < 256; c++)
+	for (int c = 0; c < 256; c++)
 	{
 		IPPU.Red[c]   = (c & 7) << 2;
 		IPPU.Green[c] = ((c >> 3) & 7) << 2;
@@ -2079,7 +2071,7 @@ void S9xSoftResetPPU (void)
 		PPU.CGDATA[c] = IPPU.Red[c] | (IPPU.Green[c] << 5) | (IPPU.Blue[c] << 10);
 	}
 
-	for (c = 0; c < 128; c++)
+	for (int c = 0; c < 128; c++)
 	{
 		PPU.OBJ[c].HPos = 0;
 		PPU.OBJ[c].VPos = 0;
@@ -2175,7 +2167,7 @@ void S9xSoftResetPPU (void)
 	PPU.OpenBus1 = 0;
 	PPU.OpenBus2 = 0;
 
-	for (c = 0; c < 2; c++)
+	for (int c = 0; c < 2; c++)
 		memset(&IPPU.Clip[c], 0, sizeof(struct ClipData));
 	IPPU.ColorsChanged = TRUE;
 	IPPU.OBJChanged = TRUE;
@@ -2199,7 +2191,7 @@ void S9xSoftResetPPU (void)
 	IPPU.CurrentLine = 0;
 	IPPU.PreviousLine = 0;
 	IPPU.XB = NULL;
-	for (c = 0; c < 256; c++)
+	for (int c = 0; c < 256; c++)
 		IPPU.ScreenColors[c] = c;
 	IPPU.MaxBrightness = 0;
 	IPPU.RenderThisFrame = TRUE;
@@ -2213,7 +2205,7 @@ void S9xSoftResetPPU (void)
 
 	S9xFixColourBrightness();
 
-	for (c = 0; c < 0x8000; c += 0x100)
+	for (int c = 0; c < 0x8000; c += 0x100)
 		memset(&Memory.FillRAM[c], c >> 8, 0x100);
 	ZeroMemory(&Memory.FillRAM[0x2100], 0x100);
 	ZeroMemory(&Memory.FillRAM[0x4200], 0x100);

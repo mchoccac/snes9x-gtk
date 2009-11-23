@@ -209,7 +209,7 @@ static Handle GetScreenAsRawHandle (int destWidth, int destHeight)
 				ctx = CGBitmapContextCreate(*data, destWidth, destHeight, 5, destWidth * 2, color, kCGImageAlphaNoneSkipFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrder16Big : 0));
 				if (ctx)
 				{
-					CGContextDrawImage(ctx, CGRectMake(0.0, 0.0, (float) destWidth, (float) destHeight), image);
+					CGContextDrawImage(ctx, CGRectMake(0.0f, 0.0f, (float) destWidth, (float) destHeight), image);
 					CGContextRelease(ctx);
 				}
 
@@ -359,7 +359,7 @@ void DrawThumbnailResource (FSRef *ref, CGContextRef ctx, CGRect bounds)
 
 	CGContextSaveGState(ctx);
 
-	CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+	CGContextSetRGBFillColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 	CGContextFillRect(ctx, bounds);
 
 	err = FSGetResourceForkName(&fork);

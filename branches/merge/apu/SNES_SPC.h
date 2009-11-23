@@ -88,7 +88,7 @@ public:
 
 #if !SPC_NO_COPY_STATE_FUNCS
 	// Saves/loads state
-        enum { state_size = 68 * 1024L }; // maximum space needed when saving
+	enum { state_size = 68 * 1024L }; // maximum space needed when saving
 	typedef SPC_DSP::copy_func_t copy_func_t;
 	void copy_state( unsigned char** io, copy_func_t );
 	
@@ -103,6 +103,14 @@ public:
 	// trimming silence while saving an SPC.
 	bool check_kon();
 #endif
+
+//// Snes9x Accessor
+
+	void    dsp_set_spc_snapshot_callback( void (*callback) (void) );
+	void    dsp_dump_spc_snapshot( void );
+	void    dsp_set_stereo_switch( int );
+	uint8_t dsp_reg_value( int, int );
+	int     dsp_envx_value( int );
 
 public:
 	BLARGG_DISABLE_NOTHROW

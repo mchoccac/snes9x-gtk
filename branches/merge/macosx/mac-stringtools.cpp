@@ -185,7 +185,7 @@ CFStringRef CopyFixNameStrings (const char *itext, uint8 region)
 		size_t	len = strlen(itext);
 
 		btext[len] = 0;
-		for (int i = 0; i < len ; i++)
+		for (unsigned int i = 0; i < len ; i++)
 			btext[i] = isgraph(itext[i]) ? itext[i] : ' ';
 
 		str = CFStringCreateWithCString(kCFAllocatorDefault, btext, kCFStringEncodingNonLossyASCII);

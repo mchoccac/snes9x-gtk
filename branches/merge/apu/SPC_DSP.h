@@ -64,7 +64,19 @@ public:
 
 	// Returns non-zero if new key-on events occurred since last call
 	bool check_kon();
-	
+
+// Snes9x Accessor
+
+	int  stereo_switch;
+	int  take_spc_snapshot;
+	void (*spc_snapshot_callback) (void);
+
+	void    set_spc_snapshot_callback( void (*callback) (void) );
+	void    dump_spc_snapshot( void );
+	void    set_stereo_switch( int );
+	uint8_t reg_value( int, int );
+	int     envx_value( int );
+
 // DSP register addresses
 
 	// Global registers
@@ -118,6 +130,7 @@ public:
 		int env;                // current envelope level
 		int hidden_env;         // used by GAIN mode 7, very obscure quirk
 		uint8_t t_envx_out;
+		int voice_number;
 	};
 private:
 	enum { brr_block_size = 9 };

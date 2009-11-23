@@ -28,7 +28,7 @@ OBJECTS   += ../c4.o ../c4emu.o
 endif
 
 ifdef S9XDEBUGGER
-OBJECTS   += ../apudebug.o ../debug.o
+OBJECTS   += ../debug.o
 endif
 
 ifdef S9XNETPLAY
@@ -47,7 +47,7 @@ CCC        = @CXX@
 CC         = @CC@
 NASM       = @S9XNASM@
 GASM       = @CXX@
-INCLUDES   = -I. -I.. -I../unzip/ -I../jma/ -I../filter/
+INCLUDES   = -I. -I.. -I../apu/ -I../unzip/ -I../jma/ -I../filter/
 
 CCFLAGS    = @S9XFLGS@ @S9XDEFS@ $(DEFS)
 CFLAGS     = $(CCFLAGS)

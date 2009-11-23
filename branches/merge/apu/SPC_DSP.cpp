@@ -429,6 +429,13 @@ VOICE_CLOCK( V3c )
 			v->buf_pos     = 0;
 			m.t_brr_header = 0; // header is ignored on this sample
 			m.kon_check    = true;
+
+			if (take_spc_snapshot)
+			{
+				take_spc_snapshot = 0;
+				if (spc_snapshot_callback)
+					spc_snapshot_callback();
+			}
 		}
 		
 		// Envelope is never run during KON
@@ -482,11 +489,13 @@ VOICE_CLOCK( V3c )
 	if ( !v->kon_delay )
 		run_envelope( v );
 }
+
 inline void SPC_DSP::voice_output( voice_t const* v, int ch )
 {
 	// Apply left/right volume
 	int amp = (m.t_output * (int8_t) VREG(v->regs,voll + ch)) >> 7;
-	
+	amp *= ((stereo_switch & (1 << (v->voice_number + ch * voice_count))) ? 1 : 0);
+
 	// Add to output total
 	m.t_main_out [ch] += amp;
 	CLAMP16( m.t_main_out [ch] );
@@ -814,7 +823,11 @@ void SPC_DSP::init( void* ram_64k )
 	disable_surround( false );
 	set_output( 0, 0 );
 	reset();
-	
+
+	stereo_switch = 0xffff;
+	take_spc_snapshot = 0;
+	spc_snapshot_callback = 0;
+
 	#ifndef NDEBUG
 		// be sure this sign-extends
 		assert( (int16_t) 0x8000 == -0x8000 );
@@ -842,6 +855,9 @@ void SPC_DSP::soft_reset_common()
 	m.phase              = 0;
 	
 	init_counter();
+
+	for (int i = 0; i < voice_count; i++)
+		m.voices[i].voice_number = i;
 }
 
 void SPC_DSP::soft_reset()
@@ -1016,3 +1032,31 @@ void SPC_DSP::copy_state( unsigned char** io, copy_func_t copy )
 	copier.extra();
 }
 #endif
+
+
+//// Snes9x Accessor
+
+void SPC_DSP::set_spc_snapshot_callback( void (*callback) (void) )
+{
+	spc_snapshot_callback = callback;
+}
+
+void SPC_DSP::dump_spc_snapshot( void )
+{
+	take_spc_snapshot = 1;
+}
+
+void SPC_DSP::set_stereo_switch( int value )
+{
+	stereo_switch = value;
+}
+
+uint8_t SPC_DSP::reg_value( int ch, int addr )
+{
+	return m.voices[ch].regs[addr];
+}
+
+int SPC_DSP::envx_value( int ch )
+{
+	return m.voices[ch].env;
+}

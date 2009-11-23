@@ -803,7 +803,7 @@ static pascal OSStatus ControllerEventHandler (EventHandlerCallRef inHandlerCall
 
 								FlushEventQueue(GetCurrentEventQueue());
 
-								if (HIDConfigureAction(&pDevice, &pElement, 2.5))
+								if (HIDConfigureAction(&pDevice, &pElement, 2.5f))
 								{
 									if (command < MAC_MAX_PLAYERS * 4)	// Direction
 									{
@@ -1113,7 +1113,7 @@ long ISpKeyIsPressed (int needID)
 	return (gActionRecs[needID].fDevice ? HIDGetElementValue(gActionRecs[needID].fDevice, gActionRecs[needID].fElement) : 0);
 }
 
-void JoypadScanDirection (int i, uint32 *controlPad)
+void JoypadScanDirection (int i, uint32 *pad)
 {
 	long	state;
 
@@ -1124,20 +1124,20 @@ void JoypadScanDirection (int i, uint32 *controlPad)
 			{
 				state = HIDGetElementValue(gDirectionInfo[i].device[kPadYAxis], gDirectionInfo[i].element[kPadYAxis]);
 				if (state >= gDirectionInfo[i].maxmid[kPadYAxis])
-					*controlPad |= kMaskDn;
+					*pad |= kMaskDn;
 				else
 				if (state <= gDirectionInfo[i].midmin[kPadYAxis])
-					*controlPad |= kMaskUp;
+					*pad |= kMaskUp;
 			}
 
 			if (gDirectionInfo[i].device[kPadXAxis])	// X-Axis
 			{
 				state = HIDGetElementValue(gDirectionInfo[i].device[kPadXAxis], gDirectionInfo[i].element[kPadXAxis]);
 				if (state >= gDirectionInfo[i].maxmid[kPadXAxis])
-					*controlPad |= kMaskRt;
+					*pad |= kMaskRt;
 				else
 				if (state <= gDirectionInfo[i].midmin[kPadXAxis])
-					*controlPad |= kMaskLf;
+					*pad |= kMaskLf;
 			}
 
 			break;
@@ -1148,14 +1148,14 @@ void JoypadScanDirection (int i, uint32 *controlPad)
 				state = HIDGetElementValue(gDirectionInfo[i].device[kPadHat], gDirectionInfo[i].element[kPadHat]);
 				switch (state)
 				{
-					case 1:	*controlPad |=  kMaskUp			  ;	break;
-					case 2:	*controlPad |= (kMaskUp | kMaskRt);	break;
-					case 3:	*controlPad |=  kMaskRt			  ;	break;
-					case 4:	*controlPad |= (kMaskRt | kMaskDn);	break;
-					case 5:	*controlPad |=  kMaskDn			  ;	break;
-					case 6:	*controlPad |= (kMaskDn | kMaskLf);	break;
-					case 7:	*controlPad |=  kMaskLf			  ;	break;
-					case 8:	*controlPad |= (kMaskLf | kMaskUp);	break;
+					case 1:	*pad |=  kMaskUp           ;	break;
+					case 2:	*pad |= (kMaskUp | kMaskRt);	break;
+					case 3:	*pad |=  kMaskRt		   ;	break;
+					case 4:	*pad |= (kMaskRt | kMaskDn);	break;
+					case 5:	*pad |=  kMaskDn		   ;	break;
+					case 6:	*pad |= (kMaskDn | kMaskLf);	break;
+					case 7:	*pad |=  kMaskLf		   ;	break;
+					case 8:	*pad |= (kMaskLf | kMaskUp);	break;
 				}
 			}
 
@@ -1167,10 +1167,10 @@ void JoypadScanDirection (int i, uint32 *controlPad)
 				state = HIDGetElementValue(gDirectionInfo[i].device[kPadHat], gDirectionInfo[i].element[kPadHat]);
 				switch (state)
 				{
-					case 1:	*controlPad |=  kMaskUp;	break;
-					case 2:	*controlPad |=  kMaskRt;	break;
-					case 3:	*controlPad |=  kMaskDn;	break;
-					case 4:	*controlPad |=  kMaskLf;	break;
+					case 1:	*pad |=  kMaskUp;	break;
+					case 2:	*pad |=  kMaskRt;	break;
+					case 3:	*pad |=  kMaskDn;	break;
+					case 4:	*pad |=  kMaskLf;	break;
 				}
 			}
 
@@ -1182,14 +1182,14 @@ void JoypadScanDirection (int i, uint32 *controlPad)
 				state = HIDGetElementValue(gDirectionInfo[i].device[kPadHat], gDirectionInfo[i].element[kPadHat]);
 				switch (state)
 				{
-					case 0:	*controlPad |=  kMaskUp			  ;	break;
-					case 1:	*controlPad |= (kMaskUp | kMaskRt);	break;
-					case 2:	*controlPad |=  kMaskRt			  ;	break;
-					case 3:	*controlPad |= (kMaskRt | kMaskDn);	break;
-					case 4:	*controlPad |=  kMaskDn			  ;	break;
-					case 5:	*controlPad |= (kMaskDn | kMaskLf);	break;
-					case 6:	*controlPad |=  kMaskLf			  ;	break;
-					case 7:	*controlPad |= (kMaskLf | kMaskUp);	break;
+					case 0:	*pad |=  kMaskUp		   ;	break;
+					case 1:	*pad |= (kMaskUp | kMaskRt);	break;
+					case 2:	*pad |=  kMaskRt		   ;	break;
+					case 3:	*pad |= (kMaskRt | kMaskDn);	break;
+					case 4:	*pad |=  kMaskDn		   ;	break;
+					case 5:	*pad |= (kMaskDn | kMaskLf);	break;
+					case 6:	*pad |=  kMaskLf		   ;	break;
+					case 7:	*pad |= (kMaskLf | kMaskUp);	break;
 				}
 			}
 
@@ -1201,10 +1201,10 @@ void JoypadScanDirection (int i, uint32 *controlPad)
 				state = HIDGetElementValue(gDirectionInfo[i].device[kPadHat], gDirectionInfo[i].element[kPadHat]);
 				switch (state)
 				{
-					case 0:	*controlPad |=  kMaskUp;	break;
-					case 1:	*controlPad |=  kMaskRt;	break;
-					case 2:	*controlPad |=  kMaskDn;	break;
-					case 3:	*controlPad |=  kMaskLf;	break;
+					case 0:	*pad |=  kMaskUp;	break;
+					case 1:	*pad |=  kMaskRt;	break;
+					case 2:	*pad |=  kMaskDn;	break;
+					case 3:	*pad |=  kMaskLf;	break;
 				}
 			}
 
@@ -1212,13 +1212,13 @@ void JoypadScanDirection (int i, uint32 *controlPad)
 
 		case kPadElemTypeButton:						// Button (maybe)
 			if (gActionRecs[kUp(i)].fDevice && HIDGetElementValue(gActionRecs[kUp(i)].fDevice, gActionRecs[kUp(i)].fElement))
-				*controlPad |= kMaskUp;
+				*pad |= kMaskUp;
 			if (gActionRecs[kDn(i)].fDevice && HIDGetElementValue(gActionRecs[kDn(i)].fDevice, gActionRecs[kDn(i)].fElement))
-				*controlPad |= kMaskDn;
+				*pad |= kMaskDn;
 			if (gActionRecs[kLf(i)].fDevice && HIDGetElementValue(gActionRecs[kLf(i)].fDevice, gActionRecs[kLf(i)].fElement))
-				*controlPad |= kMaskLf;
+				*pad |= kMaskLf;
 			if (gActionRecs[kRt(i)].fDevice && HIDGetElementValue(gActionRecs[kRt(i)].fDevice, gActionRecs[kRt(i)].fElement))
-				*controlPad |= kMaskRt;
+				*pad |= kMaskRt;
 
 			break;
 	}

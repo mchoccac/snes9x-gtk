@@ -494,9 +494,9 @@ void ConfigureKeyboard (void)
 
 			keyInDrag = false;
 			dragKey = -1;
-			dragKeyOfs = CGPointMake(0.0, 0.0);
-			dragKeyRect = CGRectMake(0.0, 0.0, 0.0, 0.0);
-			mousePos = CGPointMake(0.0, 0.0);
+			dragKeyOfs = CGPointMake(0.0f, 0.0f);
+			dragKeyRect = CGRectMake(0.0f, 0.0f, 0.0f, 0.0f);
+			mousePos = CGPointMake(0.0f, 0.0f);
 
 			err = noErr;
 			if (theClass == NULL)
@@ -509,13 +509,13 @@ void ConfigureKeyboard (void)
 				{
 					GetWindowBounds(tWindowRef, kWindowContentRgn, &winBounds);
 
-					frame.origin.x = 2.0;
-					frame.origin.y = 2.0;
-					frame.size.width  = (float) (winBounds.right - winBounds.left) - 4.0;
-					frame.size.height = (float) kKeyLayoutHeight + 36.0;
+					frame.origin.x = 2.0f;
+					frame.origin.y = 2.0f;
+					frame.size.width  = (float) (winBounds.right - winBounds.left) - 4.0f;
+					frame.size.height = (float) kKeyLayoutHeight + 36.0f;
 
-					ofsx = (float) (((int) frame.size.width  - kKeyLayoutWidth ) >> 1) + 1.0;
-					ofsy = (float) (((int) frame.size.height - kKeyLayoutHeight) >> 1) + 1.0;
+					ofsx = (float) (((int) frame.size.width  - kKeyLayoutWidth ) >> 1) + 1.0f;
+					ofsy = (float) (((int) frame.size.height - kKeyLayoutHeight) >> 1) + 1.0f;
 
 					customView = (HIViewRef) hiObject;
 
@@ -565,7 +565,7 @@ static void CreateIconTableImage (void)
 	CGColorSpaceRef		color;
 	CGRect				rct;
 
-	rct = CGRectMake(0.0, 0.0, (float) kIconSize, (float) kIconSize);
+	rct = CGRectMake(0.0f, 0.0f, (float) kIconSize, (float) kIconSize);
 
 	iconTableCGWld = (Ptr) malloc(kIconSize * kKeys * (kIconSize + 1) * 4);
 	if (!iconTableCGWld)
@@ -583,8 +583,8 @@ static void CreateIconTableImage (void)
 	if (!ctx)
 		QuitWithFatalError(0, "keyboard 09");
 
-	CGContextTranslateCTM(ctx, 0.0, (float) kIconSize);
-	CGContextScaleCTM(ctx, 1.0, -1.0);
+	CGContextTranslateCTM(ctx, 0.0f, (float) kIconSize);
+	CGContextScaleCTM(ctx, 1.0f, -1.0f);
 
 	// SNES pads
 	for (int i = macPadIconIndex; i < macPadIconIndex + 12 * 2; i++)
@@ -646,7 +646,7 @@ static void CreateKeyLayoutImage (void)
 	CGRect				rct, r;
 	int					index, scancode;
 
-	rct = CGRectMake(0.0, 0.0, 0.0, 0.0);
+	rct = CGRectMake(0.0f, 0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < 0x80; i++)
 		keyRect[i][0] = keyRect[i][1] = rct;
 
@@ -668,16 +668,16 @@ static void CreateKeyLayoutImage (void)
 
 	CGContextSetLineJoin(ctx, kCGLineJoinMiter);
 
-	flipMatrix = CGAffineTransformMake(1.0, 0.0, 0.0, -1.0, 0.0, 0.0);
-	CGContextSelectFont(ctx, "Helvetica", 10.0, kCGEncodingMacRoman);
+	flipMatrix = CGAffineTransformMake(1.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f);
+	CGContextSelectFont(ctx, "Helvetica", 10.0f, kCGEncodingMacRoman);
 	CGContextSetTextDrawingMode(ctx, kCGTextFill);
 	CGContextSetTextMatrix(ctx, flipMatrix);
 
-	rct = CGRectMake(0.0, 0.0, (float) kKeyLayoutWidth, (float) kKeyLayoutHeight);
+	rct = CGRectMake(0.0f, 0.0f, (float) kKeyLayoutWidth, (float) kKeyLayoutHeight);
 	CGContextClearRect(ctx, rct);
 
 	index = 0;
-	rct = CGRectMake(0.0, 0.0, 0.0, 0.0);
+	rct = CGRectMake(0.0f, 0.0f, 0.0f, 0.0f);
 
 	for (int i = 0; i < 7; i++)
 	{
@@ -697,28 +697,28 @@ static void CreateKeyLayoutImage (void)
 
 				r = rct;
 
-				r.origin.x += 1.0;
-				r.origin.y += 1.0;
-				r.size.width  -= 1.0;
-				r.size.height -= 1.0;
+				r.origin.x += 1.0f;
+				r.origin.y += 1.0f;
+				r.size.width  -= 1.0f;
+				r.size.height -= 1.0f;
 
-				CGContextSetRGBStrokeColor(ctx, 0.1, 0.1, 0.1, 1.0);
+				CGContextSetRGBStrokeColor(ctx, 0.1f, 0.1f, 0.1f, 1.0f);
 				CGContextStrokeRect(ctx, r);
 
 				float	h, p;
 
-				CGRectInset(r, 2.0, 2.0);
+				CGRectInset(r, 2.0f, 2.0f);
 				h = r.size.height;
-				for (float f = h; f >= 1.0; f -= 1.0)
+				for (float f = h; f >= 1.0f; f -= 1.0f)
 				{
-					p = (155.0 + (h - f)) / 180.0;
-					CGContextSetRGBFillColor(ctx, p, p, p, 1.0);
+					p = (155.0f + (h - f)) / 180.0f;
+					CGContextSetRGBFillColor(ctx, p, p, p, 1.0f);
 					CGContextFillRect(ctx, r);
-					r.size.height -= 1.0;
+					r.size.height -= 1.0f;
 				}
 
-				CGContextSetRGBFillColor(ctx, 0.1, 0.1, 0.1, 1.0);
-				CGContextShowTextAtPoint(ctx, rct.origin.x + 3.0, rct.origin.y + rct.size.height - 3.0, keys[index].keyLabel, strlen(keys[index].keyLabel));
+				CGContextSetRGBFillColor(ctx, 0.1f, 0.1f, 0.1f, 1.0f);
+				CGContextShowTextAtPoint(ctx, rct.origin.x + 3.0f, rct.origin.y + rct.size.height - 3.0f, keys[index].keyLabel, strlen(keys[index].keyLabel));
 			}
 
 			rct.origin.x += rct.size.width;
@@ -786,7 +786,7 @@ static void UpdateIconPlaceImage (void)
 		ctx = CGBitmapContextCreate(iconPlaceWorld, kKeyLayoutWidth, kKeyLayoutHeight, 8, kKeyLayoutWidth * 4, color, kCGImageAlphaPremultipliedFirst | ((systemVersion >= 0x1040) ? kCGBitmapByteOrderDefault : 0));
 		if (ctx)
 		{
-			rct = CGRectMake(0.0, 0.0, (float) kKeyLayoutWidth, (float) kKeyLayoutHeight);
+			rct = CGRectMake(0.0f, 0.0f, (float) kKeyLayoutWidth, (float) kKeyLayoutHeight);
 			CGContextDrawImage(ctx, rct, keyLayoutImage);
 
 			for (int i = 0; i < kKeys; i++)
@@ -839,33 +839,33 @@ static void DrawPlacedIcon (CGContextRef ctx, int which)
 
 	CGContextSaveGState(ctx);
 
-	CGContextSetRGBFillColor(ctx, 0.40, 0.40, 0.65, 0.5);
+	CGContextSetRGBFillColor(ctx, 0.40f, 0.40f, 0.65f, 0.5f);
 
 	for (int each = 0; each <= 1; each++)
 	{
 		keyBounds = keyRect[keyCode[which]][each];
 
-		if (keyBounds.size.height > 1.0)
+		if (keyBounds.size.height > 1.0f)
 		{
-			keyBounds.origin.x += 1.0;
-			keyBounds.origin.y += 1.0;
-			keyBounds.size.width  -= 1.0;
-			keyBounds.size.height -= 1.0;
+			keyBounds.origin.x += 1.0f;
+			keyBounds.origin.y += 1.0f;
+			keyBounds.size.width  -= 1.0f;
+			keyBounds.size.height -= 1.0f;
 
 			CGContextFillRect(ctx, keyBounds);
 
-			keyBounds.origin.x -= 1.0;
-			keyBounds.origin.y -= 1.0;
-			keyBounds.size.width  += 1.0;
-			keyBounds.size.height += 1.0;
+			keyBounds.origin.x -= 1.0f;
+			keyBounds.origin.y -= 1.0f;
+			keyBounds.size.width  += 1.0f;
+			keyBounds.size.height += 1.0f;
 
 			srcRect.origin.x = (float) (which * kIconSize);
-			srcRect.origin.y = 0.0;
+			srcRect.origin.y = 0.0f;
 			srcRect.size.width  = (float) kIconSize;
 			srcRect.size.height = (float) kIconSize;
 
-			dstRect.origin.x = keyBounds.origin.x + (keyBounds.size.width  - kIconSize) / 2.0;
-			dstRect.origin.y = keyBounds.origin.y + (keyBounds.size.height - kIconSize) / 2.0;
+			dstRect.origin.x = keyBounds.origin.x + (keyBounds.size.width  - kIconSize) / 2.0f;
+			dstRect.origin.y = keyBounds.origin.y + (keyBounds.size.height - kIconSize) / 2.0f;
 			dstRect.size.width  = (float) kIconSize;
 			dstRect.size.height = (float) kIconSize;
 
@@ -883,7 +883,7 @@ static void DrawDraggedIcon (CGContextRef ctx, int which, CGPoint *offset)
 	CGContextSaveGState(ctx);
 
 	srcRect.origin.x = (float) (which * kIconSize);
-	srcRect.origin.y = 0.0;
+	srcRect.origin.y = 0.0f;
 	srcRect.size.width  = (float) kIconSize;
 	srcRect.size.height = (float) kIconSize;
 
@@ -892,7 +892,7 @@ static void DrawDraggedIcon (CGContextRef ctx, int which, CGPoint *offset)
 	dstRect.size.width  = (float) kIconSize;
 	dstRect.size.height = (float) kIconSize;
 
-	CGContextSetAlpha(ctx, 0.5);
+	CGContextSetAlpha(ctx, 0.5f);
 	DrawSubCGImage(ctx, iconTableImage, srcRect, dstRect);
 
 	CGContextRestoreGState(ctx);
@@ -912,8 +912,8 @@ static int FindHitKey (HIPoint where, CGRect *keybounds, CGPoint *offset)
 	int	hit;
 
 	hit = -1;
-	*offset = CGPointMake(0.0, 0.0);
-	*keybounds = CGRectMake(0.0, 0.0, 0.0, 0.0);
+	*offset = CGPointMake(0.0f, 0.0f);
+	*keybounds = CGRectMake(0.0f, 0.0f, 0.0f, 0.0f);
 
 	for (int which = 0; which < kKeys; which++)
 	{
@@ -924,8 +924,8 @@ static int FindHitKey (HIPoint where, CGRect *keybounds, CGPoint *offset)
 				hit = which;
 
 				*keybounds = keyRect[keyCode[which]][each];
-				offset->x = keybounds->origin.x + (keybounds->size.width  - kIconSize) / 2.0 - where.x + 18.0;
-				offset->y = keybounds->origin.y + (keybounds->size.height - kIconSize) / 2.0 - where.y + 18.0;
+				offset->x = keybounds->origin.x + (keybounds->size.width  - kIconSize) / 2.0f - where.x + 18.0f;
+				offset->y = keybounds->origin.y + (keybounds->size.height - kIconSize) / 2.0f - where.y + 18.0f;
 			}
 		}
 	}
@@ -1005,7 +1005,7 @@ static pascal OSStatus KeyLegendEventHandler (EventHandlerCallRef inHandlerRef, 
 						GetControlID(view, &cid);
 						HIViewGetBounds(view, &bounds);
 						CGContextTranslateCTM(ctx, 0, bounds.size.height);
-						CGContextScaleCTM(ctx, 1.0, -1.0);
+						CGContextScaleCTM(ctx, 1.0f, -1.0f);
 						CGContextDrawImage(ctx, CGRectMake(0, 0, kIconSize, kIconSize), macIconImage[macLegendIconIndex + cid.id]);
 
 						result = noErr;
@@ -1097,9 +1097,9 @@ static pascal OSStatus KeyLayoutEventHandler (EventHandlerCallRef inHandlerRef, 
 					HIPoint				hipt;
 
  					dragKey = -1;
-					dragKeyOfs = CGPointMake(0.0, 0.0);
-					dragKeyRect = CGRectMake(0.0, 0.0, 0.0, 0.0);
-					mousePos = CGPointMake(0.0, 0.0);
+					dragKeyOfs = CGPointMake(0.0f, 0.0f);
+					dragKeyRect = CGRectMake(0.0f, 0.0f, 0.0f, 0.0f);
+					mousePos = CGPointMake(0.0f, 0.0f);
 					trackResult = kMouseTrackingMouseDown;
 
 					window = GetControlOwner(customView);

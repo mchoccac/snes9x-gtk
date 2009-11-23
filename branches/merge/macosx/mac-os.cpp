@@ -174,7 +174,6 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "apu.h"
-#include "soundux.h"
 #include "controls.h"
 #include "crosshairs.h"
 #include "cheats.h"
@@ -278,8 +277,9 @@ bool8				fullscreen          = false,
 long				drawingMethod       = kDrawingOpenGL;
 int					videoMode           = VIDEOMODE_SMOOTH;
 
-float				macSoundPitch       = 1.0;
-SInt32				macSoundVolume      = 80;
+SInt32				macSoundVolume      = 80;	// %
+uint32				macSoundBufferSize  = 100;	// ms
+bool8				macSoundLagEnable   = false;
 uint16				aueffect            = 0;
 
 uint8				saveInROMFolder     = 2;	// 0 : Snes9x  1 : ROM  2 : Application Support
@@ -1204,7 +1204,7 @@ static pascal OSStatus GameWindowUserPaneEventHandler (EventHandlerCallRef inHan
 							{
 								HIViewGetBounds(view, &bounds);
 								CGContextTranslateCTM(ctx, 0, bounds.size.height);
-								CGContextScaleCTM(ctx, 1.0, -1.0);
+								CGContextScaleCTM(ctx, 1.0f, -1.0f);
 								DrawPauseScreen(ctx, bounds);
 							}
 						}
@@ -1806,7 +1806,7 @@ static OSStatus HandleMenuChoice (UInt32 command, Boolean *done)
 				break;
 
 			case 'Ospc':	// Save SPC File at Next Note-on
-				Settings.TakeSPCShapshot = true;
+				S9xDumpSPCSnapshot();
 
 				break;
 
@@ -2136,7 +2136,7 @@ int PromptFreezeDefrost (Boolean freezing)
 	if (!ctx)
 		QuitWithFatalError(0, "os 06");
 
-	rct = CGRectMake(0.0, 0.0, (float) w, (float) h);
+	rct = CGRectMake(0.0f, 0.0f, (float) w, (float) h);
 	CGContextClearRect(ctx, rct);
 
 	image = NULL;
@@ -2159,7 +2159,7 @@ int PromptFreezeDefrost (Boolean freezing)
 
 	if (image)
 	{
-		rct = CGRectMake(0.0, (float) h - 118.0, 512.0, 118.0);
+		rct = CGRectMake(0.0f, (float) h - 118.0f, 512.0f, 118.0f);
 		CGContextDrawImage(ctx, rct, image);
 		CGImageRelease(image);
 	}
@@ -2169,7 +2169,7 @@ int PromptFreezeDefrost (Boolean freezing)
 
 	CGContextSetLineJoin(ctx, kCGLineJoinRound);
 
-	rct = CGRectMake(0.0, (float) h - 238.0, 128.0, 120.0);
+	rct = CGRectMake(0.0f, (float) h - 238.0f, 128.0f, 120.0f);
 
 	for (int count = 0; count < 12; count++)
 	{
@@ -2189,28 +2189,28 @@ int PromptFreezeDefrost (Boolean freezing)
 			DrawThumbnailResource(&ref, ctx, rct);
 
 			CGContextSetShouldAntialias(ctx, false);
-			CGContextSetLineWidth(ctx, 1.0);
+			CGContextSetLineWidth(ctx, 1.0f);
 
-			CGContextSetRGBStrokeColor(ctx, 0.0, 0.0, 0.0, 1.0);
-			x = rct.origin.x + 127.0;
-			y = rct.origin.y + 119.0;
+			CGContextSetRGBStrokeColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
+			x = rct.origin.x + 127.0f;
+			y = rct.origin.y + 119.0f;
 			CGContextBeginPath(ctx);
 			CGContextMoveToPoint(ctx, x, y);
-			CGContextAddLineToPoint(ctx, x,         y - 119.0);
-			CGContextAddLineToPoint(ctx, x - 127.0, y - 119.0);
+			CGContextAddLineToPoint(ctx, x,          y - 119.0f);
+			CGContextAddLineToPoint(ctx, x - 127.0f, y - 119.0f);
 			CGContextStrokePath(ctx);
 
 			CGContextSetShouldAntialias(ctx, true);
-			CGContextSetLineWidth(ctx, 3.0);
+			CGContextSetLineWidth(ctx, 3.0f);
 
-			CGContextSelectFont(ctx, "Helvetica", 12.0, kCGEncodingMacRoman);
-			x = rct.origin.x +   5.0;
-			y = rct.origin.y + 107.0;
+			CGContextSelectFont(ctx, "Helvetica", 12.0f, kCGEncodingMacRoman);
+			x = rct.origin.x +   5.0f;
+			y = rct.origin.y + 107.0f;
 			CGContextSetTextDrawingMode(ctx, kCGTextStroke);
-			CGContextSetRGBStrokeColor(ctx, 0.0, 0.0, 0.0, 0.8);
+			CGContextSetRGBStrokeColor(ctx, 0.0f, 0.0f, 0.0f, 0.8f);
 			CGContextShowTextAtPoint(ctx, x, y, &letters[count], 1);
 			CGContextSetTextDrawingMode(ctx, kCGTextFill);
-			CGContextSetRGBFillColor(ctx, 1.0, 0.7, 0.7, 1.0);
+			CGContextSetRGBFillColor(ctx, 1.0f, 0.7f, 0.7f, 1.0f);
 			CGContextShowTextAtPoint(ctx, x, y, &letters[count], 1);
 
 			if (showtimeinfrz)
@@ -2230,36 +2230,36 @@ int PromptFreezeDefrost (Boolean freezing)
 				CFRelease(format);
 				CFRelease(locale);
 
-				CGContextSelectFont(ctx, "Helvetica", 10.0, kCGEncodingMacRoman);
-				x = rct.origin.x +  20.0;
-				y = rct.origin.y + 107.0;
+				CGContextSelectFont(ctx, "Helvetica", 10.0f, kCGEncodingMacRoman);
+				x = rct.origin.x +  20.0f;
+				y = rct.origin.y + 107.0f;
 				CGContextSetTextDrawingMode(ctx, kCGTextInvisible);
 				CGContextShowTextAtPoint(ctx, x, y, dateC, strlen(dateC));
 				pt = CGContextGetTextPosition(ctx);
 				textw = pt.x - x;
-				x = rct.origin.x + 122.0 - textw;
+				x = rct.origin.x + 122.0f - textw;
 				CGContextSetTextDrawingMode(ctx, kCGTextStroke);
-				CGContextSetRGBStrokeColor(ctx, 0.0, 0.0, 0.0, 0.8);
+				CGContextSetRGBStrokeColor(ctx, 0.0f, 0.0f, 0.0f, 0.8f);
 				CGContextShowTextAtPoint(ctx, x, y, dateC, strlen(dateC));
 				CGContextSetTextDrawingMode(ctx, kCGTextFill);
-				CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
+				CGContextSetRGBFillColor(ctx, 1.0f, 1.0f, 1.0f, 1.0f);
 				CGContextShowTextAtPoint(ctx, x, y, dateC, strlen(dateC));
 			}
 		}
 		else
 		{
-			CGContextSelectFont(ctx, "Helvetica", 12.0, kCGEncodingMacRoman);
-			x = rct.origin.x +   5.0;
-			y = rct.origin.y + 107.0;
+			CGContextSelectFont(ctx, "Helvetica", 12.0f, kCGEncodingMacRoman);
+			x = rct.origin.x +   5.0f;
+			y = rct.origin.y + 107.0f;
 			CGContextSetTextDrawingMode(ctx, kCGTextFill);
-			CGContextSetRGBFillColor(ctx, 0.7, 0.7, 0.7, 1.0);
+			CGContextSetRGBFillColor(ctx, 0.7f, 0.7f, 0.7f, 1.0f);
 			CGContextShowTextAtPoint(ctx, x, y, &letters[count], 1);
 		}
 
 		if ((count % 4) == 3)
-			rct = CGRectOffset(rct, -128.0 * 3.0, -120.0);
+			rct = CGRectOffset(rct, -128.0f * 3.0f, -120.0f);
 		else
-			rct = CGRectOffset(rct, 128.0, 0.0);
+			rct = CGRectOffset(rct, 128.0f, 0.0f);
 	}
 
 	if (newestIndex < 0)
@@ -2472,7 +2472,7 @@ int PromptFreezeDefrost (Boolean freezing)
 	free(draw);
 	free(back);
 
-	S9xSetSoundMute(!Settings.APUEnabled);
+	S9xSetSoundMute(false);
 
 	inactiveMode = oldInactiveMode;
 	frzselecting = false;
@@ -2487,20 +2487,20 @@ static void UpdateFreezeDefrostScreen (int newIndex, CGImageRef image, uint8 *dr
 		CGRect		rct;
 		const int	w = SNES_WIDTH << 1, h = kMacWindowHeight;
 
-		CGContextSetLineWidth(ctx, 1.0);
+		CGContextSetLineWidth(ctx, 1.0f);
 
-		rct = CGRectMake(0.0, 0.0, (float) w, (float) h);
+		rct = CGRectMake(0.0f, 0.0f, (float) w, (float) h);
 		CGContextDrawImage(ctx, rct, image);
 
-		rct = CGRectMake(0.0, (float) h - 238.0, 128.0, 120.0);
+		rct = CGRectMake(0.0f, (float) h - 238.0f, 128.0f, 120.0f);
 		rct = CGRectOffset(rct, (float) (128 * (newIndex % 4)), (float) (-120 * (newIndex / 4)));
-		rct.size.width  -= 1.0;
-		rct.size.height -= 1.0;
+		rct.size.width  -= 1.0f;
+		rct.size.height -= 1.0f;
 
-		CGContextSetRGBStrokeColor(ctx, 1.0, 1.0, 0.0, 1.0);
+		CGContextSetRGBStrokeColor(ctx, 1.0f, 1.0f, 0.0f, 1.0f);
 		CGContextStrokeRect(ctx, rct);
-		rct = CGRectInset(rct, 1.0, 1.0);
-		CGContextSetRGBStrokeColor(ctx, 0.0, 0.0, 0.0, 1.0);
+		rct = CGRectInset(rct, 1.0f, 1.0f);
+		CGContextSetRGBStrokeColor(ctx, 0.0f, 0.0f, 0.0f, 1.0f);
 		CGContextStrokeRect(ctx, rct);
 	}
 
@@ -2560,7 +2560,7 @@ static void ProcessInput (void)
 
 	if (ISpKeyIsPressed(kISpSPC))
 	{
-		Settings.TakeSPCShapshot = true;
+		S9xDumpSPCSnapshot();
 		while (ISpKeyIsPressed(kISpSPC));
 	}
 
@@ -2695,7 +2695,7 @@ static void ProcessInput (void)
 	{
 		if (!lastTimeFn)
 		{
-			for (int i = 0; i < kCommandListSize; i++)
+			for (unsigned int i = 0; i < kCommandListSize; i++)
 				btncmd[i].held = false;
 		}
 
@@ -2703,7 +2703,7 @@ static void ProcessInput (void)
 		lastTimeTT = false;
 		ffUp = ffDown = false;
 
-		for (int i = 0; i < kCommandListSize; i++)
+		for (unsigned int i = 0; i < kCommandListSize; i++)
 		{
 			if (KeyIsPressed(myKeys, btncmd[i].keycode))
 			{
@@ -2805,7 +2805,7 @@ static void ProcessInput (void)
 
 		if (KeyIsPressed(myKeys, keyCode[kKeySPC]))
 		{
-			Settings.TakeSPCShapshot = true;
+			S9xDumpSPCSnapshot();
 			while (KeyIsPressed(myKeys, keyCode[kKeySPC]))
 				GetKeys(myKeys);
 		}
@@ -2899,13 +2899,20 @@ static void ProcessInput (void)
 				toggleff = true;
 				Settings.TurboMode = !Settings.TurboMode;
 				S9xSetInfoString(Settings.TurboMode ? "Turbo mode on" : "Turbo mode off");
+				if (!Settings.TurboMode)
+					S9xClearSamples();
 			}
 		}
 		else
 			toggleff = false;
 	}
 	else
+	{
+		bool8	old = Settings.TurboMode;
 		Settings.TurboMode = ((ISpKeyIsPressed(kISpFastForward) || KeyIsPressed(myKeys, keyCode[kKeyFastForward])) && !fnbtn) ? true : false;
+		if (!Settings.TurboMode && old)
+			S9xClearSamples();
+	}
 
 	for (int i = 0; i < 2; i++)
 		controlPad[i] ^= autofireRec[i].invertMask;
@@ -3014,7 +3021,7 @@ void GetGameScreenPointer (int16 *x, int16 *y, bool fullmouse)
 	{
 		if (glstretch)
 		{
-			float   fpw = (float) glScreenH / (float) ph * 512.0;
+			float   fpw = (float) glScreenH / (float) ph * 512.0f;
 
 			scopeViewInfo.width      = (int) (fpw + ((float) glScreenW - fpw) * (float) macAspectRatio / 100.0);
 			scopeViewInfo.height     = glScreenH;
@@ -3102,18 +3109,15 @@ static void Initialize (void)
 	Settings.FrameTimePAL = 20000;
 	Settings.FrameTimeNTSC = 16667;
 	Settings.SixteenBitSound = true;
-	Settings.InterpolatedSound = true;
-	Settings.SoundPlaybackRate = 32000;
 	Settings.Stereo = true;
+	Settings.SoundPlaybackRate = 32000;
+	Settings.SoundInputRate = 32000;
 	Settings.SupportHiRes = true;
 	Settings.Transparency = true;
 	Settings.AutoDisplayMessages = true;
 	Settings.InitialInfoStringTimeout = 120;
-	Settings.APUEnabled = true;
-	Settings.NextAPUEnabled = true;
 	Settings.HDMATimingHack = 100;
-	Settings.BlockInvalidVRAMAccess = true;
-	Settings.SoundEnvelopeHeightReading = true;
+	Settings.BlockInvalidVRAMAccessMaster = true;
 	Settings.StopEmulation = true;
 	Settings.WrongMovieStateProtection = true;
 	Settings.DumpStreamsMaxFrames = -1;
@@ -3125,8 +3129,8 @@ static void Initialize (void)
 	{
 		windowPos[a].h = 40;
 		windowPos[a].v = 80;
-		windowSize[a].width  = -1.0;
-		windowSize[a].height = -1.0;
+		windowSize[a].width  = -1.0f;
+		windowSize[a].height = -1.0f;
 	}
 
 	extraOptions.benchmark = false;
@@ -3199,8 +3203,6 @@ static void Initialize (void)
 
 	if (!Memory.Init() || !S9xInitAPU() || !S9xGraphicsInit())
 		QuitWithFatalError(err, "os 01");
-
-	SetSoundPitch();
 
 	frzselecting = false;
 
@@ -3292,78 +3294,86 @@ void S9xSyncSpeed (void)
 		if (extraOptions.benchmark)
 			IPPU.RenderThisFrame = true;
 		else
-		if (!macQTRecord)
 		{
-			if (macFrameSkip < 0)	// auto skip
+			if (Settings.SoundSync)
 			{
-				skipFrames--;
-
-				if (skipFrames <= 0)
-				{
-					adjustment = (Settings.TurboMode ? (macFrameAdvanceRate / macFastForwardRate) : macFrameAdvanceRate) / Memory.ROMFramesPerSecond;
-					Microseconds((UnsignedWide *) &currentFrame);
-
-					skipFrames = (currentFrame - lastFrame) / adjustment;
-					lastFrame += frameCount * adjustment;
-
-					if (skipFrames < 1)
-						skipFrames = 1;
-					else
-					if (skipFrames > 7)
-					{
-						skipFrames = 7;
-						Microseconds((UnsignedWide *) &lastFrame);
-					}
-
-					frameCount = skipFrames;
-
-					if (lastFrame > currentFrame)
-						usleep(lastFrame - currentFrame);
-
-					IPPU.RenderThisFrame = true;
-				}
-				else
-					IPPU.RenderThisFrame = false;
+				while (!S9xSyncSound())
+					usleep(0);
 			}
-			else					// constant
+
+			if (!macQTRecord)
 			{
-				skipFrames--;
-
-				if (skipFrames <= 0)
+				if (macFrameSkip < 0)	// auto skip
 				{
-					adjustment = macFrameAdvanceRate * macFrameSkip / Memory.ROMFramesPerSecond;
-					Microseconds((UnsignedWide *) &currentFrame);
+					skipFrames--;
 
-					if (currentFrame - lastFrame < adjustment)
+					if (skipFrames <= 0)
 					{
-						usleep(adjustment + lastFrame - currentFrame);
+						adjustment = (Settings.TurboMode ? (macFrameAdvanceRate / macFastForwardRate) : macFrameAdvanceRate) / Memory.ROMFramesPerSecond;
 						Microseconds((UnsignedWide *) &currentFrame);
+
+						skipFrames = (int32) ((currentFrame - lastFrame) / adjustment);
+						lastFrame += frameCount * adjustment;
+
+						if (skipFrames < 1)
+							skipFrames = 1;
+						else
+						if (skipFrames > 7)
+						{
+							skipFrames = 7;
+							Microseconds((UnsignedWide *) &lastFrame);
+						}
+
+						frameCount = skipFrames;
+
+						if (lastFrame > currentFrame)
+							usleep((useconds_t) (lastFrame - currentFrame));
+
+						IPPU.RenderThisFrame = true;
 					}
-
-					lastFrame = currentFrame;
-					skipFrames = macFrameSkip;
-					if (Settings.TurboMode)
-						skipFrames *= macFastForwardRate;
-
-					IPPU.RenderThisFrame = true;
+					else
+						IPPU.RenderThisFrame = false;
 				}
-				else
-					IPPU.RenderThisFrame = false;
+				else					// constant
+				{
+					skipFrames--;
+
+					if (skipFrames <= 0)
+					{
+						adjustment = macFrameAdvanceRate * macFrameSkip / Memory.ROMFramesPerSecond;
+						Microseconds((UnsignedWide *) &currentFrame);
+
+						if (currentFrame - lastFrame < adjustment)
+						{
+							usleep((useconds_t) (adjustment + lastFrame - currentFrame));
+							Microseconds((UnsignedWide *) &currentFrame);
+						}
+
+						lastFrame = currentFrame;
+						skipFrames = macFrameSkip;
+						if (Settings.TurboMode)
+							skipFrames *= macFastForwardRate;
+
+						IPPU.RenderThisFrame = true;
+					}
+					else
+						IPPU.RenderThisFrame = false;
+				}
 			}
-		}
-		else
-		{
-			MacQTRecordFrame(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
+			else
+			{
+				MacQTRecordFrame(IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight);
 
-			adjustment = macFrameAdvanceRate / Memory.ROMFramesPerSecond;
-			Microseconds((UnsignedWide *) &currentFrame);
+				adjustment = macFrameAdvanceRate / Memory.ROMFramesPerSecond;
+				Microseconds((UnsignedWide *) &currentFrame);
 
-			if (currentFrame - lastFrame < adjustment)
-				usleep(adjustment + lastFrame - currentFrame);
+				if (currentFrame - lastFrame < adjustment)
+					usleep((useconds_t) (adjustment + lastFrame - currentFrame));
 
-			lastFrame = currentFrame;
+				lastFrame = currentFrame;
 
-			IPPU.RenderThisFrame = true;
+				IPPU.RenderThisFrame = true;
+			}
 		}
 	}
 	else

@@ -231,7 +231,6 @@ static void S9xSoftResetCPU (void)
 	CPU.PBPCAtOpcodeStart = 0xffffffff;
 	CPU.AutoSaveTimer = 0;
 	CPU.SRAMModified = FALSE;
-	CPU.BranchSkip = FALSE;
 
 	Timings.InterlaceField = FALSE;
 	Timings.H_Max = Timings.H_Max_Master;
@@ -301,7 +300,7 @@ void S9xSoftReset (void)
 	S9xSoftResetCPU();
 	S9xSoftResetPPU();
 	S9xResetDMA();
-	S9xResetAPU();
+	S9xSoftResetAPU();
 
 	if (Settings.DSP)
 		S9xResetDSP();

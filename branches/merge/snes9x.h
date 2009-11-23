@@ -228,11 +228,6 @@
 #define	SNES_HDMA_INIT_HC			20						// FIXME: not true
 #define	SNES_RENDER_START_HC		(48 * ONE_DOT_CYCLE)	// FIXME: Snes9x renders a line at a time.
 
-#define	SNES_APU_CLOCK				1024000.0				// 1026900.0?
-#define SNES_APU_ACCURACY			10
-#define	SNES_APU_ONE_CYCLE_SCALED	((int32) (NTSC_MASTER_CLOCK / SNES_APU_CLOCK * (1 << SNES_APU_ACCURACY)))
-#define SNES_APUTIMER2_CYCLE_SCALED	((int32) (NTSC_MASTER_CLOCK / 64000.0 * (1 << SNES_APU_ACCURACY)))
-
 #define SNES_TR_MASK		(1 <<  4)
 #define SNES_TL_MASK		(1 <<  5)
 #define SNES_X_MASK			(1 <<  6)
@@ -285,7 +280,6 @@ struct SCPUState
 	uint32	PBPCAtOpcodeStart;
 	uint32	AutoSaveTimer;
 	bool8	SRAMModified;
-	bool8	BranchSkip;
 };
 
 enum
@@ -321,6 +315,7 @@ struct STimings
 	int32	DMACPUSync;		// The cycles to synchronize DMA and CPU. Snes9x cannot emulate correctly.
 	int32	NMIDMADelay;	// The delay of NMI trigger after DMA transfers. Snes9x cannot emulate correctly.
 	int32	IRQPendCount;	// This value is just a hack, because Snes9x cannot emulate any events in an opcode.
+	int32	APUSpeedup;
 };
 
 struct SSettings
@@ -330,7 +325,6 @@ struct SSettings
 	bool8	TraceVRAM;
 	bool8	TraceUnknownRegisters;
 	bool8	TraceDSP;
-	bool8	TraceSoundDSP;
 	bool8	TraceHCEvent;
 
 	bool8	SuperFX;
@@ -366,18 +360,13 @@ struct SSettings
 	uint32	FrameTimeNTSC;
 	uint32	FrameTime;
 
-	bool8	DisableSoundEcho;
+	bool8	SoundSync;
 	bool8	SixteenBitSound;
-	bool8	InterpolatedSound;
 	uint32	SoundPlaybackRate;
+	uint32	SoundInputRate;
 	bool8	Stereo;
 	bool8	ReverseStereo;
 	bool8	Mute;
-	bool8	FixFrequency;
-	int		SoundBufferSize;
-	int		SoundMixInterval;
-	bool8	SoundSync;
-	bool8	ThreadSound;
 
 	bool8	SupportHiRes;
 	bool8	Transparency;
@@ -399,14 +388,11 @@ struct SSettings
 	bool8	DisableGameSpecificHacks;
 	bool8	ShutdownMaster;
 	bool8	Shutdown;
-	uint8	SoundSkipMethod;
+	bool8	BlockInvalidVRAMAccessMaster;
+	bool8	BlockInvalidVRAMAccess;
 	bool8	DisableIRQ;
 	bool8	DisableHDMA;
-	bool8	APUEnabled;
-	bool8	NextAPUEnabled;
 	int32	HDMATimingHack;
-	bool8	BlockInvalidVRAMAccess;
-	bool8	SoundEnvelopeHeightReading;
 
 	bool8	ForcedPause;
 	bool8	Paused;
@@ -416,7 +402,6 @@ struct SSettings
 	uint32	TurboSkipFrames;
 	uint32	AutoMaxSkipFrames;
 	bool8	TurboMode;
-	bool8	OldTurbo;
 	uint32	HighSpeedSeek;
 	bool8	FrameAdvance;
 
@@ -428,11 +413,9 @@ struct SSettings
 	bool8	MovieTruncate;
 	bool8	MovieNotifyIgnored;
 	bool8	WrongMovieStateProtection;
-	bool8	FakeMuteFix;
 	bool8	DumpStreams;
 	int		DumpStreamsMaxFrames;
 
-	bool8	TakeSPCShapshot;
 	bool8	TakeScreenshot;
 	int8	StretchScreenshots;
 	bool8	SnapshotScreenshots;
@@ -444,10 +427,6 @@ struct SSettings
 	bool8	UpAndDown;
 
 	bool8	OpenGLEnable;
-	uint32	CurrentGraphicFormat;
-	bool8	JoystickEnabled;
-	int		SoundDriver;
-	int		AIDOShmId;
 };
 
 struct SSNESGameFixes

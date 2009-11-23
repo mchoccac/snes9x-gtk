@@ -255,7 +255,6 @@ static void Op##OP (void) \
 { \
 	pair	newPC; \
 	newPC.W = REL(JUMP); \
-	BranchCheck##CHK(); \
 	if (COND) \
 	{ \
 		AddCycles(ONE_CYCLE); \

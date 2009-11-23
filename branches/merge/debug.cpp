@@ -225,13 +225,13 @@ static const char	*HelpMessage[] =
 	"w                      - Show some SNES hardware features used so far in this frame",
 	"R                      - Reset SNES",
 	"q                      - Quit emulation",
-	"ai                     - Shou APU vectors",
-	"a                      - Show APU status",
-	"x                      - Show Sound DSP status",
-	"A                      - Toggle APU instruction tracing to aputrace.log",
-	"B                      - Toggle sound DSP register tracing to aputrace.log",
-	"C                      - Dump sound sample addresses",
-	"ad [Address]           - Dump APU RAM from PC or [Address]",
+//	"ai                     - Shou APU vectors",
+//	"a                      - Show APU status",
+//	"x                      - Show Sound DSP status",
+//	"A                      - Toggle APU instruction tracing to aputrace.log",
+//	"B                      - Toggle sound DSP register tracing to aputrace.log",
+//	"C                      - Dump sound sample addresses",
+//	"ad [Address]           - Dump APU RAM from PC or [Address]",
 	"",
 	"[Address]              - $Bank:Address or $Address",
 	"                         [for example: $01:8123]",
@@ -1244,7 +1244,7 @@ static void debug_process_command (char *Line)
 	uint16	Hold = 0;
 	uint16	Number;
 	short	ErrorCode;
-	char	String[512];
+	char	string[512];
 
 	if (strncasecmp(Line, "dump", 4) == 0)
 	{
@@ -1254,8 +1254,8 @@ static void debug_process_command (char *Line)
 		{
 			FILE	*fs;
 
-			sprintf(String, "%06x%05d.sd2", Address, Count);
-			fs = fopen(String, "wb");
+			sprintf(string, "%06x%05d.sd2", Address, Count);
+			fs = fopen(string, "wb");
 			if (fs)
 			{
 				for (int i = 0; i < Count; i++)
@@ -1263,7 +1263,7 @@ static void debug_process_command (char *Line)
 				fclose(fs);
 			}
 			else
-				printf("Can't open %s for writing\n", String);
+				printf("Can't open %s for writing\n", string);
 		}
 		else
 			printf("Usage: dump start_address_in_hex count_in_decimal\n");
@@ -1274,23 +1274,24 @@ static void debug_process_command (char *Line)
 	if (*Line == 'i')
 	{
 		printf("Vectors:\n");
-		sprintf(String, "      8 Bit   16 Bit ");
-		debug_line_print(String);
-		sprintf(String, "ABT $00:%04X|$00:%04X", S9xGetWord(0xFFF8), S9xGetWord(0xFFE8));
-		debug_line_print(String);
-		sprintf(String, "BRK $00:%04X|$00:%04X", S9xGetWord(0xFFFE), S9xGetWord(0xFFE6));
-		debug_line_print(String);
-		sprintf(String, "COP $00:%04X|$00:%04X", S9xGetWord(0xFFF4), S9xGetWord(0xFFE4));
-		debug_line_print(String);
-		sprintf(String, "IRQ $00:%04X|$00:%04X", S9xGetWord(0xFFFE), S9xGetWord(0xFFEE));
-		debug_line_print(String);
-		sprintf(String, "NMI $00:%04X|$00:%04X", S9xGetWord(0xFFFA), S9xGetWord(0xFFEA));
-		debug_line_print(String);
-		sprintf(String, "RES     $00:%04X", S9xGetWord(0xFFFC));
-		debug_line_print(String);
+		sprintf(string, "      8 Bit   16 Bit ");
+		debug_line_print(string);
+		sprintf(string, "ABT $00:%04X|$00:%04X", S9xGetWord(0xFFF8), S9xGetWord(0xFFE8));
+		debug_line_print(string);
+		sprintf(string, "BRK $00:%04X|$00:%04X", S9xGetWord(0xFFFE), S9xGetWord(0xFFE6));
+		debug_line_print(string);
+		sprintf(string, "COP $00:%04X|$00:%04X", S9xGetWord(0xFFF4), S9xGetWord(0xFFE4));
+		debug_line_print(string);
+		sprintf(string, "IRQ $00:%04X|$00:%04X", S9xGetWord(0xFFFE), S9xGetWord(0xFFEE));
+		debug_line_print(string);
+		sprintf(string, "NMI $00:%04X|$00:%04X", S9xGetWord(0xFFFA), S9xGetWord(0xFFEA));
+		debug_line_print(string);
+		sprintf(string, "RES     $00:%04X", S9xGetWord(0xFFFC));
+		debug_line_print(string);
 	}
 
-        /* if (strncmp(Line, "ai", 2) == 0)
+/*
+	if (strncmp(Line, "ai", 2) == 0)
 	{
 		printf("APU vectors:");
 
@@ -1303,11 +1304,12 @@ static void debug_process_command (char *Line)
 		}
 
 		printf("\n");
-        } */
+	}
+*/
 
 	if (*Line == 's')
 	{
-		Registers.PCw += debug_cpu_op_print(String, Bank, Address);
+		Registers.PCw += debug_cpu_op_print(string, Bank, Address);
 		Bank = Registers.PB;
 		Address = Registers.PCw;
 		*Line = 'r';
@@ -1450,7 +1452,8 @@ static void debug_process_command (char *Line)
 		printf("HC event tracing %s.\n", Settings.TraceHCEvent ? "enabled" : "disabled");
 	}
 
-        /* if (*Line == 'A')
+/*
+	if (*Line == 'A')
 	{
 		APU.Flags ^= TRACE_FLAG;
 
@@ -1466,7 +1469,7 @@ static void debug_process_command (char *Line)
 			fclose(apu_trace);
 			apu_trace = NULL;
 		}
-        } */
+	}
 
 	if (*Line == 'B')
 	{
@@ -1474,7 +1477,6 @@ static void debug_process_command (char *Line)
 		printf("Sound DSP register tracing %s.\n", Settings.TraceSoundDSP ? "enabled" : "disabled");
 	}
 
-        /*
 	if (*Line == 'x')
 		S9xPrintSoundDSPState();
 
@@ -1492,7 +1494,8 @@ static void debug_process_command (char *Line)
 			if (i % 8 == 7)
 				printf("\n");
 		}
-        } */
+	}
+*/
 
 	if (*Line == 'R')
 	{
@@ -1501,7 +1504,7 @@ static void debug_process_command (char *Line)
 		CPU.Flags |= DEBUG_MODE_FLAG;
 	}
 
-        /*
+/*
 	if (strncmp(Line, "ad", 2) == 0)
 	{
 		uint32	Count = 16;
@@ -1544,17 +1547,18 @@ static void debug_process_command (char *Line)
 	{
 		Settings.TraceDSP = !Settings.TraceDSP;
 		printf("DSP tracing %s.\n", Settings.TraceDSP ? "enabled" : "disabled");
-        } */
+	}
+*/
 
 	if (*Line == 'p')
 	{
 		S9xBreakpoint[5].Enabled = FALSE;
-		Address += debug_cpu_op_print(String, Bank, Address);
+		Address += debug_cpu_op_print(string, Bank, Address);
 
-		if (strncmp(&String[18], "JMP", 3) != 0 &&
-		    strncmp(&String[18], "JML", 3) != 0 &&
-		    strncmp(&String[18], "RT" , 2) != 0 &&
-		    strncmp(&String[18], "BRA", 3))
+		if (strncmp(&string[18], "JMP", 3) != 0 &&
+		    strncmp(&string[18], "JML", 3) != 0 &&
+		    strncmp(&string[18], "RT" , 2) != 0 &&
+		    strncmp(&string[18], "BRA", 3))
 		{
 			S9xBreakpoint[5].Enabled = TRUE;
 			S9xBreakpoint[5].Bank = Bank;
@@ -1603,11 +1607,11 @@ static void debug_process_command (char *Line)
 				for (Number = 0; Number != 5; Number++)
 				{
 					if (S9xBreakpoint[Number].Enabled)
-						sprintf(String, "%i @ $%02X:%04X", Number, S9xBreakpoint[Number].Bank, S9xBreakpoint[Number].Address);
+						sprintf(string, "%i @ $%02X:%04X", Number, S9xBreakpoint[Number].Bank, S9xBreakpoint[Number].Address);
 					else
-						sprintf(String, "%i @ Disabled", Number);
+						sprintf(string, "%i @ Disabled", Number);
 
-					debug_line_print(String);
+					debug_line_print(string);
 				}
 			}
 			else
@@ -1615,11 +1619,11 @@ static void debug_process_command (char *Line)
 				debug_line_print("Breakpoint:");
 
 				if (S9xBreakpoint[Number].Enabled)
-					sprintf(String, "%i @ $%02X:%04X", Number, S9xBreakpoint[Number].Bank, S9xBreakpoint[Number].Address);
+					sprintf(string, "%i @ $%02X:%04X", Number, S9xBreakpoint[Number].Bank, S9xBreakpoint[Number].Address);
 				else
-					sprintf(String, "%i @ Disabled", Number);
+					sprintf(string, "%i @ Disabled", Number);
 
-				debug_line_print(String);
+				debug_line_print(string);
 			}
 		}
 	}
@@ -1725,7 +1729,7 @@ static void debug_process_command (char *Line)
 
 		for (CLine = 0; CLine != 10; CLine++)
 		{
-			sprintf(String, "$%02X:%04X", Bank, Address);
+			sprintf(string, "$%02X:%04X", Bank, Address);
 
 			for (CByte = 0; CByte != 16; CByte++)
 			{
@@ -1738,10 +1742,10 @@ static void debug_process_command (char *Line)
 				else
 					MemoryByte = S9xGetByte((Bank << 16) + Address + CByte);
 
-				sprintf(String, "%s %02X", String, MemoryByte);
+				sprintf(string, "%s %02X", string, MemoryByte);
 			}
 
-			sprintf(String, "%s-", String);
+			sprintf(string, "%s-", string);
 
 			for (CByte = 0; CByte != 16; CByte++)
 			{
@@ -1757,12 +1761,12 @@ static void debug_process_command (char *Line)
 				if (MemoryByte < 32 || MemoryByte >= 127)
 					MemoryByte = '?';
 
-				sprintf(String, "%s%c", String, MemoryByte);
+				sprintf(string, "%s%c", string, MemoryByte);
 			}
 
 			Address += 16;
 
-			debug_line_print(String);
+			debug_line_print(string);
 		}
 
 		Debug.Dump.Bank = Bank;
@@ -1782,8 +1786,8 @@ static void debug_process_command (char *Line)
 
 	if (*Line == 'r')
 	{
-		debug_cpu_op_print(String, Bank, Address);
-		debug_line_print(String);
+		debug_cpu_op_print(string, Bank, Address);
+		debug_line_print(string);
 	}
 
 	if (*Line == 'u')
@@ -1798,8 +1802,8 @@ static void debug_process_command (char *Line)
 
 		for (int i = 0; i != 10; i++)
 		{
-			Address += debug_cpu_op_print(String, Bank, Address);
-			debug_line_print(String);
+			Address += debug_cpu_op_print(string, Bank, Address);
+			debug_line_print(string);
 		}
 
 		Debug.Unassemble.Bank = Bank;

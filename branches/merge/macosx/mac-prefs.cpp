@@ -172,6 +172,7 @@
 **********************************************************************************/
 
 #include "snes9x.h"
+#include "apu.h"
 #include "gfx.h"
 
 #include <OpenGL/OpenGL.h>
@@ -193,11 +194,11 @@ enum
 	iNibGFullScreen = 1,
 	iNibGSwitchResolution,
 	iNibGShowFrameRate,
-	iNibGReserved2, // unused
+	iNibGCIFilterEnable,
 	iNibGTransparency,
 	iNibGGL32bit,
 	iNibGGLStretch,
-	iNibGReserved1,	// unused
+	iNibGCoreImageFilter,
 	iNibGVideoMode,
 	iNibGDirectMP,
 	iNibGGLVSync,
@@ -205,52 +206,38 @@ enum
 	iNibGScreenCurvature,
 	iNibGCurvatureWarp,
 	iNibGAspectRatio,
-	iNibGCoreImageFilter,
-	iNibGCIFilterEnable,
 
-	iNibSEnableSound = 201,
+	iNibSSynchronize = 201,
 	iNibS16BitPlayback,
 	iNibSStereo,
 	iNibSReverseStereo,
-	iNibSInterpolation,
-	iNibSHeightReading,
-	iNibSEcho,
-	iNibSReserved1,	// unused
-	iNibSReserved4, // unused
 	iNibSPlaybackRate,
-	iNibSReserved5, // unused
-	iNibSReserved2,	// unused
-	iNibSReserved3,	// unused
-	iNibSPitch,
+	iNibSBufferSize,
 	iNibSVolume,
-	iNibSReserved6,	// unused
+	iNibSInputRate,
+	iNibSInputRateText,
+	iNibSAllowLag,
 
 	iNibOSaveFolder = 401,
-	iNibOReserved1,	// unused
-	iNibOReserved2,	// unused
 	iNibOAutoSaveInterval,
-	iNibOReserved3,	// unused
-	iNibOReserved4,	// unused
-	iNibOReserved5,	// unused
 
 	iNibMCPUCycles = 601,
 	iNibMShutdownMaster,
 	iNibMTurboSkipArrows,
 	iNibMTurboSkipText,
 	iNibMFrameSkip,
-	iNibAllowInvalidVRAMAccess,
+	iNibMAllowInvalidVRAMAccess,
+	iNibMAllowSpecificGameHacks,
 
 	iNibXStartOpenDialog = 801,
 	iNibXShowTimeInFrz,
 	iNibXMusicBoxMode,
 	iNibXEnableToggle,
-	iNibXReserved1,	// unused
+	iNibXBSXBootup,
 	iNibXSaveWindowPos,
 	iNibXUseIPSPatch,
 	iNibXOnScreenInfo,
-	iNibXReserved2,	// unused
-	iNibXInactiveMode,
-	iNibXBSXBootup
+	iNibXInactiveMode
 };
 
 enum
@@ -295,15 +282,14 @@ static PrefList	prefList[] =
 	{ 'ASPe', &macAspectRatio,								sizeof(int        ) },
 	{ 'CIFl', &ciFilterEnable,							    sizeof(bool8      ) },
 
-	{ 'audi', &Settings.APUEnabled,							sizeof(bool8      ) },
+	{ 'sSyn', &Settings.SoundSync,					        sizeof(bool8      ) },
 	{ 'so16', &Settings.SixteenBitSound,					sizeof(bool8      ) },
 	{ 'ster', &Settings.Stereo,								sizeof(bool8      ) },
 	{ 'rbst', &Settings.ReverseStereo,						sizeof(bool8      ) },
-	{ 'sint', &Settings.InterpolatedSound,					sizeof(bool8      ) },
-	{ 'ehgt', &Settings.SoundEnvelopeHeightReading,			sizeof(bool8      ) },
-	{ 'echo', &Settings.DisableSoundEcho,					sizeof(bool8      ) },
 	{ 'srat', &Settings.SoundPlaybackRate,					sizeof(uint32     ) },
-	{ 'pich', &macSoundPitch,								sizeof(float      ) },
+	{ 'InRt', &Settings.SoundInputRate,						sizeof(uint32     ) },
+	{ 'SBuf', &macSoundBufferSize,					        sizeof(uint32     ) },
+	{ 'SLag', &macSoundLagEnable,					        sizeof(bool8      ) },
 	{ 'Volm', &macSoundVolume,								sizeof(SInt32     ) },
 	{ 'AUef', &aueffect,									sizeof(uint16     ) },
 	{ 'AUce', &cureffect,									sizeof(int        ) },
@@ -318,7 +304,8 @@ static PrefList	prefList[] =
 	{ 'stdm', &Settings.ShutdownMaster,						sizeof(bool8      ) },
 	{ 'TbRt', &macFastForwardRate,							sizeof(int        ) },
 	{ 'FSkp', &macFrameSkip,							    sizeof(int        ) },
-	{ 'IvVR', &Settings.BlockInvalidVRAMAccess,             sizeof(bool8      ) },
+	{ 'IvVR', &Settings.BlockInvalidVRAMAccessMaster,       sizeof(bool8      ) },
+	{ 'GSHk', &Settings.DisableGameSpecificHacks,           sizeof(bool8      ) },
 
 	{ 'StOp', &startopendlog,								sizeof(bool8      ) },
 	{ 'STiF', &showtimeinfrz,								sizeof(bool8      ) },
@@ -356,21 +343,10 @@ static PrefList	prefList[] =
 
 #define	kPrefListSize	(sizeof(prefList) / sizeof(prefList[0]))
 
-static int	grouplist1[] =
-{
-	iNibS16BitPlayback,
-	iNibSStereo,
-	iNibSInterpolation,
-	iNibSHeightReading,
-	iNibSEcho,
-	iNibSPlaybackRate,
-	iNibSPitch
-};
-
-#define	kGroupListSize1	(sizeof(grouplist1) / sizeof(grouplist1[0]))
-
 static void SelectTabPane (HIViewRef, SInt16);
+static pascal void InputRateSliderActionProc (HIViewRef, HIViewPartCode);
 static pascal void LittleArrowsActionProc (HIViewRef, HIViewPartCode);
+static pascal OSStatus InputRateTextEventHandler (EventHandlerCallRef, EventRef, void *);
 static pascal OSStatus TabEventHandler (EventHandlerCallRef, EventRef, void *);
 static pascal OSStatus PreferencesEventHandler (EventHandlerCallRef, EventRef, void *);
 
@@ -381,7 +357,7 @@ void SavePrefs (void)
 	CFStringRef			sref;
 	CFDataRef			data;
 
-	for (int i = 0; i < kPrefListSize; i++)
+	for (unsigned int i = 0; i < kPrefListSize; i++)
 	{
 		mref = CFStringCreateMutableCopy(kCFAllocatorDefault, 0, CFSTR("Preferences_"));
 		if (mref)
@@ -414,7 +390,7 @@ void LoadPrefs (void)
 	CFStringRef			sref;
 	CFDataRef			data;
 
-	for (int i = 0; i < kPrefListSize; i++)
+	for (unsigned int i = 0; i < kPrefListSize; i++)
 	{
 		mref = CFStringCreateMutableCopy(kCFAllocatorDefault, 0, CFSTR("Preferences_"));
 		if (mref)
@@ -450,16 +426,18 @@ void ConfigurePreferences (void)
 	{
 		WindowRef	tWindowRef;
 		SInt32		oldVolume;
-		uint32		oldPlaybackRate;
-		bool8		oldEnableSound, oldStereo, old16BitPlayback, oldDisableEcho, oldFullscreen;
+		uint32		oldPlaybackRate, oldInputRate, oldBufferSize;
+		bool8		oldSynchronize, old16BitPlayback, oldStereo, oldReverseStereo, oldLagEnable;
 
-		oldEnableSound   = Settings.APUEnabled;
-		oldStereo        = Settings.Stereo;
+		oldSynchronize   = Settings.SoundSync;
 		old16BitPlayback = Settings.SixteenBitSound;
-		oldDisableEcho   = Settings.DisableSoundEcho;
+		oldStereo        = Settings.Stereo;
+		oldReverseStereo = Settings.ReverseStereo;
 		oldPlaybackRate  = Settings.SoundPlaybackRate;
+		oldInputRate     = Settings.SoundInputRate;
+		oldBufferSize    = macSoundBufferSize;
+		oldLagEnable     = macSoundLagEnable;
 		oldVolume        = macSoundVolume;
-		oldFullscreen    = fullscreen;
 
 		if (cartOpen)
 			DeinitGameWindow();
@@ -469,13 +447,14 @@ void ConfigurePreferences (void)
 		err = CreateWindowFromNib(nibRef, CFSTR("Preferences"), &tWindowRef);
 		if (err == noErr)
 		{
-			EventHandlerUPP		tUPP, pUPP;
-			EventHandlerRef		tRef, pRef;
+			EventHandlerUPP		tUPP, iUPP, pUPP;
+			EventHandlerRef		tRef, iRef, pRef;
 			EventTypeSpec		tEvents[] = { { kEventClassControl, kEventControlHit          } },
+								iEvents[] = { { kEventClassControl, kEventControlClick        } },
 								pEvents[] = { { kEventClassWindow,  kEventWindowClose         },
 											  { kEventClassCommand, kEventCommandProcess      },
 											  { kEventClassCommand, kEventCommandUpdateStatus } };
-			ControlActionUPP	actionUPP;
+			ControlActionUPP	arrowsUPP, sliderUPP;
 			HIViewRef			ctl, root;
 			HIViewID			cid;
 			MenuRef				menu;
@@ -491,10 +470,17 @@ void ConfigurePreferences (void)
 			tUPP = NewEventHandlerUPP(TabEventHandler);
 			err = InstallControlEventHandler(ctl, tUPP, GetEventTypeCount(tEvents), tEvents, 0, &tRef);
 
+			cid.signature = 'snd_';
+			cid.id = iNibSInputRateText;
+			HIViewFindByID(root, cid, &ctl);
+			iUPP = NewEventHandlerUPP(InputRateTextEventHandler);
+			err = InstallControlEventHandler(ctl, iUPP, GetEventTypeCount(iEvents), iEvents, 0, &iRef);
+
 			pUPP = NewEventHandlerUPP(PreferencesEventHandler);
 			err = InstallWindowEventHandler(tWindowRef, pUPP, GetEventTypeCount(pEvents), pEvents, (void *) tWindowRef, &pRef);
 
-			actionUPP = NewControlActionUPP(LittleArrowsActionProc);
+			sliderUPP = NewControlActionUPP(InputRateSliderActionProc);
+			arrowsUPP = NewControlActionUPP(LittleArrowsActionProc);
 
 			cid.signature = 'grap';
 
@@ -623,9 +609,9 @@ void ConfigurePreferences (void)
 
 			cid.signature = 'snd_';
 
-			cid.id = iNibSEnableSound;
+			cid.id = iNibSSynchronize;
 			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, Settings.APUEnabled);
+			SetControl32BitValue(ctl, Settings.SoundSync);
 
 			cid.id = iNibS16BitPlayback;
 			HIViewFindByID(root, cid, &ctl);
@@ -638,20 +624,8 @@ void ConfigurePreferences (void)
 			cid.id = iNibSReverseStereo;
 			HIViewFindByID(root, cid, &ctl);
 			SetControl32BitValue(ctl, Settings.ReverseStereo);
-			if (!Settings.APUEnabled || !Settings.Stereo)
+			if (!Settings.Stereo)
 				DeactivateControl(ctl);
-
-			cid.id = iNibSInterpolation;
-			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, Settings.InterpolatedSound);
-
-			cid.id = iNibSHeightReading;
-			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, Settings.SoundEnvelopeHeightReading);
-
-			cid.id = iNibSEcho;
-			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, !Settings.DisableSoundEcho);
 
 			cid.id = iNibSPlaybackRate;
 			HIViewFindByID(root, cid, &ctl);
@@ -706,22 +680,31 @@ void ConfigurePreferences (void)
 					break;
 			}
 
-			cid.id = iNibSPitch;
+			cid.id = iNibSInputRate;
 			HIViewFindByID(root, cid, &ctl);
-			sprintf(num, "%2.4f", macSoundPitch);
-			SetEditTextCStr(ctl, num, false);
+			SetControl32BitValue(ctl, Settings.SoundInputRate);
+			SetControlAction(ctl, sliderUPP);
+
+			cid.id = iNibSInputRateText;
+			HIViewFindByID(root, cid, &ctl);
+			sprintf(num, "%d", Settings.SoundInputRate);
+			SetStaticTextCStr(ctl, num, false);
+
+			cid.id = iNibSBufferSize;
+			HIViewFindByID(root, cid, &ctl);
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
+				CheckMenuItem(menu, i, false);
+			CheckMenuItem(menu, macSoundBufferSize / 20, true);
+			SetControl32BitValue(ctl, macSoundBufferSize / 20);
+
+			cid.id = iNibSAllowLag;
+			HIViewFindByID(root, cid, &ctl);
+			SetControl32BitValue(ctl, macSoundLagEnable);
 
 			cid.id = iNibSVolume;
 			HIViewFindByID(root, cid, &ctl);
 			SetControl32BitValue(ctl, macSoundVolume);
-
-			for (int i = 0; i < kGroupListSize1; i++)
-			{
-				cid.id = grouplist1[i];
-				HIViewFindByID(root, cid, &ctl);
-				if (!Settings.APUEnabled)
-					DeactivateControl(ctl);
-			}
 
 			cid.signature = 'othe';
 
@@ -766,7 +749,7 @@ void ConfigurePreferences (void)
 			cid.id = iNibMTurboSkipArrows;
 			HIViewFindByID(root, cid, &ctl);
 			SetControl32BitValue(ctl, macFastForwardRate);
-			SetControlAction(ctl, actionUPP);
+			SetControlAction(ctl, arrowsUPP);
 
 			cid.id = iNibMTurboSkipText;
 			HIViewFindByID(root, cid, &ctl);
@@ -781,9 +764,13 @@ void ConfigurePreferences (void)
 			CheckMenuItem(menu, macFrameSkip + 2, true);
 			SetControl32BitValue(ctl, macFrameSkip + 2);
 
-			cid.id = iNibAllowInvalidVRAMAccess;
+			cid.id = iNibMAllowInvalidVRAMAccess;
 			HIViewFindByID(root, cid, &ctl);
-			SetControl32BitValue(ctl, !Settings.BlockInvalidVRAMAccess);
+			SetControl32BitValue(ctl, !Settings.BlockInvalidVRAMAccessMaster);
+
+			cid.id = iNibMAllowSpecificGameHacks;
+			HIViewFindByID(root, cid, &ctl);
+			SetControl32BitValue(ctl, !Settings.DisableGameSpecificHacks);
 
 			cid.signature = 'osx_';
 
@@ -940,9 +927,9 @@ void ConfigurePreferences (void)
 
 			cid.signature = 'snd_';
 
-			cid.id = iNibSEnableSound;
+			cid.id = iNibSSynchronize;
 			HIViewFindByID(root, cid, &ctl);
-			Settings.APUEnabled = Settings.NextAPUEnabled = GetControl32BitValue(ctl) ? true : false;
+			Settings.SoundSync = GetControl32BitValue(ctl) ? true : false;
 
 			cid.id = iNibS16BitPlayback;
 			HIViewFindByID(root, cid, &ctl);
@@ -955,18 +942,6 @@ void ConfigurePreferences (void)
 			cid.id = iNibSReverseStereo;
 			HIViewFindByID(root, cid, &ctl);
 			Settings.ReverseStereo = GetControl32BitValue(ctl) ? true : false;
-
-			cid.id = iNibSInterpolation;
-			HIViewFindByID(root, cid, &ctl);
-			Settings.InterpolatedSound = GetControl32BitValue(ctl) ? true : false;
-
-			cid.id = iNibSHeightReading;
-			HIViewFindByID(root, cid, &ctl);
-			Settings.SoundEnvelopeHeightReading = GetControl32BitValue(ctl) ? true : false;
-
-			cid.id = iNibSEcho;
-			HIViewFindByID(root, cid, &ctl);
-			Settings.DisableSoundEcho = GetControl32BitValue(ctl) ? false : true;
 
 			cid.id = iNibSPlaybackRate;
 			HIViewFindByID(root, cid, &ctl);
@@ -1009,10 +984,17 @@ void ConfigurePreferences (void)
 					break;
 			}
 
-			cid.id = iNibSPitch;
+			cid.id = iNibSInputRate;
 			HIViewFindByID(root, cid, &ctl);
-			GetEditTextCStr(ctl, num);
-			macSoundPitch = (float) atof(num);
+			Settings.SoundInputRate = GetControl32BitValue(ctl);
+
+			cid.id = iNibSBufferSize;
+			HIViewFindByID(root, cid, &ctl);
+			macSoundBufferSize = GetControl32BitValue(ctl) * 20;
+
+			cid.id = iNibSAllowLag;
+			HIViewFindByID(root, cid, &ctl);
+			macSoundLagEnable = GetControl32BitValue(ctl);
 
 			cid.id = iNibSVolume;
 			HIViewFindByID(root, cid, &ctl);
@@ -1057,9 +1039,13 @@ void ConfigurePreferences (void)
 			HIViewFindByID(root, cid, &ctl);
 			macFrameSkip = GetControl32BitValue(ctl) - 2;
 
-			cid.id = iNibAllowInvalidVRAMAccess;
+			cid.id = iNibMAllowInvalidVRAMAccess;
 			HIViewFindByID(root, cid, &ctl);
-			Settings.BlockInvalidVRAMAccess = GetControl32BitValue(ctl) ? false : true;
+			Settings.BlockInvalidVRAMAccessMaster = GetControl32BitValue(ctl) ? false : true;
+
+			cid.id = iNibMAllowSpecificGameHacks;
+			HIViewFindByID(root, cid, &ctl);
+			Settings.DisableGameSpecificHacks = GetControl32BitValue(ctl) ? false : true;
 
 			cid.signature = 'osx_';
 
@@ -1099,13 +1085,17 @@ void ConfigurePreferences (void)
 			HIViewFindByID(root, cid, &ctl);
 			Settings.BSXBootup = GetControl32BitValue(ctl) ? true : false;
 
+			DisposeControlActionUPP(arrowsUPP);
+			DisposeControlActionUPP(sliderUPP);
+
 			err = RemoveEventHandler(pRef);
 			DisposeEventHandlerUPP(pUPP);
 
+			err = RemoveEventHandler(iRef);
+			DisposeEventHandlerUPP(iUPP);
+
 			err = RemoveEventHandler(tRef);
 			DisposeEventHandlerUPP(tUPP);
-
-			DisposeControlActionUPP(actionUPP);
 
 			CFRelease(tWindowRef);
 		}
@@ -1114,17 +1104,16 @@ void ConfigurePreferences (void)
 
 		S9xGraphicsInit();
 
-		SetSoundPitch();
-
-		if (((oldStereo        != Settings.Stereo           ) ||
-		     (old16BitPlayback != Settings.SixteenBitSound  ) ||
-		     (oldDisableEcho   != Settings.DisableSoundEcho ) ||
-		     (oldPlaybackRate  != Settings.SoundPlaybackRate) ||
+		if (((oldSynchronize   != Settings.SoundSync        ) ||
+			 (old16BitPlayback != Settings.SixteenBitSound  ) ||
+			 (oldStereo        != Settings.Stereo           ) ||
+			 (oldReverseStereo != Settings.ReverseStereo    ) ||
+			 (oldPlaybackRate  != Settings.SoundPlaybackRate) ||
+			 (oldInputRate     != Settings.SoundInputRate   ) ||
+			 (oldBufferSize    != macSoundBufferSize        ) ||
+			 (oldLagEnable     != macSoundLagEnable         ) ||
 			 (oldVolume        != macSoundVolume            )) && cartOpen)
 			SNES9X_InitSound();
-
-		if ((oldEnableSound != Settings.APUEnabled) && cartOpen)
-			AppearanceAlert(kAlertCautionAlert, kSoundWarning, kSoundHint);
 
 		if (!fullscreen && cartOpen)
 		{
@@ -1161,6 +1150,20 @@ static void SelectTabPane (HIViewRef tabControl, SInt16 index)
 	HIViewSetNeedsDisplay(tabControl, true);
 }
 
+static pascal void InputRateSliderActionProc (HIViewRef slider, HIViewPartCode partCode)
+{
+	HIViewRef	ctl;
+	HIViewID	cid;
+	char		num[10];
+
+	cid.signature = 'snd_';
+	cid.id = iNibSInputRateText;
+	HIViewFindByID(HIViewGetSuperview(slider), cid, &ctl);
+
+	sprintf(num, "%ld", GetControl32BitValue(slider));
+	SetStaticTextCStr(ctl, num, true);
+}
+
 static pascal void LittleArrowsActionProc (HIViewRef arrows, HIViewPartCode partCode)
 {
 	HIViewRef	ctl;
@@ -1176,6 +1179,39 @@ static pascal void LittleArrowsActionProc (HIViewRef arrows, HIViewPartCode part
 	HIViewFindByID(HIViewGetSuperview(arrows), cid, &ctl);
 	sprintf(num, "%ld", GetControl32BitValue(arrows));
 	SetStaticTextCStr(ctl, num, true);
+}
+
+static pascal OSStatus InputRateTextEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
+{
+	OSStatus	err, result = eventNotHandledErr;
+	HIViewRef	ctl, slider;
+	HIViewID	cid;
+	SInt32		value;
+	char		num[10];
+
+	err = GetEventParameter(inEvent, kEventParamDirectObject, typeControlRef, NULL, sizeof(ControlRef), NULL, &ctl);
+	if (err == noErr)
+	{
+		cid.signature = 'snd_';
+		cid.id = iNibSInputRate;
+		HIViewFindByID(HIViewGetSuperview(ctl), cid, &slider);
+		value = GetControl32BitValue(slider);
+
+		value /= 50;
+		value *= 50;
+		if (value > 33000)
+			value = 33000;
+		if (value < 31000)
+			value = 31000;
+
+		SetControl32BitValue(slider, value);
+		sprintf(num, "%ld", value);
+		SetEditTextCStr(ctl, num, true);
+
+		result = noErr;
+	}
+
+	return (result);
 }
 
 static pascal OSStatus TabEventHandler (EventHandlerCallRef inHandlerRef, EventRef inEvent, void *inUserData)
@@ -1237,7 +1273,7 @@ static pascal OSStatus PreferencesEventHandler (EventHandlerCallRef inHandlerRef
 				case kEventCommandProcess:
 					HIViewRef	ctl, root;
 					HIViewID	cid;
-					SInt32		value, value2;
+					SInt32		value;
 
 					root = HIViewGetRoot(tWindowRef);
 
@@ -1306,36 +1342,6 @@ static pascal OSStatus PreferencesEventHandler (EventHandlerCallRef inHandlerRef
 								cid.id = iNibSReverseStereo;
 								HIViewFindByID(root, cid, &ctl);
 								if (value)
-									ActivateControl(ctl);
-								else
-									DeactivateControl(ctl);
-
-								result = noErr;
-								break;
-
-							case 'S__1':
-								cid.signature = 'snd_';
-								cid.id = iNibSEnableSound;
-								HIViewFindByID(root, cid, &ctl);
-								value = GetControl32BitValue(ctl);
-
-								for (int i = 0; i < kGroupListSize1; i++)
-								{
-									cid.id = grouplist1[i];
-									HIViewFindByID(root, cid, &ctl);
-									if (value)
-										ActivateControl(ctl);
-									else
-										DeactivateControl(ctl);
-								}
-
-								cid.id = iNibSStereo;
-								HIViewFindByID(root, cid, &ctl);
-								value2 = GetControl32BitValue(ctl);
-
-								cid.id = iNibSReverseStereo;
-								HIViewFindByID(root, cid, &ctl);
-								if (value && value2)
 									ActivateControl(ctl);
 								else
 									DeactivateControl(ctl);

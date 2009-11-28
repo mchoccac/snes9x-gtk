@@ -5,12 +5,12 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_EXPOSURE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="window_state_event" handler="main_window_state_event"/>
+    <signal name="delete_event" handler="main_window_delete_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
     <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
+    <signal name="window_state_event" handler="main_window_state_event"/>
     <signal name="key_release_event" handler="main_window_key_release_event"/>
-    <signal name="delete_event" handler="main_window_delete_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -2046,6 +2046,7 @@ RGB</property>
                                           <widget class="GtkHScale" id="sound_input_rate">
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
+                                            <property name="tooltip" translatable="yes">Adjust to produce more or less data. Decrease the rate if experiencing crackling. Increase the rate if experiencing frame-rate stuttering. Best used with the "Synchronize with sound" option.</property>
                                             <property name="adjustment">32000 31500 32500 1 10 0</property>
                                             <property name="restrict_to_fill_level">False</property>
                                             <property name="digits">0</property>

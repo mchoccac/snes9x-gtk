@@ -278,7 +278,7 @@ extern bool8			fullscreen, autoRes,
 extern long				drawingMethod;
 extern int				videoMode;
 extern SInt32			macSoundVolume;
-extern uint32			macSoundBufferSize;
+extern uint32			macSoundBuffer_ms, macSoundInterval_ms;
 extern bool8			macSoundLagEnable;
 extern uint16			aueffect;
 extern uint8			saveInROMFolder;

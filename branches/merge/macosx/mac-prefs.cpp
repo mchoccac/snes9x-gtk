@@ -217,6 +217,7 @@ enum
 	iNibSInputRate,
 	iNibSInputRateText,
 	iNibSAllowLag,
+	iNibSInterval,
 
 	iNibOSaveFolder = 401,
 	iNibOAutoSaveInterval,
@@ -288,7 +289,8 @@ static PrefList	prefList[] =
 	{ 'rbst', &Settings.ReverseStereo,						sizeof(bool8      ) },
 	{ 'srat', &Settings.SoundPlaybackRate,					sizeof(uint32     ) },
 	{ 'InRt', &Settings.SoundInputRate,						sizeof(uint32     ) },
-	{ 'SBuf', &macSoundBufferSize,					        sizeof(uint32     ) },
+	{ 'MxIv', &macSoundInterval_ms,					        sizeof(uint32     ) },
+	{ 'SBuf', &macSoundBuffer_ms,					        sizeof(uint32     ) },
 	{ 'SLag', &macSoundLagEnable,					        sizeof(bool8      ) },
 	{ 'Volm', &macSoundVolume,								sizeof(SInt32     ) },
 	{ 'AUef', &aueffect,									sizeof(uint16     ) },
@@ -426,7 +428,7 @@ void ConfigurePreferences (void)
 	{
 		WindowRef	tWindowRef;
 		SInt32		oldVolume;
-		uint32		oldPlaybackRate, oldInputRate, oldBufferSize;
+		uint32		oldPlaybackRate, oldInputRate, oldInterval, oldBufferSize;
 		bool8		oldSynchronize, old16BitPlayback, oldStereo, oldReverseStereo, oldLagEnable;
 
 		oldSynchronize   = Settings.SoundSync;
@@ -435,7 +437,8 @@ void ConfigurePreferences (void)
 		oldReverseStereo = Settings.ReverseStereo;
 		oldPlaybackRate  = Settings.SoundPlaybackRate;
 		oldInputRate     = Settings.SoundInputRate;
-		oldBufferSize    = macSoundBufferSize;
+		oldInterval      = macSoundInterval_ms;
+		oldBufferSize    = macSoundBuffer_ms;
 		oldLagEnable     = macSoundLagEnable;
 		oldVolume        = macSoundVolume;
 
@@ -690,13 +693,47 @@ void ConfigurePreferences (void)
 			sprintf(num, "%d", Settings.SoundInputRate);
 			SetStaticTextCStr(ctl, num, false);
 
+			cid.id = iNibSInterval;
+			HIViewFindByID(root, cid, &ctl);
+			menu = HIMenuViewGetMenu(ctl);
+			for (int i = 1; i <= CountMenuItems(menu); i++)
+				CheckMenuItem(menu, i, false);
+			switch (macSoundInterval_ms)
+			{
+				case 8:
+					CheckMenuItem(menu, 1, true);
+					SetControl32BitValue(ctl, 1);
+					break;
+
+				case 16:
+					CheckMenuItem(menu, 2, true);
+					SetControl32BitValue(ctl, 2);
+					break;
+
+				case 32:
+					CheckMenuItem(menu, 3, true);
+					SetControl32BitValue(ctl, 3);
+					break;
+
+				case 64:
+					CheckMenuItem(menu, 4, true);
+					SetControl32BitValue(ctl, 4);
+					break;
+
+				case 0:
+				default:
+					CheckMenuItem(menu, 6, true);
+					SetControl32BitValue(ctl, 6);
+					break;
+			}
+
 			cid.id = iNibSBufferSize;
 			HIViewFindByID(root, cid, &ctl);
 			menu = HIMenuViewGetMenu(ctl);
 			for (int i = 1; i <= CountMenuItems(menu); i++)
 				CheckMenuItem(menu, i, false);
-			CheckMenuItem(menu, macSoundBufferSize / 20, true);
-			SetControl32BitValue(ctl, macSoundBufferSize / 20);
+			CheckMenuItem(menu, macSoundBuffer_ms / 20, true);
+			SetControl32BitValue(ctl, macSoundBuffer_ms / 20);
 
 			cid.id = iNibSAllowLag;
 			HIViewFindByID(root, cid, &ctl);
@@ -988,9 +1025,35 @@ void ConfigurePreferences (void)
 			HIViewFindByID(root, cid, &ctl);
 			Settings.SoundInputRate = GetControl32BitValue(ctl);
 
+			cid.id = iNibSInterval;
+			HIViewFindByID(root, cid, &ctl);
+			switch (GetControl32BitValue(ctl))
+			{
+				case 1:
+					macSoundInterval_ms = 8;
+					break;
+
+				case 2:
+					macSoundInterval_ms = 16;
+					break;
+
+				case 3:
+					macSoundInterval_ms = 32;
+					break;
+
+				case 4:
+					macSoundInterval_ms = 64;
+					break;
+
+				case 6:
+				default:
+					macSoundInterval_ms = 0;
+					break;
+			}
+
 			cid.id = iNibSBufferSize;
 			HIViewFindByID(root, cid, &ctl);
-			macSoundBufferSize = GetControl32BitValue(ctl) * 20;
+			macSoundBuffer_ms = GetControl32BitValue(ctl) * 20;
 
 			cid.id = iNibSAllowLag;
 			HIViewFindByID(root, cid, &ctl);
@@ -1110,7 +1173,8 @@ void ConfigurePreferences (void)
 			 (oldReverseStereo != Settings.ReverseStereo    ) ||
 			 (oldPlaybackRate  != Settings.SoundPlaybackRate) ||
 			 (oldInputRate     != Settings.SoundInputRate   ) ||
-			 (oldBufferSize    != macSoundBufferSize        ) ||
+			 (oldInterval      != macSoundInterval_ms       ) ||
+			 (oldBufferSize    != macSoundBuffer_ms         ) ||
 			 (oldLagEnable     != macSoundLagEnable         ) ||
 			 (oldVolume        != macSoundVolume            )) && cartOpen)
 			SNES9X_InitSound();

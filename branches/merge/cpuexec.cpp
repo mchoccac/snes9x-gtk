@@ -212,8 +212,6 @@ void S9xMainLoop (void)
 			}
 		#endif
 
-			CHECK_SOUND();
-
 			if (CPU.Flags & IRQ_FLAG)
 			{
 				if (CPU.IRQPending)

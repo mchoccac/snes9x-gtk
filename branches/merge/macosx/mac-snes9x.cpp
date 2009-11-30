@@ -614,7 +614,5 @@ void SNES9X_Quit (void)
 
 void SNES9X_InitSound (void)
 {
-	int	sample_count = macSoundBufferSize * Settings.SoundPlaybackRate / 1000;
-
-	S9xInitSound(sample_count, macSoundLagEnable ? sample_count / 2 : 0);
+	S9xInitSound(macSoundBuffer_ms, macSoundLagEnable ? macSoundBuffer_ms / 2 : 0);
 }

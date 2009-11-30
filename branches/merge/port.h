@@ -177,7 +177,6 @@
 #include <windows.h>
 #endif
 
-#define CHECK_SOUND()
 #define GFX_MULTI_FORMAT
 
 #ifdef __WIN32__

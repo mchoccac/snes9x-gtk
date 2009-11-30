@@ -278,7 +278,8 @@ long				drawingMethod       = kDrawingOpenGL;
 int					videoMode           = VIDEOMODE_SMOOTH;
 
 SInt32				macSoundVolume      = 80;	// %
-uint32				macSoundBufferSize  = 100;	// ms
+uint32				macSoundBuffer_ms   = 100;	// ms
+uint32				macSoundInterval_ms = 16;   // ms
 bool8				macSoundLagEnable   = false;
 uint16				aueffect            = 0;
 

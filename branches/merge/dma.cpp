@@ -565,7 +565,6 @@ bool8 S9xDoDMA (uint8 Channel)
 						Work = S9xGetByte((d->ABank << 16) + p);
 						S9xSetPPU(Work, 0x2100 + d->BAddress);
 						UPDATE_COUNTERS;
-						CHECK_SOUND();
 					} while (--count > 0);
 				}
 				else
@@ -586,7 +585,6 @@ bool8 S9xDoDMA (uint8 Channel)
 							Work = S9xGetByte((d->ABank << 16) + p);
 							S9xSetPPU(Work, 0x2101 + d->BAddress);
 							UPDATE_COUNTERS;
-							CHECK_SOUND();
 							count--;
 						}
 					}
@@ -642,7 +640,6 @@ bool8 S9xDoDMA (uint8 Channel)
 							Work = S9xGetByte((d->ABank << 16) + p);
 							S9xSetPPU(Work, 0x2101 + d->BAddress);
 							UPDATE_COUNTERS;
-							CHECK_SOUND();
 							if (--count <= 0)
 							{
 								b = 0;
@@ -692,7 +689,6 @@ bool8 S9xDoDMA (uint8 Channel)
 							Work = S9xGetByte((d->ABank << 16) + p);
 							S9xSetPPU(Work, 0x2103 + d->BAddress);
 							UPDATE_COUNTERS;
-							CHECK_SOUND();
 							if (--count <= 0)
 							{
 								b = 0;
@@ -722,7 +718,6 @@ bool8 S9xDoDMA (uint8 Channel)
 								Work = *(base + p);
 								REGISTER_2104(Work);
 								UPDATE_COUNTERS;
-								CHECK_SOUND();
 							} while (--count > 0);
 
 							break;
@@ -738,7 +733,6 @@ bool8 S9xDoDMA (uint8 Channel)
 									Work = *(base + p);
 									REGISTER_2118_linear(Work);
 									UPDATE_COUNTERS;
-									CHECK_SOUND();
 								} while (--count > 0);
 							}
 							else
@@ -748,7 +742,6 @@ bool8 S9xDoDMA (uint8 Channel)
 									Work = *(base + p);
 									REGISTER_2118_tile(Work);
 									UPDATE_COUNTERS;
-									CHECK_SOUND();
 								} while (--count > 0);
 							}
 
@@ -765,7 +758,6 @@ bool8 S9xDoDMA (uint8 Channel)
 									Work = *(base + p);
 									REGISTER_2119_linear(Work);
 									UPDATE_COUNTERS;
-									CHECK_SOUND();
 								} while (--count > 0);
 							}
 							else
@@ -775,7 +767,6 @@ bool8 S9xDoDMA (uint8 Channel)
 									Work = *(base + p);
 									REGISTER_2119_tile(Work);
 									UPDATE_COUNTERS;
-									CHECK_SOUND();
 								} while (--count > 0);
 							}
 
@@ -787,7 +778,6 @@ bool8 S9xDoDMA (uint8 Channel)
 								Work = *(base + p);
 								REGISTER_2122(Work);
 								UPDATE_COUNTERS;
-								CHECK_SOUND();
 							} while (--count > 0);
 
 							break;
@@ -800,7 +790,6 @@ bool8 S9xDoDMA (uint8 Channel)
 									Work = *(base + p);
 									REGISTER_2180(Work);
 									UPDATE_COUNTERS;
-									CHECK_SOUND();
 								} while (--count > 0);
 							}
 							else
@@ -808,7 +797,6 @@ bool8 S9xDoDMA (uint8 Channel)
 								do
 								{
 									UPDATE_COUNTERS;
-									CHECK_SOUND();
 								} while (--count > 0);
 							}
 
@@ -820,7 +808,6 @@ bool8 S9xDoDMA (uint8 Channel)
 								Work = *(base + p);
 								S9xSetPPU(Work, 0x2100 + d->BAddress);
 								UPDATE_COUNTERS;
-								CHECK_SOUND();
 							} while (--count > 0);
 
 							break;
@@ -851,7 +838,6 @@ bool8 S9xDoDMA (uint8 Channel)
 									Work = *(base + p);
 									REGISTER_2119_linear(Work);
 									UPDATE_COUNTERS;
-									CHECK_SOUND();
 									count--;
 								}
 							}
@@ -882,7 +868,6 @@ bool8 S9xDoDMA (uint8 Channel)
 									Work = *(base + p);
 									REGISTER_2119_tile(Work);
 									UPDATE_COUNTERS;
-									CHECK_SOUND();
 									count--;
 								}
 							}
@@ -915,7 +900,6 @@ bool8 S9xDoDMA (uint8 Channel)
 								Work = *(base + p);
 								S9xSetPPU(Work, 0x2101 + d->BAddress);
 								UPDATE_COUNTERS;
-								CHECK_SOUND();
 								count--;
 							}
 						}
@@ -972,7 +956,6 @@ bool8 S9xDoDMA (uint8 Channel)
 							Work = *(base + p);
 							S9xSetPPU(Work, 0x2101 + d->BAddress);
 							UPDATE_COUNTERS;
-							CHECK_SOUND();
 							if (--count <= 0)
 							{
 								b = 0;
@@ -1022,7 +1005,6 @@ bool8 S9xDoDMA (uint8 Channel)
 							Work = *(base + p);
 							S9xSetPPU(Work, 0x2103 + d->BAddress);
 							UPDATE_COUNTERS;
-							CHECK_SOUND();
 							if (--count <= 0)
 							{
 								b = 0;
@@ -1177,8 +1159,6 @@ bool8 S9xDoDMA (uint8 Channel)
 
 						break;
 				}
-
-				CHECK_SOUND();
 			} while (count);
 		}
 		else
@@ -1280,8 +1260,6 @@ bool8 S9xDoDMA (uint8 Channel)
 
 						break;
 				}
-
-				CHECK_SOUND();
 			} while (count);
 		}
 	}

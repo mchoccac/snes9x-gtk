@@ -1375,7 +1375,7 @@ static void InitTimer (void)
 #endif
 }
 
-bool8 S9xOpenSoundDevice (int buffer_size)
+bool8 S9xOpenSoundDevice (void)
 {
 #ifndef NOSOUND
 	int	J, K;
@@ -1591,7 +1591,7 @@ int main (int argc, char **argv)
 		exit(1);
 	}
 
-	S9xInitSound(unixSettings.SoundBufferSize * Settings.SoundPlaybackRate / 1000, 0);
+	S9xInitSound(unixSettings.SoundBufferSize, 0);
 	S9xSetSoundMute(TRUE);
 
 	S9xReportControllers();

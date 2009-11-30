@@ -200,6 +200,7 @@ static EventHandlerRef		carbonViewEventRef = NULL;
 static WindowRef			effectWRef;
 static HISize				effectWSize;
 static pthread_mutex_t		mutex;
+static UInt32				outStoredFrames, cnvStoredFrames, revStoredFrames, eqlStoredFrames, devStoredFrames;
 
 static void ConnectAudioUnits (void);
 static void DisconnectAudioUnits (void);
@@ -207,6 +208,8 @@ static void SaveEffectPresets (void);
 static void LoadEffectPresets (void);
 static void SetAudioUnitSoundFormat (void);
 static void SetAudioUnitVolume (void);
+static void StoreBufferFrameSize (void);
+static void ChangeBufferFrameSize (void);
 static void ReplaceAudioUnitCarbonView (void);
 static void ResizeSoundEffectsDialog (HIViewRef);
 static void MacFinalizeSamplesCallBack (void *);
@@ -279,6 +282,8 @@ void InitMacSound (void)
 
 	SetAudioUnitSoundFormat();
 	SetAudioUnitVolume();
+	StoreBufferFrameSize();
+	ChangeBufferFrameSize();
 
 	err = AUGraphInitialize(agraph);
 
@@ -331,6 +336,95 @@ static void SetAudioUnitVolume (void)
 	OSStatus	err;
 
 	err = AudioUnitSetParameter(outAU, kAudioUnitParameterUnit_LinearGain, kAudioUnitScope_Output, 0, (float) macSoundVolume / 100.0f, 0);
+}
+
+static void StoreBufferFrameSize (void)
+{
+	OSStatus					err;
+	UInt32						size;
+	AudioDeviceID				device;
+#ifndef MAC_PANTHER_SUPPORT
+	AudioObjectPropertyAddress	address;
+
+	address.mSelector = kAudioDevicePropertyBufferFrameSize;
+	address.mScope    = kAudioObjectPropertyScopeGlobal;
+	address.mElement  = kAudioObjectPropertyElementMaster;
+#endif
+
+	size = sizeof(AudioDeviceID);
+	err = AudioUnitGetProperty(outAU, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &device, &size);
+
+	size = sizeof(UInt32);
+#ifndef MAC_PANTHER_SUPPORT
+	err = AudioObjectGetPropertyData(device, &address, 0, NULL, &size, &devStoredFrames);
+#else
+	err = AudioDeviceGetProperty(device, 0, false, kAudioDevicePropertyBufferFrameSize, &size, &devStoredFrames);
+#endif
+
+	size = sizeof(UInt32);
+	err = AudioUnitGetProperty(outAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &outStoredFrames, &size);
+	size = sizeof(UInt32);
+	err = AudioUnitGetProperty(eqlAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &eqlStoredFrames, &size);
+	size = sizeof(UInt32);
+	err = AudioUnitGetProperty(revAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &revStoredFrames, &size);
+	size = sizeof(UInt32);
+	err = AudioUnitGetProperty(cnvAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &cnvStoredFrames, &size);
+}
+
+static void ChangeBufferFrameSize (void)
+{
+	OSStatus					err;
+	UInt32						numframes, size;
+	AudioDeviceID				device;
+#ifndef MAC_PANTHER_SUPPORT
+	AudioObjectPropertyAddress	address;
+
+	address.mSelector = kAudioDevicePropertyBufferFrameSize;
+	address.mScope    = kAudioObjectPropertyScopeGlobal;
+	address.mElement  = kAudioObjectPropertyElementMaster;
+#else
+	AudioTimeStamp				ts;
+
+	ts.mFlags = 0;
+#endif
+
+	size = sizeof(AudioDeviceID);
+	err = AudioUnitGetProperty(outAU, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &device, &size);
+
+	size = sizeof(UInt32);
+
+	if (macSoundInterval_ms == 0)
+	{
+	#ifndef MAC_PANTHER_SUPPORT
+		err = AudioObjectSetPropertyData(device, &address, 0, NULL, size, &devStoredFrames);
+	#else
+		err = AudioDeviceSetProperty(device, &ts, 0, false, kAudioDevicePropertyBufferFrameSize, size, &devStoredFrames);
+	#endif
+
+		err = AudioUnitSetProperty(outAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &outStoredFrames, size);
+		err = AudioUnitSetProperty(eqlAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &eqlStoredFrames, size);
+		err = AudioUnitSetProperty(revAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &revStoredFrames, size);
+		err = AudioUnitSetProperty(cnvAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &cnvStoredFrames, size);
+
+		printf("Interval: system, Frames: %d/%d/%d/%d/%d\n", (int) devStoredFrames, (int) outStoredFrames, (int) eqlStoredFrames, (int) revStoredFrames, (int) cnvStoredFrames);
+	}
+	else
+	{
+		numframes = macSoundInterval_ms * Settings.SoundPlaybackRate / 1000;
+
+	#ifndef MAC_PANTHER_SUPPORT
+		err = AudioObjectSetPropertyData(device, &address, 0, NULL, size, &numframes);
+	#else
+		err = AudioDeviceSetProperty(device, &ts, 0, false, kAudioDevicePropertyBufferFrameSize, size, &numframes);
+	#endif
+
+		err = AudioUnitSetProperty(outAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &numframes, size);
+		err = AudioUnitSetProperty(eqlAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &numframes, size);
+		err = AudioUnitSetProperty(revAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &numframes, size);
+		err = AudioUnitSetProperty(cnvAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &numframes, size);
+
+		printf("Interval: %dms, Frames: %d\n", (int) macSoundInterval_ms, (int) numframes);
+	}
 }
 
 static void ConnectAudioUnits (void)
@@ -518,7 +612,7 @@ void MacStopSound (void)
 	}
 }
 
-bool8 S9xOpenSoundDevice (int buffer_size)
+bool8 S9xOpenSoundDevice (void)
 {
 	OSStatus	err;
 
@@ -526,6 +620,7 @@ bool8 S9xOpenSoundDevice (int buffer_size)
 
 	SetAudioUnitSoundFormat();
 	SetAudioUnitVolume();
+	ChangeBufferFrameSize();
 
 	err = AUGraphInitialize(agraph);
 
@@ -946,6 +1041,7 @@ static pascal OSStatus SoundEffectsEventHandler (EventHandlerCallRef inHandlerRe
 								aueffect ^= cureffect;
 
 								SetAudioUnitSoundFormat();
+								ChangeBufferFrameSize();
 
 								err = AUGraphInitialize(agraph);
 								ConnectAudioUnits();

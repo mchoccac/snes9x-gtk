@@ -959,8 +959,6 @@ static void SetupOBJ (void)
 
 static void DrawOBJS (int D)
 {
-	CHECK_SOUND();
-
 	void (*DrawTile) (uint32, uint32, uint32, uint32) = NULL;
 	void (*DrawClippedTile) (uint32, uint32, uint32, uint32, uint32, uint32) = NULL;
 
@@ -1056,8 +1054,6 @@ static void DrawOBJS (int D)
 
 static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 {
-	CHECK_SOUND();
-
 	BG.TileAddress = PPU.BG[bg].NameBase << 1;
 
 	uint32	Tile;
@@ -1274,8 +1270,6 @@ static void DrawBackground (int bg, uint8 Zh, uint8 Zl)
 
 static void DrawBackgroundMosaic (int bg, uint8 Zh, uint8 Zl)
 {
-	CHECK_SOUND();
-
 	BG.TileAddress = PPU.BG[bg].NameBase << 1;
 
 	uint32	Tile;
@@ -1441,8 +1435,6 @@ static void DrawBackgroundMosaic (int bg, uint8 Zh, uint8 Zl)
 
 static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 {
-	CHECK_SOUND();
-
 	BG.TileAddress = PPU.BG[bg].NameBase << 1;
 
 	uint32	Tile;
@@ -1673,8 +1665,6 @@ static void DrawBackgroundOffset (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 
 static void DrawBackgroundOffsetMosaic (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 {
-	CHECK_SOUND();
-
 	BG.TileAddress = PPU.BG[bg].NameBase << 1;
 
 	uint32	Tile;
@@ -1905,8 +1895,6 @@ static void DrawBackgroundOffsetMosaic (int bg, uint8 Zh, uint8 Zl, int VOffOff)
 
 static inline void DrawBackgroundMode7 (int bg, void (*DrawMath) (uint32, uint32, int), void (*DrawNomath) (uint32, uint32, int), int D)
 {
-	CHECK_SOUND();
-
 	for (int clip = 0; clip < GFX.Clip[bg].Count; clip++)
 	{
 		GFX.ClipColors = !(GFX.Clip[bg].DrawMode[clip] & 1);
@@ -1920,8 +1908,6 @@ static inline void DrawBackgroundMode7 (int bg, void (*DrawMath) (uint32, uint32
 
 static inline void DrawBackdrop (void)
 {
-	CHECK_SOUND();
-
 	uint32	Offset = GFX.StartY * GFX.PPL;
 
 	for (int clip = 0; clip < GFX.Clip[5].Count; clip++)

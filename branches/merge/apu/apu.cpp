@@ -169,10 +169,10 @@
 #define APU_DEFAULT_INPUT_RATE		32000
 #define APU_MINIMUM_SAMPLE_COUNT	512
 #define APU_MINIMUM_SAMPLE_BLOCK	128
-#define APU_NUMERATOR_NTSC		5632
+#define APU_NUMERATOR_NTSC			5632
 #define APU_DENOMINATOR_NTSC		118125
-#define APU_NUMERATOR_PAL		102400
-#define APU_DENOMINATOR_PAL		2128137
+#define APU_NUMERATOR_PAL			102400
+#define APU_DENOMINATOR_PAL			2128137
 
 SNES_SPC	*spc_core = NULL;
 
@@ -191,14 +191,14 @@ static uint8 APUROM[64] =
 namespace spc
 {
 	static apu_callback	sa_callback     = NULL;
-        static void		*extra_data     = NULL;
+	static void			*extra_data     = NULL;
 
 	static bool8		sound_in_sync   = TRUE;
 	static bool8		sound_enabled   = FALSE;
 
-        static int              buffer_size;
-        static int		lag_master      = 0;
-        static int		lag             = 0;
+	static int			buffer_size;
+	static int			lag_master      = 0;
+	static int			lag             = 0;
 
 	static uint8		*landing_buffer = NULL;
 	static uint8		*shrink_buffer  = NULL;
@@ -395,10 +395,13 @@ static void UpdatePlaybackRate (void)
 	spc::resampler->time_ratio(time_ratio);
 }
 
-bool8 S9xInitSound (int sample_count, int lag_sample_count)
+bool8 S9xInitSound (int buffer_ms, int lag_ms)
 {
-	// sample_count    : buffer size given in samples in one channel
-	// lag_sample_count: allowable time-lag given in samples in one channel
+	// buffer_ms : buffer size given in millisecond
+	// lag_ms    : allowable time-lag given in millisecond
+
+	int	sample_count     = buffer_ms * 32000 / 1000;
+	int	lag_sample_count = lag_ms    * 32000 / 1000;
 
 	spc::lag_master = lag_sample_count;
 	if (Settings.Stereo)
@@ -413,6 +416,8 @@ bool8 S9xInitSound (int sample_count, int lag_sample_count)
 		spc::buffer_size <<= 1;
 	if (Settings.SixteenBitSound)
 		spc::buffer_size <<= 1;
+
+	printf("Sound buffer size: %d (%d samples)\n", spc::buffer_size, sample_count);
 
 	if (spc::landing_buffer)
 		delete[] spc::landing_buffer;
@@ -438,7 +443,7 @@ bool8 S9xInitSound (int sample_count, int lag_sample_count)
 
 	UpdatePlaybackRate();
 
-	spc::sound_enabled = S9xOpenSoundDevice(spc::buffer_size);
+	spc::sound_enabled = S9xOpenSoundDevice();
 
 	return (spc::sound_enabled);
 }

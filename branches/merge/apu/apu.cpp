@@ -328,7 +328,7 @@ bool8 S9xMixSamples (uint8 *buffer, int sample_count)
 
 int S9xGetSampleCount (void)
 {
-	return (spc::resampler->avail());
+        return (spc::resampler->avail() >> (Settings.Stereo ? 0 : 1));
 }
 
 void S9xFinalizeSamples (void)

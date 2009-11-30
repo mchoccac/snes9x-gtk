@@ -182,7 +182,7 @@ S9xOSSSoundDriver::samples_available (void)
     ioctl (filedes, SNDCTL_DSP_GETOSPACE, &info);
 
     samples_to_write = MIN (info.bytes >> (Settings.SixteenBitSound ? 1 : 0),
-                            samples_to_write >> (Settings.Stereo ? 0 : 1));
+                            samples_to_write);
 
     if (samples_to_write < 0)
         return;

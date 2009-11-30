@@ -136,7 +136,7 @@ S9xPortSoundInit (void)
 
         Settings.SoundPlaybackRate = playback_rates[gui_config->sound_playback_rate];
 
-        S9xInitSound (gui_config->sound_buffer_size * 32000 / 1000, 0);
+        S9xInitSound (gui_config->sound_buffer_size, 0);
 
         S9xSetSoundMute (FALSE);
     }
@@ -207,12 +207,6 @@ S9xOpenSoundDevice (void)
         gui_config->sound_buffer_size = 256;
 
     return driver->open_device ();
-}
-
-bool8
-S9xOpenSoundDevice (int buffer_size)
-{
-    return S9xOpenSoundDevice ();    
 }
 
 /* This really shouldn't be in the port layer */

@@ -203,7 +203,7 @@ void SNES_SPC::soft_reset()
 
 void SNES_SPC::reset()
 {
-	memset( RAM, 0xFF, 0x10000 );
+        memset( RAM, 0x00, 0x10000 );
 	ram_loaded();
 	reset_common( 0x0F );
 	dsp.reset();

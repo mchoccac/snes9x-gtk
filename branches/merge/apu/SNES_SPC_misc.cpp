@@ -125,7 +125,7 @@ void SNES_SPC::timers_loaded()
 void SNES_SPC::load_regs( uint8_t const in [reg_count] )
 {
 	memcpy( REGS, in, reg_count );
-	//memcpy( REGS_IN, REGS, reg_count );
+        memcpy( REGS_IN, REGS, reg_count );
 	
 	// These always read back as 0
 	REGS_IN [r_test    ] = 0;

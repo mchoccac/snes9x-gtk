@@ -435,7 +435,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_combo ("scale_method_combo",        config->scale_method);
     set_entry_value ("save_sram_after_sec", Settings.AutoSaveDelay);
     set_check ("speedhacks_check",          Settings.ShutdownMaster);
-    set_check ("block_invalid_vram_access", Settings.BlockInvalidVRAMAccess);
+    set_check ("block_invalid_vram_access", Settings.BlockInvalidVRAMAccessMaster);
     set_check ("upanddown",                 Settings.UpAndDown);
     set_combo ("default_esc_behavior",      config->default_esc_behavior);
     set_check ("prevent_screensaver",       config->prevent_screensaver);
@@ -605,7 +605,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->pause_emulation_on_switch = get_check ("pause_emulation_on_switch");
     Settings.SkipFrames               = get_combo ("frameskip_combo");
     Settings.DisableHDMA              = !(get_check ("hdma_check"));
-    Settings.BlockInvalidVRAMAccess   = get_check ("block_invalid_vram_access");
+    Settings.BlockInvalidVRAMAccessMaster   = get_check ("block_invalid_vram_access");
     Settings.UpAndDown                = get_check ("upanddown");
     Settings.ShutdownMaster           = get_check ("speedhacks_check");
     config->sound_driver              = get_combo ("sound_driver");

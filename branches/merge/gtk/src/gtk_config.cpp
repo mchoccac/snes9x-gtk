@@ -186,6 +186,10 @@ Snes9xConfig::load_defaults (void)
 #endif
 
     /* Snes9X Variables */
+    Settings.MouseMaster = TRUE;
+    Settings.SuperScopeMaster = TRUE;
+    Settings.JustifierMaster = TRUE;
+    Settings.MultiPlayer5Master = TRUE;
     Settings.UpAndDown = FALSE;
     Settings.AutoSaveDelay = 0;
     Settings.SkipFrames = AUTO_FRAMERATE;
@@ -201,9 +205,11 @@ Snes9xConfig::load_defaults (void)
     Settings.DisableIRQ = FALSE;
     Settings.FrameTimeNTSC = 16667;
     Settings.FrameTimePAL = 20000;
+    Settings.SupportHiRes = true;
     Settings.FrameTime = Settings.FrameTimeNTSC;
-    Settings.BlockInvalidVRAMAccess = TRUE;
+    Settings.BlockInvalidVRAMAccessMaster = TRUE;
     Settings.SoundSync = 1;
+    Settings.HDMATimingHack = 100;
 
 #ifdef NETPLAY_SUPPORT
     Settings.NetPlay = FALSE;
@@ -348,7 +354,7 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "playback_rate", gui_config->sound_playback_rate);
     xml_out_int (xml, "speedhacks", Settings.ShutdownMaster);
     xml_out_int (xml, "hdma", !(Settings.DisableHDMA));
-    xml_out_int (xml, "block_invalid_vram_access", Settings.BlockInvalidVRAMAccess);
+    xml_out_int (xml, "block_invalid_vram_access", Settings.BlockInvalidVRAMAccessMaster);
     xml_out_int (xml, "upanddown", Settings.UpAndDown);
 
     xmlTextWriterEndElement (xml); /* preferences */
@@ -723,7 +729,7 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "block_invalid_vram_access"))
     {
-        Settings.BlockInvalidVRAMAccess = CLAMP (atoi (value), 0, 1);
+        Settings.BlockInvalidVRAMAccessMaster = CLAMP (atoi (value), 0, 1);
     }
     else if (!strcasecmp (name, "upanddown"))
     {

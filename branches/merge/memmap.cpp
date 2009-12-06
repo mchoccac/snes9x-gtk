@@ -1914,7 +1914,9 @@ bool8 CMemory::LoadSRTC (void)
 	if (!fp)
 		return (FALSE);
 
-	fread(RTCData.reg, 1, 20, fp);
+        if (fread(RTCData.reg, 1, 20, fp))
+        {
+        }
 	fclose(fp);
 
 	return (TRUE);
@@ -1928,7 +1930,9 @@ bool8 CMemory::SaveSRTC (void)
 	if (!fp)
 		return (FALSE);
 
-	fwrite(RTCData.reg, 1, 20, fp);
+        if (fwrite(RTCData.reg, 1, 20, fp))
+        {
+        }
 	fclose(fp);
 
 	return (TRUE);
@@ -2055,10 +2059,10 @@ bool8 CMemory::SaveSRAM (const char *filename)
 		file = fopen(name, "wb");
 		if (file)
 		{
-			fwrite((char *) Multi.sramB, size, 1, file);
+                        if (fwrite((char *) Multi.sramB, size, 1, file)) {}
 			fclose(file);
 		#ifdef __linux
-			chown(name, getuid(), getgid());
+                        if (chown(name, getuid(), getgid())) {}
 		#endif
 		}
 
@@ -2074,10 +2078,10 @@ bool8 CMemory::SaveSRAM (const char *filename)
 		file = fopen(sramName, "wb");
 		if (file)
 		{
-			fwrite((char *) SRAM, size, 1, file);
+                        if (fwrite((char *) SRAM, size, 1, file)) {}
 			fclose(file);
 		#ifdef __linux
-			chown(sramName, getuid(), getgid());
+                        if (chown(sramName, getuid(), getgid())) {}
 		#endif
 
 			if (Settings.SRTC || Settings.SPC7110RTC)

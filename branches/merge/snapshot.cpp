@@ -2255,7 +2255,7 @@ bool8 S9xSPCDump (const char *filename)
 	spc_core->init_header(buf);
 	spc_core->save_spc(buf);
 
-	fwrite(buf, SNES_SPC::spc_file_size, 1, fs);
+        if (fwrite(buf, SNES_SPC::spc_file_size, 1, fs)) {}
 
 	fclose(fs);
 

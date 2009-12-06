@@ -227,7 +227,9 @@ void S9xVideoLogger (void *pixels, int width, int height, int depth, int bytes_p
 		char	*data = (char *) pixels;
 
 		for (int i = 0; i < height; i++)
-			fwrite(data + i * bytes_per_line, depth, width, video);
+                {
+                        if (fwrite(data + i * bytes_per_line, depth, width, video)) {}
+                }
 		fflush(video);
 		fflush(audio);
 
@@ -243,5 +245,7 @@ void S9xVideoLogger (void *pixels, int width, int height, int depth, int bytes_p
 void S9xAudioLogger (void *samples, int length)
 {
 	if (audio)
-		fwrite(samples, 1, length, audio);
+        {
+                if (fwrite(samples, 1, length, audio)) {}
+        }
 }

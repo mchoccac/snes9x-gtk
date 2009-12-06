@@ -141,7 +141,7 @@ void SPC7110Decomp::mode0(bool init) {
 }
 
 void SPC7110Decomp::mode1(bool init) {
-  static int pixelorder[4], realorder[4];
+  static unsigned pixelorder[4], realorder[4];
   static uint8 in, val, span;
   static int out, inverts, lps, in_count;
 
@@ -244,7 +244,7 @@ void SPC7110Decomp::mode1(bool init) {
 }
 
 void SPC7110Decomp::mode2(bool init) {
-  static int pixelorder[16], realorder[16];
+  static unsigned pixelorder[16], realorder[16];
   static uint8 bitplanebuffer[16], buffer_index;
   static uint8 in, val, span;
   static int out0, out1, inverts, lps, in_count;

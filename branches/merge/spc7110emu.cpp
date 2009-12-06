@@ -363,7 +363,7 @@ void SPC7110::mmio_write(unsigned addr, uint8 data) {
 
       unsigned table   = (r4801 + (r4802 << 8) + (r4803 << 16));
       unsigned index   = (r4804 << 2);
-      unsigned length  = (r4809 + (r480a << 8));
+      //unsigned length  = (r4809 + (r480a << 8));
       unsigned addr    = datarom_addr(table + index);
       unsigned mode    = (memory_cartrom_read(addr + 0));
       unsigned offset  = (memory_cartrom_read(addr + 1) << 16)
@@ -632,6 +632,9 @@ void SPC7110::mmio_write(unsigned addr, uint8 data) {
 
           memory_cartrtc_write(rtc_index, data & 15);
           rtc_index = (rtc_index + 1) & 15;
+        } break;
+
+        case RTCS_Inactive: {
         } break;
       } //switch(rtc_state)
     } break;

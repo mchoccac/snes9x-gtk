@@ -78,7 +78,7 @@ S9xPulseSoundDriver::open_device (void)
                              1000;
     buffer_attr.maxlength = buffer_attr.tlength;
     buffer_attr.minreq    = buffer_attr.tlength / 4;
-    buffer_attr.prebuf    = buffer_attr.prebuf * 4;
+    buffer_attr.prebuf    = buffer_attr.minreq * 4;
 
 
     printf ("PulseAudio sound driver initializing...\n");

@@ -75,13 +75,19 @@ S9xOpenGLDisplayDriver::S9xOpenGLDisplayDriver (Snes9xWindow *window,
     {
         dlerror ();
 
-        get_proc_address =
-            (getProcAddressProc) dlsym (dl_handle, "glXGetProcAddress");
+#ifdef __GNUC__
+__extension__
+#endif
+        getProcAddressProc functor = reinterpret_cast<getProcAddressProc> (dlsym (dl_handle, "glXGetProcAddress"));
+        get_proc_address = functor;
 
         if (dlerror () != NULL)
         {
-            get_proc_address =
-                (getProcAddressProc) dlsym (dl_handle, "glXGetProcAddressARB");
+#ifdef __GNUC__
+__extension__
+#endif
+            getProcAddressProc functor = reinterpret_cast<getProcAddressProc> (dlsym (dl_handle, "glXGetProcAddressARB"));
+            get_proc_address = functor;
 
             if (dlerror () != NULL)
                 get_proc_address = get_null_address_proc;

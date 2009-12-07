@@ -1694,7 +1694,7 @@
 /* Begin PBXProject section */
 		20286C28FDCF999611CA2CEA /* Project object */ = {
 			isa = PBXProject;
-			buildConfigurationList = EA6A1100085808D200A1CF18 /* Build configuration list for PBXProject "snes9x+merge" */;
+			buildConfigurationList = EA6A1100085808D200A1CF18 /* Build configuration list for PBXProject "snes9x" */;
 			compatibilityVersion = "Xcode 2.4";
 			hasScannedForEncodings = 1;
 			mainGroup = 20286C29FDCF999611CA2CEA /* Snes9x CVS */;
@@ -2443,7 +2443,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		EA6A1100085808D200A1CF18 /* Build configuration list for PBXProject "snes9x+merge" */ = {
+		EA6A1100085808D200A1CF18 /* Build configuration list for PBXProject "snes9x" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EA6A1102085808D200A1CF18 /* Release */,

@@ -66,30 +66,3 @@ Pointer Input:
                              report that and you can use the second syntax.
 
   Mxx:B#                     Mouse buttons.
-
-Port-specific Commands:
-
-  OpenGLCube
-  FulscreenToggle
-  FulscreenOn
-  FulscreenOff
-
-=====================================================================
-Unix/SVGA
-=====================================================================
-
-Keyboard Input:
-
- Note that only one keyboard (K00) is currently supported. If you know how
- to support multiple keyboards (and can test it!), feel free to fix x11.cpp
- and delete this note.
-
- Keyboard modifiers are S=Shift, C=Control, A=Alt, M=Meta. Combine them in
- order, i.e. all 4 would be "SCAM".
-
-  Kxx:<keyname>              Key names are "K###" (000 to 127), or one of
-  Kxx:<mods>+<keyname>       the strings from unix/svga_keynames.h.
-
-Port-specific Commands:
-
-  none at this time

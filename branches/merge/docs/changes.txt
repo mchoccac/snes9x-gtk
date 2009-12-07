@@ -11,12 +11,6 @@ Snes9x 1.52
   incompatible with 1.51.                                   (zones)
 - Added savestate supports for DSP-2, DSP-4, ST-010
   and OBC1.                                                 (zones)
-- Fixed sound key-on/off.                                   (zones)
-- Fixed the noise generation code.                          (zones)
-- Fixed the echo buffer to refer ESA, only when the sound
-  settings is compatible with the real SNES.                (zones)
-- Fixed missing sample number changes afterwards loops.     (zones)
-- Removed incorrect BRR decoders.                           (zones)
 - Fixed invalid memory accesses in C4 and OBC1 codes.       (zones)
 - Fixed invalid memory accesses in BSX codes. My mistake.   (zones)
 - Fixed the read value of $213e, $4210 and $4211.           (zones)
@@ -364,7 +358,7 @@ Snes9x 1.41
 - DMA traces: add additional address info to reads too.     (anomie)
 - Killed the old Borland Joypad dialog                      (funkyass)
 - Fixed issues with Dezaemon and CT, maybe others           (anomie, MKendora)
-- Changed the internal snapshot key from ¥ to VK_F12        (funkyass)
+- Changed the internal snapshot key from \ to VK_F12        (funkyass)
   Fixes issues with non-US keyboard layouts.
 - Fixed OAM reset to not occur during forced blank.         (anomie)
 - Killed some dead OAM reset code that doesn't need saving. (anomie)
@@ -2067,7 +2061,7 @@ Snes9x 1.40
 - Fixed #define problem that was stopping DOS snapshot saving from working.
 0.72 released
 - Fixed the DOS filename handling - old Unix code was screwing up with ROM
-  filenames that contained backslashes (¥) - the ROM would load but S-RAM
+  filenames that contained backslashes (\) - the ROM would load but S-RAM
   loading and saving would fail and the default filename for snapshots
   wouldn't work.
 - This time really fixed Allegro library keyboard handling (DOS port); it

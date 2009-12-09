@@ -14,11 +14,11 @@ iconscalabledir = $(datadir)/icons/hicolor/scalable/apps
 iconscalable_DATA = snes9x.svg
 
 install-data-hook:
-	mv -f $(datadir)/icons/hicolor/16x16/apps/snes9x_16x16.png \
-	      $(datadir)/icons/hicolor/16x16/apps/snes9x.png
-	mv -f $(datadir)/icons/hicolor/24x24/apps/snes9x_24x24.png \
-	      $(datadir)/icons/hicolor/24x24/apps/snes9x.png
-	mv -f $(datadir)/icons/hicolor/32x32/apps/snes9x_32x32.png \
-	      $(datadir)/icons/hicolor/32x32/apps/snes9x.png
-	touch -c $(datadir)/icons/hicolor
+	mv -f $(DESTDIR)$(datadir)/icons/hicolor/16x16/apps/snes9x_16x16.png \
+	      $(DESTDIR)$(datadir)/icons/hicolor/16x16/apps/snes9x.png
+	mv -f $(DESTDIR)$(datadir)/icons/hicolor/24x24/apps/snes9x_24x24.png \
+	      $(DESTDIR)$(datadir)/icons/hicolor/24x24/apps/snes9x.png
+	mv -f $(DESTDIR)$(datadir)/icons/hicolor/32x32/apps/snes9x_32x32.png \
+	      $(DESTDIR)$(datadir)/icons/hicolor/32x32/apps/snes9x.png
+	touch -c $(DESTDIR)$(datadir)/icons/hicolor
 

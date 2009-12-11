@@ -71,14 +71,14 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
         gl_proc get_aliased_extension (const char **name);
         void update_texture_size (int width, int height);
 
-        getProcAddressProc  get_proc_address;
-        glGenBuffersProc    pboGenBuffers;
-        glBindBufferProc    pboBindBuffer;
-        glBufferDataProc    pboBufferData;
-        glBufferSubDataProc pboBufferSubData;
-        glMapBufferProc     pboMapBuffer;
-        glUnmapBufferProc   pboUnmapBuffer;
-        glDeleteBuffersProc pboDeleteBuffers;
+        getProcAddressProc  glGetProcAddress;
+        glGenBuffersProc    glGenBuffers;
+        glBindBufferProc    glBindBuffer;
+        glBufferDataProc    glBufferData;
+        glBufferSubDataProc glBufferSubData;
+        glMapBufferProc     glMapBuffer;
+        glUnmapBufferProc   glUnmapBuffer;
+        glDeleteBuffersProc glDeleteBuffers;
 
         GLint               texture_width;
         GLint               texture_height;

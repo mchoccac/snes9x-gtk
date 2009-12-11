@@ -51,7 +51,7 @@ S9xOpenGLDisplayDriver::get_aliased_extension (const char **name)
 
     for (int i = 0; name[i]; i++)
     {
-        ext_proc = get_proc_address ((GLubyte *) name[i]);
+        ext_proc = glGetProcAddress ((GLubyte *) name[i]);
 
         if (ext_proc)
             break;
@@ -79,7 +79,7 @@ S9xOpenGLDisplayDriver::S9xOpenGLDisplayDriver (Snes9xWindow *window,
 __extension__
 #endif
         getProcAddressProc functor = reinterpret_cast<getProcAddressProc> (dlsym (dl_handle, "glXGetProcAddress"));
-        get_proc_address = functor;
+        glGetProcAddress = functor;
 
         if (dlerror () != NULL)
         {
@@ -87,10 +87,10 @@ __extension__
 __extension__
 #endif
             getProcAddressProc functor = reinterpret_cast<getProcAddressProc> (dlsym (dl_handle, "glXGetProcAddressARB"));
-            get_proc_address = functor;
+            glGetProcAddress = functor;
 
             if (dlerror () != NULL)
-                get_proc_address = get_null_address_proc;
+                glGetProcAddress = get_null_address_proc;
         }
 
         /* ok to close the handle, since didn't really open anything */
@@ -98,7 +98,7 @@ __extension__
     }
     else
     {
-        get_proc_address = get_null_address_proc;
+        glGetProcAddress = get_null_address_proc;
     }
 
     return;
@@ -218,12 +218,12 @@ S9xOpenGLDisplayDriver::update (int width, int height)
             if (config->pbo_format == PBO_FMT_16)
             {
 
-                pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
-                pboBufferData (GL_PIXEL_UNPACK_BUFFER,
-                               width * height * 2,
-                               NULL,
-                               GL_STREAM_DRAW);
-                pboMemory = pboMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
+                glBufferData (GL_PIXEL_UNPACK_BUFFER,
+                              width * height * 2,
+                              NULL,
+                              GL_STREAM_DRAW);
+                pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 
                 for (int y = 0; y < height; y++)
                 {
@@ -232,7 +232,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                             width * image_bpp);
                 }
 
-                pboUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
+                glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
 
                 glPixelStorei (GL_UNPACK_ROW_LENGTH, width);
                 glTexSubImage2D (tex_target,
@@ -245,7 +245,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                                  GL_UNSIGNED_SHORT_1_5_5_5_REV,
                                  BUFFER_OFFSET (0));
 
-                pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
             }
             else if (config->pbo_format == PBO_FMT_24)
             {
@@ -253,12 +253,12 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                  * be a multiple of 4 bytes. Otherwise, packing fails. */
                 int width_mul_4 = width + ((4 - (width % 4)) % 4);
 
-                pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
-                pboBufferData (GL_PIXEL_UNPACK_BUFFER,
-                               width_mul_4 * height * 3,
-                               NULL,
-                               GL_STREAM_DRAW);
-                pboMemory = pboMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
+                glBufferData (GL_PIXEL_UNPACK_BUFFER,
+                              width_mul_4 * height * 3,
+                              NULL,
+                              GL_STREAM_DRAW);
+                pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 
                 /* Pixel swizzling in software */
                 S9xSetEndianess (ENDIAN_MSB);
@@ -270,7 +270,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                             height,
                             24);
 
-                pboUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
+                glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
 
                 glPixelStorei (GL_UNPACK_ROW_LENGTH, width_mul_4);
                 glTexSubImage2D (tex_target,
@@ -283,16 +283,16 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                                  GL_UNSIGNED_BYTE,
                                  BUFFER_OFFSET (0));
 
-                pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
             }
             else /* PBO_FMT_32 */
             {
-                pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
-                pboBufferData (GL_PIXEL_UNPACK_BUFFER,
-                               width * height * 4,
-                               NULL,
-                               GL_STREAM_DRAW);
-                pboMemory = pboMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
+                glBufferData (GL_PIXEL_UNPACK_BUFFER,
+                              width * height * 4,
+                              NULL,
+                              GL_STREAM_DRAW);
+                pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 
                 /* Pixel swizzling in software */
 #ifdef __BIG_ENDIAN__
@@ -308,7 +308,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                             height,
                             32);
 
-                pboUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
+                glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
 
                 glPixelStorei (GL_UNPACK_ROW_LENGTH, width);
                 glTexSubImage2D (tex_target,
@@ -321,7 +321,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                                  PBO_BGRA_NATIVE_ORDER,
                                  BUFFER_OFFSET (0));
 
-                pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
             }
         }
         else
@@ -434,41 +434,41 @@ S9xOpenGLDisplayDriver::load_pixel_buffer_functions (void)
 
     if (strstr (extensions, "pixel_buffer_object"))
     {
-        pboGenBuffers =
+        glGenBuffers =
             (glGenBuffersProc)
             get_aliased_extension (glGenBuffersNames);
 
-        pboDeleteBuffers =
+        glDeleteBuffers =
             (glDeleteBuffersProc)
             get_aliased_extension (glDeleteBuffersNames);
 
-        pboBindBuffer =
+        glBindBuffer =
             (glBindBufferProc)
             get_aliased_extension (glBindBufferNames);
 
-        pboBufferData =
+        glBufferData =
             (glBufferDataProc)
             get_aliased_extension (glBufferDataNames);
 
-        pboBufferSubData =
+        glBufferSubData =
             (glBufferSubDataProc)
             get_aliased_extension (glBufferSubDataNames);
 
-        pboMapBuffer =
+        glMapBuffer =
             (glMapBufferProc)
             get_aliased_extension (glMapBufferNames);
 
-        pboUnmapBuffer =
+        glUnmapBuffer =
             (glUnmapBufferProc)
             get_aliased_extension (glUnmapBufferNames);
 
-        if (!pboGenBuffers    ||
-            !pboBindBuffer    ||
-            !pboBufferData    ||
-            !pboBufferSubData ||
-            !pboMapBuffer     ||
-            !pboUnmapBuffer   ||
-            !pboDeleteBuffers)
+        if (!glGenBuffers    ||
+            !glBindBuffer    ||
+            !glBufferData    ||
+            !glBufferSubData ||
+            !glMapBuffer     ||
+            !glUnmapBuffer   ||
+            !glDeleteBuffers)
         {
             return 0;
         }
@@ -559,7 +559,7 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
 
     if (config->use_pbos)
     {
-        pboGenBuffers (1, &pbo);
+        glGenBuffers (1, &pbo);
         glGenTextures (1, &texmap);
 
         glBindTexture (tex_target, texmap);
@@ -573,13 +573,13 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
                       GL_UNSIGNED_BYTE,
                       NULL);
 
-        pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
-        pboBufferData (GL_PIXEL_UNPACK_BUFFER,
-                       texture_width * texture_height * 3,
-                       NULL,
-                       GL_STREAM_DRAW);
+        glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
+        glBufferData (GL_PIXEL_UNPACK_BUFFER,
+                      texture_width * texture_height * 3,
+                      NULL,
+                      GL_STREAM_DRAW);
 
-        pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+        glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
     }
     else
     {
@@ -675,7 +675,7 @@ S9xOpenGLDisplayDriver::swap_control (int enable)
     if (strstr (ext_str, "GLX_MESA_swap_control"))
     {
         glSwapInterval = (glSwapIntervalProc)
-            get_proc_address ((GLubyte *) "glXSwapIntervalMESA");
+            glGetProcAddress ((GLubyte *) "glXSwapIntervalMESA");
         if (glSwapInterval)
             glSwapInterval (enable ? 1 : 0);
     }
@@ -683,7 +683,7 @@ S9xOpenGLDisplayDriver::swap_control (int enable)
     else if (strstr (ext_str, "GLX_SGI_swap_control"))
     {
         glSwapInterval = (glSwapIntervalProc)
-            get_proc_address ((GLubyte *) "glXSwapIntervalSGI");
+            glGetProcAddress ((GLubyte *) "glXSwapIntervalSGI");
         if (glSwapInterval)
         {
             glSwapInterval (enable ? 1 : 0);
@@ -753,8 +753,8 @@ S9xOpenGLDisplayDriver::deinit (void)
 
     if (using_pbos)
     {
-        pboBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
-        pboDeleteBuffers (1, &pbo);
+        glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+        glDeleteBuffers (1, &pbo);
     }
 
     glDeleteTextures (1, &texmap);

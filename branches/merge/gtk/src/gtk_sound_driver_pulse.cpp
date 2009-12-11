@@ -71,15 +71,10 @@ S9xPulseSoundDriver::open_device (void)
     ss.rate     = Settings.SoundPlaybackRate;
 
     buffer_attr.fragsize  = -1;
-    buffer_attr.tlength   = ((Settings.SoundPlaybackRate <<
-                             (Settings.Stereo ? 1 : 0)) <<
-                             (Settings.SixteenBitSound ? 1 : 0)) *
-                             (gui_config->sound_buffer_size) /
-                             1000;
-    buffer_attr.maxlength = buffer_attr.tlength;
-    buffer_attr.minreq    = buffer_attr.tlength / 4;
-    buffer_attr.prebuf    = buffer_attr.minreq * 4;
-
+    buffer_attr.tlength   = pa_usec_to_bytes (gui_config->sound_buffer_size * 1000, &ss);
+    buffer_attr.maxlength = -1;
+    buffer_attr.minreq    = -1;
+    buffer_attr.prebuf    = -1;
 
     printf ("PulseAudio sound driver initializing...\n");
 

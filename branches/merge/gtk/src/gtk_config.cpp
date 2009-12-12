@@ -1096,7 +1096,7 @@ Snes9xConfig::rebind_keys (void)
             snprintf (buf,
                       256,
                       "Joypad%d %s",
-                      joypad_i + 1,
+                      (joypad_i % 5) + 1,
                       b_links[button_i].snes9x_name);
 
             cmd = S9xGetPortCommandT (buf);

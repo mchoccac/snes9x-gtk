@@ -9,7 +9,7 @@
 #endif
 
 #ifndef NUM_JOYPADS
-#define NUM_JOYPADS 8
+#define NUM_JOYPADS 10
 #endif
 
 #define JOY_MODE_GLOBAL     0

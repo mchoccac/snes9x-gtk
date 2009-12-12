@@ -16,7 +16,6 @@
 
 static S9xDisplayDriver  *driver;
 static snes_ntsc_t       snes_ntsc;
-static snes_ntsc_setup_t snes_ntsc_setup;
 static thread_job_t      job[8];
 static GThreadPool       *pool;
 static uint8             *y_table, *u_table, *v_table;
@@ -1726,38 +1725,10 @@ S9xDisplayRefresh (int width, int height)
 static void
 ntsc_filter_init (void)
 {
-    switch (gui_config->ntsc_format)
-    {
-        case NTSC_COMPOSITE:
-            memcpy (&snes_ntsc_setup,
-                    &snes_ntsc_composite,
-                    sizeof (snes_ntsc_setup_t));
-            break;
-
-        case NTSC_SVIDEO:
-            memcpy (&snes_ntsc_setup,
-                    &snes_ntsc_svideo,
-                    sizeof (snes_ntsc_setup_t));
-            break;
-
-        case NTSC_RGB:
-            memcpy (&snes_ntsc_setup,
-                    &snes_ntsc_rgb,
-                    sizeof (snes_ntsc_setup_t));
-            break;
-    }
-
-    snes_ntsc_setup.hue += (double) gui_config->ntsc_hue;
-    snes_ntsc_setup.saturation += (double) gui_config->ntsc_saturation;
-    snes_ntsc_setup.contrast += (double) gui_config->ntsc_contrast;
-    snes_ntsc_setup.brightness += (double) gui_config->ntsc_brightness;
-    snes_ntsc_setup.sharpness += (double) gui_config->ntsc_sharpness;
-    snes_ntsc_setup.artifacts += (double) gui_config->ntsc_warping;
-
     scanline_offset = scanline_offsets [gui_config->ntsc_scanline_intensity];
     scanline_mask   = scanline_masks [gui_config->ntsc_scanline_intensity];
 
-    snes_ntsc_init (&snes_ntsc, &snes_ntsc_setup);
+    snes_ntsc_init (&snes_ntsc, &gui_config->ntsc_setup);
 
     return;
 }

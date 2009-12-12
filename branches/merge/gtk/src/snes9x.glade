@@ -5,12 +5,12 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_EXPOSURE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="delete_event" handler="main_window_delete_event"/>
+    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
     <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
+    <signal name="delete_event" handler="main_window_delete_event"/>
     <signal name="window_state_event" handler="main_window_state_event"/>
-    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -1264,6 +1264,7 @@ Scanlines</property>
                                         <property name="visible">True</property>
                                         <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                                         <property name="orientation">vertical</property>
+                                        <property name="spacing">5</property>
                                         <child>
                                           <widget class="GtkHBox" id="hbox6">
                                             <property name="visible">True</property>
@@ -1274,7 +1275,7 @@ Scanlines</property>
                                                 <property name="visible">True</property>
                                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                                                 <property name="xalign">0</property>
-                                                <property name="label" translatable="yes">Video format:</property>
+                                                <property name="label" translatable="yes">Video preset:</property>
                                               </widget>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -1282,14 +1283,63 @@ Scanlines</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkComboBox" id="video_format_combo">
+                                              <widget class="GtkHBox" id="hbox16">
                                                 <property name="visible">True</property>
-                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                                <property name="items" translatable="yes">Composite
-S-Video
-RGB</property>
+                                                <child>
+                                                  <widget class="GtkButton" id="ntsc_composite_preset">
+                                                    <property name="label" translatable="yes">Composite</property>
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="receives_default">True</property>
+                                                    <signal name="clicked" handler="ntsc_composite_preset"/>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <widget class="GtkButton" id="ntsc_svideo_preset">
+                                                    <property name="label" translatable="yes">S-Video</property>
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="receives_default">True</property>
+                                                    <signal name="clicked" handler="ntsc_svideo_preset"/>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="position">1</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <widget class="GtkButton" id="ntsc_rgb_preset">
+                                                    <property name="label" translatable="yes">RGB</property>
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="receives_default">True</property>
+                                                    <signal name="clicked" handler="ntsc_rgb_preset"/>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="position">2</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <widget class="GtkButton" id="ntsc_monochrome_preset">
+                                                    <property name="label" translatable="yes">Monochrome</property>
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="receives_default">True</property>
+                                                    <signal name="clicked" handler="ntsc_monochrome_preset"/>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="position">3</property>
+                                                  </packing>
+                                                </child>
                                               </widget>
                                               <packing>
+                                                <property name="expand">False</property>
                                                 <property name="position">1</property>
                                               </packing>
                                             </child>
@@ -1302,7 +1352,7 @@ RGB</property>
                                           <widget class="GtkTable" id="table13">
                                             <property name="visible">True</property>
                                             <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
-                                            <property name="n_rows">6</property>
+                                            <property name="n_rows">11</property>
                                             <property name="n_columns">2</property>
                                             <property name="column_spacing">12</property>
                                             <property name="row_spacing">5</property>
@@ -1311,11 +1361,11 @@ RGB</property>
                                                 <property name="visible">True</property>
                                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
                                                 <property name="xalign">0</property>
-                                                <property name="label" translatable="yes">Artifacts</property>
+                                                <property name="label" translatable="yes">Artifacts:</property>
                                               </widget>
                                               <packing>
-                                                <property name="top_attach">5</property>
-                                                <property name="bottom_attach">6</property>
+                                                <property name="top_attach">6</property>
+                                                <property name="bottom_attach">7</property>
                                                 <property name="x_options">GTK_FILL</property>
                                               </packing>
                                             </child>
@@ -1383,7 +1433,7 @@ RGB</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHScale" id="hue_scale">
+                                              <widget class="GtkHScale" id="ntsc_hue">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
@@ -1399,7 +1449,7 @@ RGB</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHScale" id="saturation_scale">
+                                              <widget class="GtkHScale" id="ntsc_saturation">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
@@ -1417,7 +1467,7 @@ RGB</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHScale" id="contrast_scale">
+                                              <widget class="GtkHScale" id="ntsc_contrast">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
@@ -1435,7 +1485,7 @@ RGB</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHScale" id="brightness_scale">
+                                              <widget class="GtkHScale" id="ntsc_brightness">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
@@ -1453,7 +1503,7 @@ RGB</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHScale" id="sharpness_scale">
+                                              <widget class="GtkHScale" id="ntsc_sharpness">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
@@ -1471,7 +1521,7 @@ RGB</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHScale" id="warping_scale">
+                                              <widget class="GtkHScale" id="ntsc_artifacts">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
@@ -1484,6 +1534,140 @@ RGB</property>
                                               <packing>
                                                 <property name="left_attach">1</property>
                                                 <property name="right_attach">2</property>
+                                                <property name="top_attach">6</property>
+                                                <property name="bottom_attach">7</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkHScale" id="ntsc_gamma">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                                <property name="adjustment">0 -1 1 0.01 0.10000000000000001 0</property>
+                                                <property name="restrict_to_fill_level">False</property>
+                                                <property name="fill_level">-1</property>
+                                                <property name="digits">2</property>
+                                                <property name="value_pos">left</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="top_attach">7</property>
+                                                <property name="bottom_attach">8</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkHScale" id="ntsc_fringing">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                                <property name="adjustment">0 -1 1 0.01 0.10000000000000001 0</property>
+                                                <property name="restrict_to_fill_level">False</property>
+                                                <property name="fill_level">-1</property>
+                                                <property name="digits">2</property>
+                                                <property name="value_pos">left</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="top_attach">8</property>
+                                                <property name="bottom_attach">9</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkHScale" id="ntsc_bleed">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                                <property name="adjustment">0 -1 1 0.01 0.10000000000000001 0</property>
+                                                <property name="restrict_to_fill_level">False</property>
+                                                <property name="fill_level">-1</property>
+                                                <property name="digits">2</property>
+                                                <property name="value_pos">left</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="top_attach">9</property>
+                                                <property name="bottom_attach">10</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkHScale" id="ntsc_resolution">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                                <property name="adjustment">0 -1 1 0.01 0.10000000000000001 0</property>
+                                                <property name="restrict_to_fill_level">False</property>
+                                                <property name="fill_level">-1</property>
+                                                <property name="digits">2</property>
+                                                <property name="value_pos">left</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="top_attach">10</property>
+                                                <property name="bottom_attach">11</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="label48">
+                                                <property name="visible">True</property>
+                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                                <property name="xalign">0</property>
+                                                <property name="label" translatable="yes">Gamma:</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="top_attach">7</property>
+                                                <property name="bottom_attach">8</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="label99">
+                                                <property name="visible">True</property>
+                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                                <property name="xalign">0</property>
+                                                <property name="label" translatable="yes">Fringing:</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="top_attach">8</property>
+                                                <property name="bottom_attach">9</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="label125">
+                                                <property name="visible">True</property>
+                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                                <property name="xalign">0</property>
+                                                <property name="label" translatable="yes">Bleed:</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="top_attach">9</property>
+                                                <property name="bottom_attach">10</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="label127">
+                                                <property name="visible">True</property>
+                                                <property name="events">GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK</property>
+                                                <property name="xalign">0</property>
+                                                <property name="label" translatable="yes">Resolution:</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="top_attach">10</property>
+                                                <property name="bottom_attach">11</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkHSeparator" id="hseparator1">
+                                                <property name="visible">True</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="right_attach">2</property>
                                                 <property name="top_attach">5</property>
                                                 <property name="bottom_attach">6</property>
                                               </packing>
@@ -1491,6 +1675,18 @@ RGB</property>
                                           </widget>
                                           <packing>
                                             <property name="position">1</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <widget class="GtkCheckButton" id="ntsc_merge_fields">
+                                            <property name="label" translatable="yes">Merge odd and even fields</property>
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">True</property>
+                                            <property name="receives_default">False</property>
+                                            <property name="draw_indicator">True</property>
+                                          </widget>
+                                          <packing>
+                                            <property name="position">2</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -1524,7 +1720,7 @@ RGB</property>
                                             </child>
                                           </widget>
                                           <packing>
-                                            <property name="position">2</property>
+                                            <property name="position">3</property>
                                           </packing>
                                         </child>
                                       </widget>

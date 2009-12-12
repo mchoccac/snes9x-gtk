@@ -160,6 +160,47 @@ event_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 }
 
 static void
+event_ntsc_composite_preset (GtkButton *widget, gpointer data)
+{
+    Snes9xPreferences *window = (Snes9xPreferences *) data;
+    window->config->ntsc_setup = snes_ntsc_composite;
+    window->load_ntsc_settings ();
+
+    return;
+}
+
+static void
+event_ntsc_svideo_preset (GtkButton *widget, gpointer data)
+{
+    Snes9xPreferences *window = (Snes9xPreferences *) data;
+    window->config->ntsc_setup = snes_ntsc_svideo;
+    window->load_ntsc_settings ();
+
+    return;
+}
+
+static void
+event_ntsc_rgb_preset (GtkButton *widget, gpointer data)
+{
+    Snes9xPreferences *window = (Snes9xPreferences *) data;
+    window->config->ntsc_setup = snes_ntsc_rgb;
+    window->load_ntsc_settings ();
+
+    return;
+}
+
+static void
+event_ntsc_monochrome_preset (GtkButton *widget, gpointer data)
+{
+    Snes9xPreferences *window = (Snes9xPreferences *) data;
+    window->config->ntsc_setup = snes_ntsc_monochrome;
+    window->load_ntsc_settings ();
+
+    return;
+}
+
+
+static void
 event_swap_with (GtkButton *widget, gpointer data)
 {
     ((Snes9xPreferences *) data)->swap_with ();
@@ -327,6 +368,10 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
         { "reset_current_joypad", G_CALLBACK (event_reset_current_joypad) },
         { "swap_with", G_CALLBACK (event_swap_with) },
         { "style_set", G_CALLBACK (event_style_set) },
+        { "ntsc_composite_preset", G_CALLBACK (event_ntsc_composite_preset) },
+        { "ntsc_svideo_preset", G_CALLBACK (event_ntsc_svideo_preset) },
+        { "ntsc_rgb_preset", G_CALLBACK (event_ntsc_rgb_preset) },
+        { "ntsc_monochrome_preset", G_CALLBACK (event_ntsc_monochrome_preset) },
 #ifdef USE_JOYSTICK
         { "calibrate", G_CALLBACK (event_calibrate) },
 #endif
@@ -371,11 +416,9 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
     size_group[0] = gtk_size_group_new (GTK_SIZE_GROUP_HORIZONTAL);
     gtk_size_group_add_widget (size_group[0], get_widget ("resolution_combo"));
     gtk_size_group_add_widget (size_group[0], get_widget ("scale_method_combo"));
-    gtk_size_group_add_widget (size_group[0], get_widget ("video_format_combo"));
     size_group[1] = gtk_size_group_new (GTK_SIZE_GROUP_HORIZONTAL);
     gtk_size_group_add_widget (size_group[1], get_widget ("change_display_resolution"));
     gtk_size_group_add_widget (size_group[1], get_widget ("scale_method_label"));
-    gtk_size_group_add_widget (size_group[1], get_widget ("video_format_label"));
 
     gtk_image_set_from_pixbuf (GTK_IMAGE (get_widget ("preferences_splash")),
                                top_level->splash);
@@ -394,6 +437,42 @@ Snes9xPreferences::~Snes9xPreferences (void)
     g_object_unref (glade);
     g_object_unref (size_group[0]);
     g_object_unref (size_group[1]);
+
+    return;
+}
+
+void
+Snes9xPreferences::load_ntsc_settings (void)
+{
+    set_slider ("ntsc_artifacts", config->ntsc_setup.artifacts);
+    set_slider ("ntsc_bleed", config->ntsc_setup.bleed);
+    set_slider ("ntsc_brightness", config->ntsc_setup.brightness);
+    set_slider ("ntsc_contrast", config->ntsc_setup.contrast);
+    set_slider ("ntsc_fringing", config->ntsc_setup.fringing);
+    set_slider ("ntsc_gamma", config->ntsc_setup.gamma);
+    set_slider ("ntsc_hue", config->ntsc_setup.hue);
+    set_check  ("ntsc_merge_fields", config->ntsc_setup.merge_fields);
+    set_slider ("ntsc_resolution", config->ntsc_setup.resolution);
+    set_slider ("ntsc_saturation", config->ntsc_setup.saturation);
+    set_slider ("ntsc_sharpness", config->ntsc_setup.sharpness);
+
+    return;
+}
+
+void
+Snes9xPreferences::store_ntsc_settings (void)
+{
+    config->ntsc_setup.artifacts    = get_slider ("ntsc_artifacts");
+    config->ntsc_setup.bleed        = get_slider ("ntsc_bleed");
+    config->ntsc_setup.brightness   = get_slider ("ntsc_brightness");
+    config->ntsc_setup.contrast     = get_slider ("ntsc_contrast");
+    config->ntsc_setup.fringing     = get_slider ("ntsc_fringing");
+    config->ntsc_setup.gamma        = get_slider ("ntsc_gamma");
+    config->ntsc_setup.hue          = get_slider ("ntsc_hue");
+    config->ntsc_setup.merge_fields = get_check  ("ntsc_merge_fields");
+    config->ntsc_setup.resolution   = get_slider ("ntsc_resolution");
+    config->ntsc_setup.saturation   = get_slider ("ntsc_saturation");
+    config->ntsc_setup.sharpness    = get_slider ("ntsc_sharpness");
 
     return;
 }
@@ -493,13 +572,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
         gtk_widget_hide (get_widget ("scanline_filter_frame"));
     }
 
-    set_combo ("video_format_combo",        config->ntsc_format);
-    set_slider ("hue_scale",                config->ntsc_hue);
-    set_slider ("saturation_scale",         config->ntsc_saturation);
-    set_slider ("contrast_scale",           config->ntsc_contrast);
-    set_slider ("brightness_scale",         config->ntsc_brightness);
-    set_slider ("sharpness_scale",          config->ntsc_sharpness);
-    set_slider ("warping_scale",            config->ntsc_warping);
+    load_ntsc_settings ();
     set_combo ("ntsc_scanline_intensity",   config->ntsc_scanline_intensity);
     set_combo ("scanline_filter_intensity", config->scanline_filter_intensity);
 
@@ -618,13 +691,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
     Settings.SoundSync                = get_check ("sync_sound");
     config->mute_sound                = get_check ("mute_sound_check");
 
-    config->ntsc_format               = get_combo ("video_format_combo");
-    config->ntsc_hue                  = get_slider ("hue_scale");
-    config->ntsc_saturation           = get_slider ("saturation_scale");
-    config->ntsc_contrast             = get_slider ("contrast_scale");
-    config->ntsc_brightness           = get_slider ("brightness_scale");
-    config->ntsc_sharpness            = get_slider ("sharpness_scale");
-    config->ntsc_warping              = get_slider ("warping_scale");
+    store_ntsc_settings ();
     config->ntsc_scanline_intensity   = get_combo ("ntsc_scanline_intensity");
     config->scanline_filter_intensity = get_combo ("scanline_filter_intensity");
     config->hw_accel                  = hw_accel_value (get_combo ("hw_accel"));

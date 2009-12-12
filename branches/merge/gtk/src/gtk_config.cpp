@@ -157,13 +157,7 @@ Snes9xConfig::load_defaults (void)
     preferences_height = -1;
     custom_sram_directory[0] = '\0';
     screensaver_needs_reset = FALSE;
-    ntsc_format = 1;
-    ntsc_hue = 0.0;
-    ntsc_saturation = 0.0;
-    ntsc_contrast = 0.0;
-    ntsc_brightness = 0.0;
-    ntsc_sharpness = 0.0;
-    ntsc_warping = 0.0;
+    ntsc_setup = snes_ntsc_composite;
     ntsc_scanline_intensity = 1;
     scanline_filter_intensity = 0;
     netplay_activated = FALSE;
@@ -305,13 +299,17 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "ui_visible", ui_visible);
     xml_out_int (xml, "statusbar_visible", statusbar_visible);
 
-    xml_out_int (xml, "ntsc_format", ntsc_format);
-    xml_out_float (xml, "ntsc_hue", ntsc_hue);
-    xml_out_float (xml, "ntsc_saturation", ntsc_saturation);
-    xml_out_float (xml, "ntsc_contrast", ntsc_contrast);
-    xml_out_float (xml, "ntsc_brightness", ntsc_brightness);
-    xml_out_float (xml, "ntsc_sharpness", ntsc_sharpness);
-    xml_out_float (xml, "ntsc_warping", ntsc_warping);
+    xml_out_float (xml, "ntsc_hue", ntsc_setup.hue);
+    xml_out_float (xml, "ntsc_saturation", ntsc_setup.saturation);
+    xml_out_float (xml, "ntsc_contrast", ntsc_setup.contrast);
+    xml_out_float (xml, "ntsc_brightness", ntsc_setup.brightness);
+    xml_out_float (xml, "ntsc_sharpness", ntsc_setup.sharpness);
+    xml_out_float (xml, "ntsc_artifacts", ntsc_setup.artifacts);
+    xml_out_float (xml, "ntsc_gamma", ntsc_setup.gamma);
+    xml_out_float (xml, "ntsc_bleed", ntsc_setup.bleed);
+    xml_out_float (xml, "ntsc_fringing", ntsc_setup.fringing);
+    xml_out_float (xml, "ntsc_resolution", ntsc_setup.resolution);
+    xml_out_int (xml, "ntsc_merge_fields", ntsc_setup.merge_fields);
     xml_out_int (xml, "ntsc_scanline_intensity", ntsc_scanline_intensity);
     xml_out_int (xml, "scanline_filter_intensity", scanline_filter_intensity);
     xml_out_int (xml, "hw_accel", hw_accel);
@@ -621,31 +619,55 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "ntsc_format"))
     {
-        ntsc_format = atoi (value);
+        /* Deprecated */
     }
     else if (!strcasecmp (name, "ntsc_hue"))
     {
-        ntsc_hue = (float) atof (value);
+        ntsc_setup.hue = (float) atof (value);
     }
     else if (!strcasecmp (name, "ntsc_saturation"))
     {
-        ntsc_saturation = (float) atof (value);
+        ntsc_setup.saturation = (float) atof (value);
     }
     else if (!strcasecmp (name, "ntsc_contrast"))
     {
-        ntsc_contrast = (float) atof (value);
+        ntsc_setup.contrast = (float) atof (value);
     }
     else if (!strcasecmp (name, "ntsc_brightness"))
     {
-        ntsc_brightness = (float) atof (value);
+        ntsc_setup.brightness = (float) atof (value);
     }
     else if (!strcasecmp (name, "ntsc_sharpness"))
     {
-        ntsc_sharpness = (float) atof (value);
+        ntsc_setup.sharpness = (float) atof (value);
     }
     else if (!strcasecmp (name, "ntsc_warping"))
     {
-        ntsc_warping = (float) atof (value);
+        /* Deprecated */
+    }
+    else if (!strcasecmp (name, "ntsc_artifacts"))
+    {
+        ntsc_setup.artifacts = (float) atof (value);
+    }
+    else if (!strcasecmp (name, "ntsc_gamma"))
+    {
+        ntsc_setup.gamma = (float) atof (value);
+    }
+    else if (!strcasecmp (name, "ntsc_fringing"))
+    {
+        ntsc_setup.fringing = (float) atof (value);
+    }
+    else if (!strcasecmp (name, "ntsc_bleed"))
+    {
+        ntsc_setup.bleed = (float) atof (value);
+    }
+    else if (!strcasecmp (name, "ntsc_resolution"))
+    {
+        ntsc_setup.resolution = (float) atof (value);
+    }
+    else if (!strcasecmp (name, "ntsc_merge_fields"))
+    {
+        ntsc_setup.merge_fields = atoi (value);
     }
     else if (!strcasecmp (name, "ntsc_scanline_intensity"))
     {
@@ -769,13 +791,13 @@ Snes9xConfig::parse_option (xmlNodePtr node)
 
     /* Find value string */
     for (attr = node->properties; attr; attr = attr->next)
+    {
+        if (!xmlStrcasecmp (attr->name, BAD_CAST "value"))
         {
-            if (!xmlStrcasecmp (attr->name, BAD_CAST "value"))
-            {
-                value = (char *) attr->children->content;
-                break;
-            }
+            value = (char *) attr->children->content;
+            break;
         }
+    }
 
     if (!attr)
         return 1;

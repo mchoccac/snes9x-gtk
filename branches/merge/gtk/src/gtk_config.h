@@ -8,6 +8,7 @@
 #endif
 
 #include "gtk_control.h"
+#include "snes_ntsc.h"
 
 #define DIR_ROM                 0
 #define DIR_CONFIG              1
@@ -67,13 +68,20 @@ class Snes9xConfig
         unsigned char multithreading;
         unsigned char force_hires;
         unsigned char force_inverted_byte_order;
+
+        snes_ntsc_setup_t ntsc_setup;
         unsigned char ntsc_format;
         float         ntsc_hue;
         float         ntsc_saturation;
         float         ntsc_contrast;
         float         ntsc_brightness;
         float         ntsc_sharpness;
-        float         ntsc_warping;
+        float         ntsc_artifacts;
+        float         ntsc_gamma;
+        float         ntsc_resolution;
+        float         ntsc_fringing;
+        float         ntsc_bleed;
+        float         ntsc_merge_fields;
         unsigned int  ntsc_scanline_intensity;
         unsigned int  scanline_filter_intensity;
         unsigned char hw_accel;

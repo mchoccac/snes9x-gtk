@@ -29,6 +29,8 @@ class Snes9xPreferences : public GladeWindow
         void swap_with (void);
         void fix_style (void);
         void reset_current_joypad (void);
+        void load_ntsc_settings (void);
+        void store_ntsc_settings (void);
 
 #ifdef USE_JOYSTICK
         void calibration_dialog (void);

@@ -450,8 +450,8 @@ S9xSyncSpeedFinish (void)
 
     while (timercmp (&next_frame_time, &now, >))
     {
-        unsigned time_left = (next_frame_time.tv_sec  - now.tv_sec) * 1000000 +
-                              next_frame_time.tv_usec - now.tv_usec;
+        int time_left = (next_frame_time.tv_sec  - now.tv_sec) * 1000000 +
+                         next_frame_time.tv_usec - now.tv_usec;
 
         if (time_left > 500000)
         {
@@ -546,9 +546,11 @@ S9xSyncSpeed (void)
                 IPPU.RenderThisFrame = 1;
                 IPPU.SkippedFrames = 0;
             }
-
-            IPPU.RenderThisFrame = 0;
-            IPPU.SkippedFrames++;
+            else
+            {
+                IPPU.RenderThisFrame = 0;
+                IPPU.SkippedFrames++;
+            }
         }
 
         else

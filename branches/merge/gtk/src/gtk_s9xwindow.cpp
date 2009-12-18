@@ -1179,6 +1179,29 @@ Snes9xWindow::set_menu_item_selected (const char *name)
     return;
 }
 
+static gboolean
+statusbar_timeout (gpointer data)
+{
+    gtk_statusbar_pop (GTK_STATUSBAR (data),
+                       gtk_statusbar_get_context_id (GTK_STATUSBAR (data),
+                                                     "info"));
+
+    return FALSE;
+}
+
+void
+Snes9xWindow::show_status_message (const char *message)
+{
+    GtkStatusbar *statusbar = GTK_STATUSBAR (get_widget ("statusbar"));
+
+    gtk_statusbar_pop (statusbar, gtk_statusbar_get_context_id (statusbar, "info"));
+    gtk_statusbar_push (statusbar, gtk_statusbar_get_context_id (statusbar, "info"), message);
+
+    g_timeout_add_seconds (2, statusbar_timeout, statusbar);
+
+    return;
+}
+
 void
 Snes9xWindow::update_statusbar (void)
 {
@@ -1200,7 +1223,7 @@ Snes9xWindow::update_statusbar (void)
                           256,
                           _("%sHosting NetPlay - %s"),
                           is_paused () || NetPlay.Paused ? _("Paused - ") : "",
-                          Memory.ROMName);
+                          Memory.RawROMName);
             }
             else
             {
@@ -1208,7 +1231,7 @@ Snes9xWindow::update_statusbar (void)
                           256,
                           _("%s%s on NetPlay %s:%d - Player %d"),
                           is_paused () || NetPlay.Paused ? _("Paused - ") : "",
-                          Memory.ROMName,
+                          Memory.RawROMName,
                           NetPlay.ServerHostName,
                           NetPlay.Port,
                           NetPlay.Player);
@@ -1222,7 +1245,7 @@ Snes9xWindow::update_statusbar (void)
                       256,
                       "%s%s",
                       is_paused () ? _("Paused - ") : "",
-                      Memory.ROMName);
+                      Memory.RawROMName);
         }
     }
 

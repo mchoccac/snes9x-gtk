@@ -52,6 +52,7 @@ class Snes9xWindow : public GladeWindow
 
         /* GTK-base-related functions */
         void show (void);
+        void show_status_message (const char *message);
         void update_statusbar (void);
         void draw_background (int rect_x = -1,
                               int rect_y = -1,

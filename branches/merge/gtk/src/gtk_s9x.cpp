@@ -229,21 +229,25 @@ S9xNoROMLoaded (void)
     return;
 }
 
-gboolean
-S9xSleepFunc (gpointer data)
+static inline void check_messages (void)
 {
-    idle_func_id = g_idle_add_full (IDLE_FUNC_PRIORITY,
-                                    S9xIdleFunc,
-                                    NULL,
-                                    NULL);
+    static unsigned int current_timeout = 0;
 
-    return FALSE;
+    if (GFX.InfoStringTimeout > current_timeout)
+    {
+        top_level->show_status_message (GFX.InfoString);
+    }
+
+    current_timeout = GFX.InfoStringTimeout;
+
+    return;
 }
 
 gboolean
 S9xPauseFunc (gpointer data)
 {
     S9xProcessEvents (TRUE);
+    check_messages ();
 
     if (!gui_config->rom_loaded)
         return TRUE;
@@ -319,6 +323,7 @@ S9xIdleFunc (gpointer data)
         S9xSyncSpeedFinish ();
 
     S9xProcessEvents (TRUE);
+    check_messages ();
 
 #ifdef NETPLAY_SUPPORT
     if (!S9xNetplayPush ())

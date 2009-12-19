@@ -158,21 +158,6 @@
   Nintendo Co., Limited and its subsidiary companies.
 **********************************************************************************/
 
-
-
-/**********************************************************************************
-  SNES9X for Mac OS (c) Copyright John Stiles
-
-  Snes9x for Mac OS X
-
-  (c) Copyright 2001 - 2007  zones
-  (c) Copyright 2002 - 2005  107
-  (c) Copyright 2002         PB1400c
-  (c) Copyright 2004         Alexander and Sander
-  (c) Copyright 2004 - 2005  Steven Seeger
-  (c) Copyright 2005         Ryan Vogt
-**********************************************************************************/
-
 #include "port.h"
 #include "filter_epx_unsafe.h"
 
@@ -274,3 +259,103 @@ void EPX_16_unsafe (uint8 *srcPtr,
     return;
 }
 
+#undef  AVERAGE_1555
+#define AVERAGE_1555(el0, el1) (((el0) & (el1)) + ((((el0) ^ (el1)) & 0x7BDE) >> 1))
+
+/* Blends with edge pixel instead of just using it directly. */
+void EPX_16_smooth_unsafe (uint8 *srcPtr,
+                           uint32 srcPitch,
+                           uint8 *dstPtr,
+                           uint32 dstPitch,
+                           int width,
+                           int height)
+{
+    uint16  colorX, colorA, colorB, colorC, colorD;
+    uint16  *sP, *uP, *lP;
+    uint32  *dP1, *dP2;
+    int     w;
+
+    for (; height; height--)
+    {
+        sP  = (uint16 *) srcPtr;
+        uP  = (uint16 *) (srcPtr - srcPitch);
+        lP  = (uint16 *) (srcPtr + srcPitch);
+        dP1 = (uint32 *) dstPtr;
+        dP2 = (uint32 *) (dstPtr + dstPitch);
+
+        // left edge
+
+        colorX = *sP;
+        colorC = *++sP;
+        colorB = *lP++;
+        colorD = *uP++;
+
+        if ((colorX != colorC) && (colorB != colorD))
+        {
+        #ifdef __BIG_ENDIAN__
+            *dP1 = (colorX << 16) + ((colorC == colorD) ? AVERAGE_1555 (colorC, colorX) : colorX);
+            *dP2 = (colorX << 16) + ((colorB == colorC) ? AVERAGE_1555 (colorB, colorX) : colorX);
+        #else
+            *dP1 = colorX + (((colorC == colorD) ? AVERAGE_1555 (colorC, colorX) : colorX) << 16);
+            *dP2 = colorX + (((colorB == colorC) ? AVERAGE_1555 (colorB, colorX) : colorX) << 16);
+        #endif
+        }
+        else
+            *dP1 = *dP2 = (colorX << 16) + colorX;
+
+        dP1++;
+        dP2++;
+
+        //
+
+        for (w = width - 2; w; w--)
+        {
+            colorA = colorX;
+            colorX = colorC;
+            colorC = *++sP;
+            colorB = *lP++;
+            colorD = *uP++;
+
+            if ((colorA != colorC) && (colorB != colorD))
+            {
+            #ifdef __BIG_ENDIAN__
+                *dP1 = (((colorD == colorA) ? AVERAGE_1555 (colorD, colorX) : colorX) << 16) + ((colorC == colorD) ? AVERAGE_1555 (colorC, colorX) : colorX);
+                *dP2 = (((colorA == colorB) ? AVERAGE_1555 (colorA, colorX) : colorX) << 16) + ((colorB == colorC) ? AVERAGE_1555 (colorB, colorX) : colorX);
+            #else
+                *dP1 = ((colorD == colorA) ? AVERAGE_1555 (colorD, colorX) : colorX) + (((colorC == colorD) ? AVERAGE_1555 (colorC, colorX) : colorX) << 16);
+                *dP2 = ((colorA == colorB) ? AVERAGE_1555 (colorA, colorX) : colorX) + (((colorB == colorC) ? AVERAGE_1555 (colorB, colorX) : colorX) << 16);
+            #endif
+            }
+            else
+                *dP1 = *dP2 = (colorX << 16) + colorX;
+
+            dP1++;
+            dP2++;
+        }
+
+        // right edge
+
+        colorA = colorX;
+        colorX = colorC;
+        colorB = *lP;
+        colorD = *uP;
+
+        if ((colorA != colorX) && (colorB != colorD))
+        {
+        #ifdef __BIG_ENDIAN__
+            *dP1 = (((colorD == colorA) ? AVERAGE_1555 (colorD, colorX) : colorX) << 16) + colorX;
+            *dP2 = (((colorA == colorB) ? AVERAGE_1555 (colorA, colorX) : colorX) << 16) + colorX;
+        #else
+            *dP1 = ((colorD == colorA) ? AVERAGE_1555 (colorD, colorX) : colorX) + (colorX << 16);
+            *dP2 = ((colorA == colorB) ? AVERAGE_1555 (colorA, colorX) : colorX) + (colorX << 16);
+        #endif
+        }
+        else
+            *dP1 = *dP2 = (colorX << 16) + colorX;
+
+        srcPtr += srcPitch;
+        dstPtr += dstPitch << 1;
+    }
+
+    return;
+}

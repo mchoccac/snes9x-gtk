@@ -1079,6 +1079,11 @@ get_filter_scale (int &width, int &height)
         case FILTER_SCANLINES:
             height *= 2;
             break;
+
+        case FILTER_EPX_SMOOTH:
+            width *= 2;
+            height *= 2;
+            break;
     }
 
     return;
@@ -1176,6 +1181,17 @@ internal_filter (uint8 *src_buffer,
                            dst_pitch,
                            width,
                            height);
+
+            break;
+
+        case FILTER_EPX_SMOOTH:
+
+            EPX_16_smooth_unsafe (src_buffer,
+                                  src_pitch,
+                                  dst_buffer,
+                                  dst_pitch,
+                                  width,
+                                  height);
 
             break;
 

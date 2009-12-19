@@ -19,8 +19,12 @@ Snes9x 1.52
   continues once any SA-1 games are launched.               (zones)
 - Updated command-line options.                             (zones)
 - Removed old color blending codes.                         (zones)
-- Removed too old Snes96 and ZSNES snapshot support.        (zones)
+- Removed too-old Snes96 and ZSNES snapshot support.        (zones)
 - Code cleaning.                                            (zones)
+- Replaced APU emulation cores (SPC700 and S-DSP) with
+  ones provided by Blargg's SNES_SPC library. This renders
+  save states incompatible with older versions.             (BearOso, zones)
+- Added a port of Snes9x to the GTK+ toolkit.               (BearOso)
 
 Snes9x 1.51
 - Added DSP1 and SuperFX savestate support.                 (nitsuja)

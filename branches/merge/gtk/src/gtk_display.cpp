@@ -44,14 +44,6 @@ extern unsigned int scanline_offset;
 extern unsigned short scanline_mask;
 
 /* Scanline constants for standard scanline filter */
-static uint8 scanline_denominators[] =
-{
-        8,     /* 12.5% */
-        4,     /* 25%   */
-        2,     /* 50%   */
-        1      /* 100%  */
-};
-
 static uint8 scanline_shifts[] =
 {
         3,
@@ -983,7 +975,6 @@ filter_scanlines (void *src_buffer,
 {
     register int x, y;
 
-    uint8 dnm   = scanline_denominators[gui_config->scanline_filter_intensity];
     uint8 shift = scanline_shifts[gui_config->scanline_filter_intensity];
 
     for (y = 0; y < height; y++)
@@ -1001,9 +992,9 @@ filter_scanlines (void *src_buffer,
             gs = ((*(src + x) >> 5)  & 0x1f);
             bs = ((*(src + x))       & 0x1f);
 
-            rh = ((rs * (dnm + 1)) >> shift);
-            gh = ((gs * (dnm + 1)) >> shift);
-            bh = ((bs * (dnm + 1)) >> shift);
+            rh = rs + (rs >> shift);
+            gh = gs + (gs >> shift);
+            bh = bs + (bs >> shift);
 
             rh = (rh > 31) ? 31 : rh;
             gh = (gh > 31) ? 31 : gh;

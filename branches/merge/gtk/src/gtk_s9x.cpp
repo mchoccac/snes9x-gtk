@@ -464,7 +464,6 @@ S9xSyncSpeedFinish (void)
 
         if (time_left > 500000)
         {
-            printf ("Skew %d\n", time_left);
             next_frame_time = now;
             break;
         }

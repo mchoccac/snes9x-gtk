@@ -110,8 +110,6 @@ S9xXVDisplayDriver::update (int width, int height)
                         bpp);
     }
 
-    gdk_display_sync (gtk_widget_get_display (drawing_area));
-
     if (config->scale_to_fit)
     {
         double screen_aspect = (double) c_width / (double) c_height;
@@ -199,6 +197,8 @@ S9xXVDisplayDriver::update (int width, int height)
                                     width,
                                     height);
     }
+
+    XSync (display, False);
 
     return;
 }

@@ -420,6 +420,8 @@ S9xParseArg (char **argv, int &i, int argc)
     return;
 }
 
+#undef TIMER_DIFF
+#define TIMER_DIFF(a, b) ((((a).tv_sec - (b).tv_sec) * 1000000) + (a).tv_usec - (b).tv_usec)
 /* Finishes syncing by using more accurate system sleep functions*/
 void
 S9xSyncSpeedFinish (void)
@@ -438,9 +440,7 @@ S9xSyncSpeedFinish (void)
             gettimeofday (&next_frame_time, NULL);
 
             /* If we can't sync sound within a second, we're probably deadlocked */
-            if (((next_frame_time.tv_sec - now.tv_sec) * 1000000 +
-                 (next_frame_time.tv_usec - now.tv_usec)) >
-                1000000)
+            if (TIMER_DIFF (next_frame_time, now) > 1000000)
             {
                 /* Flush out our sample buffer and give up. */
                 S9xClearSamples ();
@@ -453,13 +453,18 @@ S9xSyncSpeedFinish (void)
         return;
     }
 
+    if (TIMER_DIFF (next_frame_time, now) < -500000)
+    {
+        next_frame_time = now;
+    }
+
     while (timercmp (&next_frame_time, &now, >))
     {
-        int time_left = (next_frame_time.tv_sec  - now.tv_sec) * 1000000 +
-                         next_frame_time.tv_usec - now.tv_usec;
+        int time_left = TIMER_DIFF (next_frame_time, now);
 
         if (time_left > 500000)
         {
+            printf ("Skew %d\n", time_left);
             next_frame_time = now;
             break;
         }
@@ -537,8 +542,7 @@ S9xSyncSpeed (void)
 
     if (Settings.SkipFrames == AUTO_FRAMERATE && !Settings.SoundSync)
     {
-        lag = (now.tv_sec  - next_frame_time.tv_sec) * 1000000 +
-               now.tv_usec - next_frame_time.tv_usec;
+        lag = TIMER_DIFF (now, next_frame_time);
 
         /* We compensate for the frame time by a frame in case it's just a CPU
          * discrepancy. We can recover lost time in the next frame anyway. */

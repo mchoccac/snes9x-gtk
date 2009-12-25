@@ -227,6 +227,31 @@ S9xBasename (const char *f)
     return f;
 }
 
+const char *
+S9xBasenameNoExt (const char *f)
+{
+    static char filename[PATH_MAX + 1];
+    const char *base, *ext;
+
+    if (!(base = strrchr (f, SLASH_CHAR)))
+        base = f;
+    else
+        base += 1;
+
+    ext = strrchr (f, '.');
+
+    if (!ext)
+        strncpy (filename, base, PATH_MAX);
+    else
+    {
+        int len = ext - base;
+        strncpy (filename, base, len);
+        filename[len] = '\0';
+    }
+
+    return filename;
+}
+
 static int
 file_exists (const char *name)
 {

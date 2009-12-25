@@ -658,8 +658,8 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
 
     gtk_widget_realize (window);
     gtk_widget_realize (GTK_WIDGET (drawing_area));
-    gdk_window_set_back_pixmap (window->window, NULL, FALSE);
-    gdk_window_set_back_pixmap (GTK_WIDGET (drawing_area)->window, NULL, FALSE);
+    /*gdk_window_set_back_pixmap (window->window, NULL, FALSE);
+    gdk_window_set_back_pixmap (GTK_WIDGET (drawing_area)->window, NULL, FALSE);*/
 
     gtk_check_menu_item_set_active (
         GTK_CHECK_MENU_ITEM (get_widget ("show_statusbar_item")),
@@ -1223,7 +1223,7 @@ Snes9xWindow::update_statusbar (void)
                           256,
                           _("%sHosting NetPlay - %s"),
                           is_paused () || NetPlay.Paused ? _("Paused - ") : "",
-                          Memory.RawROMName);
+                          S9xBasenameNoExt (Memory.ROMFilename));
             }
             else
             {
@@ -1231,7 +1231,7 @@ Snes9xWindow::update_statusbar (void)
                           256,
                           _("%s%s on NetPlay %s:%d - Player %d"),
                           is_paused () || NetPlay.Paused ? _("Paused - ") : "",
-                          Memory.RawROMName,
+                          S9xBasenameNoExt (Memory.ROMFilename),
                           NetPlay.ServerHostName,
                           NetPlay.Port,
                           NetPlay.Player);
@@ -1245,7 +1245,7 @@ Snes9xWindow::update_statusbar (void)
                       256,
                       "%s%s",
                       is_paused () ? _("Paused - ") : "",
-                      Memory.RawROMName);
+                      S9xBasenameNoExt (Memory.ROMFilename));
         }
     }
 

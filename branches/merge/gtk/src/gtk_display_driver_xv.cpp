@@ -110,6 +110,8 @@ S9xXVDisplayDriver::update (int width, int height)
                         bpp);
     }
 
+    XLockDisplay (display);
+
     if (config->scale_to_fit)
     {
         double screen_aspect = (double) c_width / (double) c_height;
@@ -199,6 +201,8 @@ S9xXVDisplayDriver::update (int width, int height)
     }
 
     XSync (display, False);
+
+    XUnlockDisplay (display);
 
     return;
 }
@@ -491,13 +495,16 @@ S9xXVDisplayDriver::clear (void)
     gc = drawing_area->style->fg_gc[GTK_WIDGET_STATE (drawing_area)];
     gdk_gc_set_rgb_fg_color (gc, &black);
 
+    XLockDisplay (display);
     if (window->last_width <= 0 || window->last_height <= 0)
     {
+
         gdk_draw_rectangle (drawing_area->window,
                             gc,
                             TRUE,
                             0, 0,
                             c_width, c_height);
+        XUnlockDisplay (display);
         return;
     }
 
@@ -555,7 +562,10 @@ S9xXVDisplayDriver::clear (void)
             }
         }
         else
+        {
+            XUnlockDisplay (display);
             return;
+        }
     }
     else
     {
@@ -588,6 +598,8 @@ S9xXVDisplayDriver::clear (void)
                             c_width - (bar_width + w),
                             h);
     }
+
+    XUnlockDisplay (display);
 
     return;
 }

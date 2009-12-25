@@ -2,6 +2,7 @@
 #define __GTK_FILE_H
 
 char *S9xOpenROMDialog (void);
+const char *S9xBasenameNoExt (const char *);
 
 void S9xLoadState (const char *filename);
 void S9xSaveState (const char *filename);

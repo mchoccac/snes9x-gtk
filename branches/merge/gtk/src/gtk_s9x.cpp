@@ -229,6 +229,7 @@ S9xNoROMLoaded (void)
     return;
 }
 
+/*
 static inline void check_messages (void)
 {
     static unsigned int current_timeout = 0;
@@ -242,12 +243,12 @@ static inline void check_messages (void)
 
     return;
 }
+*/
 
 gboolean
 S9xPauseFunc (gpointer data)
 {
     S9xProcessEvents (TRUE);
-    check_messages ();
 
     if (!gui_config->rom_loaded)
         return TRUE;
@@ -323,7 +324,6 @@ S9xIdleFunc (gpointer data)
         S9xSyncSpeedFinish ();
 
     S9xProcessEvents (TRUE);
-    check_messages ();
 
 #ifdef NETPLAY_SUPPORT
     if (!S9xNetplayPush ())

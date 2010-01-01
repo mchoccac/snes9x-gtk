@@ -2,14 +2,14 @@
 
 a
 {
-    color: gray;
-    font-family: "Lucida Grande", Helvetica, Arial;
-    text-decoration: none
+	color: gray;
+	font-family: "Lucida Grande", Helvetica, Arial;
+	text-decoration: none;
 }
 
 a:hover
 {
-    text-decoration: underline
+	text-decoration: underline;
 }
 
 h1
@@ -19,26 +19,17 @@ h1
 	font-family: "Lucida Grande", Helvetica, Arial;
 	margin: 0px 10px 10px 10px;
 	letter-spacing: -1pt;
-	padding-top: 20px
+	padding-top: 20px;
 }
 
 h2
-{
-	color: gray;
-	font-size: 12pt;
-	font-family: "Lucida Grande", Helvetica, Arial;
-	padding-top: 8px;
-	padding-bottom: 38px
-}
-
-h3
 {
 	color: gray;
 	font-weight: 300;
 	font-size: 8pt;
 	font-family: "Lucida Grande", Helvetica, Arial;
 	margin-bottom: -12px;
-	padding-left: 6px
+	padding-left: 6px;
 }
 
 ul
@@ -57,22 +48,14 @@ ul
 {
 	float: left;
 	margin-top: 76px;
-	width: 235px
-}
-
-#contentcenter
-{
-	float: left;
-	margin-top: 10px;
-	padding: 0px;
-	width: 30px
+	width: 230px;
 }
 
 #contentright
 {
 	float: left;
 	margin-top: 14px;
-	width: 235px
+	width: 230px;
 }
 
 #frame
@@ -81,5 +64,5 @@ ul
 	margin-top: 10px;
 	margin-right: auto;
 	margin-left: auto;
-	width: 500px
+	width: 460px;
 }

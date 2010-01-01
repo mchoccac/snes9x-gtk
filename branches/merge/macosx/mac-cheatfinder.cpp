@@ -1,4 +1,4 @@
-/**********************************************************************************
+/***********************************************************************************
   Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
 
   (c) Copyright 1996 - 2002  Gary Henderson (gary.henderson@ntlworld.com),
@@ -15,11 +15,14 @@
   (c) Copyright 2002 - 2006  funkyass (funkyass@spam.shaw.ca),
                              Kris Bleakley (codeviolation@hotmail.com)
 
-  (c) Copyright 2002 - 2007  Brad Jorsch (anomie@users.sourceforge.net),
+  (c) Copyright 2002 - 2010  Brad Jorsch (anomie@users.sourceforge.net),
                              Nach (n-a-c-h@users.sourceforge.net),
                              zones (kasumitokoduck@yahoo.com)
 
   (c) Copyright 2006 - 2007  nitsuja
+
+  (c) Copyright 2009 - 2010  BearOso,
+                             OV2
 
 
   BS-X C emulator code
@@ -37,7 +40,7 @@
 
   DSP-1 emulator code
   (c) Copyright 1998 - 2006  _Demo_,
-                             Andreas Naive (andreasnaive@gmail.com)
+                             Andreas Naive (andreasnaive@gmail.com),
                              Gary Henderson,
                              Ivar (ivar@snes9x.com),
                              John Weidman,
@@ -52,7 +55,6 @@
                              Lord Nightmare (lord_nightmare@users.sourceforge.net),
                              Matthew Kendora,
                              neviksti
-
 
   DSP-3 emulator code
   (c) Copyright 2003 - 2006  John Weidman,
@@ -70,14 +72,18 @@
   OBC1 emulator code
   (c) Copyright 2001 - 2004  zsKnight,
                              pagefault (pagefault@zsnes.com),
-                             Kris Bleakley,
+                             Kris Bleakley
                              Ported from x86 assembler to C by sanmaiwashi
 
-  SPC7110 and RTC C++ emulator code
+  SPC7110 and RTC C++ emulator code used in 1.39-1.51
   (c) Copyright 2002         Matthew Kendora with research by
                              zsKnight,
                              John Weidman,
                              Dark Force
+
+  SPC7110 and RTC C++ emulator code used in 1.52+
+  (c) Copyright 2009         byuu,
+                             neviksti
 
   S-DD1 C emulator code
   (c) Copyright 2003         Brad Jorsch with research by
@@ -85,7 +91,7 @@
                              John Weidman
 
   S-RTC C emulator code
-  (c) Copyright 2001-2006    byuu,
+  (c) Copyright 2001 - 2006  byuu,
                              John Weidman
 
   ST010 C++ emulator code
@@ -97,16 +103,19 @@
   Super FX x86 assembler emulator code
   (c) Copyright 1998 - 2003  _Demo_,
                              pagefault,
-                             zsKnight,
+                             zsKnight
 
   Super FX C emulator code
   (c) Copyright 1997 - 1999  Ivar,
                              Gary Henderson,
                              John Weidman
 
-  Sound DSP emulator code is derived from SNEeSe and OpenSPC:
+  Sound emulator code used in 1.5-1.51
   (c) Copyright 1998 - 2003  Brad Martin
   (c) Copyright 1998 - 2006  Charles Bilyue'
+
+  Sound emulator code used in 1.52+
+  (c) Copyright 2004 - 2007  Shay Green (gblargg@gmail.com)
 
   SH assembler code partly based on x86 assembler code
   (c) Copyright 2002 - 2004  Marcus Comstedt (marcus@mc.pp.se)
@@ -117,23 +126,30 @@
   HQ2x, HQ3x, HQ4x filters
   (c) Copyright 2003         Maxim Stepin (maxim@hiend3d.com)
 
+  NTSC filter
+  (c) Copyright 2006 - 2007  Shay Green
+
+  GTK+ GUI code
+  (c) Copyright 2004 - 2010  BearOso
+
   Win32 GUI code
   (c) Copyright 2003 - 2006  blip,
                              funkyass,
                              Matthew Kendora,
                              Nach,
                              nitsuja
+  (c) Copyright 2009 - 2010  OV2
 
   Mac OS GUI code
   (c) Copyright 1998 - 2001  John Stiles
-  (c) Copyright 2001 - 2007  zones
+  (c) Copyright 2001 - 2010  zones
 
 
   Specific ports contains the works of other authors. See headers in
   individual files.
 
 
-  Snes9x homepage: http://www.snes9x.com
+  Snes9x homepage: http://www.snes9x.com/
 
   Permission to use, copy, modify and/or distribute Snes9x in both binary
   and source form, for non-commercial purposes, is hereby granted without
@@ -156,20 +172,21 @@
 
   Super NES and Super Nintendo Entertainment System are trademarks of
   Nintendo Co., Limited and its subsidiary companies.
-**********************************************************************************/
+ ***********************************************************************************/
 
-/**********************************************************************************
+/***********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
   Snes9x for Mac OS X
 
-  (c) Copyright 2001 - 2007  zones
+  (c) Copyright 2001 - 2010  zones
   (c) Copyright 2002 - 2005  107
   (c) Copyright 2002         PB1400c
   (c) Copyright 2004         Alexander and Sander
   (c) Copyright 2004 - 2005  Steven Seeger
   (c) Copyright 2005         Ryan Vogt
-**********************************************************************************/
+ ***********************************************************************************/
+
 
 #include "snes9x.h"
 #include "memmap.h"
@@ -243,19 +260,22 @@ enum
 
 typedef struct
 {
-	WindowRef	main;
-	WindowRef	sheet;
-	WindowRef	drawer;
-	HIViewRef	list;
-	HIViewRef	scroll;
+	IBNibRef		nibRef;
+	WindowRef		main;
+	WindowRef		sheet;
+	WindowRef		drawer;
+	HIViewRef		list;
+	HIViewRef		scroll;
+	EventHandlerRef	sEref;
+	EventHandlerUPP	sUPP;
 }	WindowData;
 
 typedef struct
 {
-	HIViewRef	view;
-	HIPoint		originPoint;
-	HISize		lineSize;
-	Boolean		inFocus;
+	HIViewRef		view;
+	HIPoint			originPoint;
+	HISize			lineSize;
+	Boolean			inFocus;
 }	ListViewData;
 
 Boolean	cfIsWatching = false;
@@ -298,6 +318,7 @@ static void CheatFinderHandleAddEntryButton (WindowData *);
 static void CheatFinderMakeValueFormat (char *);
 static void CheatFinderAddEntry (SInt64, char *);
 static void CheatFinderBeginAddEntrySheet (WindowData *);
+static void CheatFinderEndAddEntrySheet (WindowData *);
 static void CheatFinderListViewScrollToThere (float, ListViewData *);
 static void CheatFinderListViewDraw (CGContextRef, HIRect *, ListViewData *);
 static float CheatFinderListViewSanityCheck (float, ListViewData *);
@@ -334,9 +355,13 @@ void InitCheatFinder (void)
 		cfListLineCTFontRef = CTFontCreateWithName(CFSTR("Lucida Sans Typewriter Regular"), 11.0f, NULL);
 		if (cfListLineCTFontRef == NULL)
 		{
-			cfListLineCTFontRef = CTFontCreateWithName(CFSTR("Monaco"), 11.0f, NULL);
+			cfListLineCTFontRef = CTFontCreateWithName(CFSTR("Menlo"), 11.0f, NULL);
 			if (cfListLineCTFontRef == NULL)
-				QuitWithFatalError(0, "cheatfinder 02");
+			{
+				cfListLineCTFontRef = CTFontCreateWithName(CFSTR("Monaco"), 11.0f, NULL);
+				if (cfListLineCTFontRef == NULL)
+					QuitWithFatalError(0, "cheatfinder 02");
+			}
 		}
 	}
 #ifdef MAC_TIGER_PANTHER_SUPPORT
@@ -347,9 +372,13 @@ void InitCheatFinder (void)
 		err = CreateATSUIStyleFromFontFullNameAndSize("Lucida Sans Typewriter Regular", 11, &cfListLineATSUStyle);
 		if (err)
 		{
-			err = CreateATSUIStyleFromFontFullNameAndSize("Monaco", 11, &cfListLineATSUStyle);
+			err = CreateATSUIStyleFromFontFullNameAndSize("Menlo", 11, &cfListLineATSUStyle);
 			if (err)
-				QuitWithFatalError(0, "cheatfinder 02");
+			{
+				err = CreateATSUIStyleFromFontFullNameAndSize("Monaco", 11, &cfListLineATSUStyle);
+				if (err)
+					QuitWithFatalError(0, "cheatfinder 02");
+			}
 		}
 	}
 #endif
@@ -391,19 +420,16 @@ void CheatFinder (void)
 	static HIObjectClassRef	cfListViewClass = NULL;
 
 	OSStatus				err;
-	IBNibRef				nibRef;
 	HIViewRef				ctl;
 	HIViewID				cid;
 	MenuRef					menu;
 	char					num[256];
 	WindowData				cf;
-	EventHandlerRef			wEref, sEref, pEref;
-	EventHandlerUPP			wUPP, sUPP, pUPP;
+	EventHandlerRef			wEref, pEref;
+	EventHandlerUPP			wUPP, pUPP;
 	EventTypeSpec			wEvents[] = { { kEventClassCommand,    kEventCommandProcess           },
 										  { kEventClassCommand,    kEventCommandUpdateStatus      },
 										  { kEventClassWindow,     kEventWindowClose              } },
-							sEvents[] = { { kEventClassCommand,    kEventCommandProcess           },
-										  { kEventClassCommand,    kEventCommandUpdateStatus      } },
 							pEvents[] = { { kEventClassControl,    kEventControlDraw              } },
 							cEvents[] = { { kEventClassHIObject,   kEventHIObjectConstruct        },
 										  { kEventClassHIObject,   kEventHIObjectInitialize       },
@@ -419,216 +445,204 @@ void CheatFinder (void)
 	if (!cartOpen)
 		return;
 
-	err = CreateNibReference(kMacS9XCFString, &nibRef);
+	err = CreateNibReference(kMacS9XCFString, &(cf.nibRef));
 	if (err == noErr)
 	{
-		err = CreateWindowFromNib(nibRef, CFSTR("CheatFinder"), &(cf.main));
+		err = CreateWindowFromNib(cf.nibRef, CFSTR("CheatFinder"), &(cf.main));
 		if (err == noErr)
 		{
-			err = CreateWindowFromNib(nibRef, CFSTR("CFAddEntry"), &(cf.sheet));
+			err = CreateWindowFromNib(cf.nibRef, CFSTR("CFDrawer"), &(cf.drawer));
 			if (err == noErr)
 			{
-				err = CreateWindowFromNib(nibRef, CFSTR("CFDrawer"), &(cf.drawer));
+				memcpy(cfCurrentRAM, Memory.RAM, MAIN_MEMORY_SIZE);
+				CheatFinderBuildResultList();
+
+				err = noErr;
+				if (!cfListViewClass)
+					err = HIObjectRegisterSubclass(kCheatFinderListViewClassID, kHIViewClassID, 0, CheatFinderListViewHandler, GetEventTypeCount(cEvents), cEvents, NULL, &cfListViewClass);
 				if (err == noErr)
 				{
-					memcpy(cfCurrentRAM, Memory.RAM, MAIN_MEMORY_SIZE);
-					CheatFinderBuildResultList();
+					HIObjectRef		hiObject;
+					HIViewRef		userpane, scrollview, listview, imageview, root;
+					HILayoutInfo	layoutinfo;
+					HIRect			frame;
+					HISize			minSize;
+					CGImageRef		image;
+					Rect			rct;
+					float			pich;
 
-					err = noErr;
-					if (!cfListViewClass)
-						err = HIObjectRegisterSubclass(kCheatFinderListViewClassID, kHIViewClassID, 0, CheatFinderListViewHandler, GetEventTypeCount(cEvents), cEvents, NULL, &cfListViewClass);
-					if (err == noErr)
+					GetWindowBounds(cf.main, kWindowContentRgn, &rct);
+
+					minSize.width  = (float) (rct.right  - rct.left);
+					minSize.height = (float) (rct.bottom - rct.top );
+					err = SetWindowResizeLimits(cf.main, &minSize, NULL);
+
+					root = HIViewGetRoot(cf.main);
+					cid.id = 0;
+					cid.signature = kCFUserPane;
+					HIViewFindByID(root, cid, &userpane);
+
+					err = HIScrollViewCreate(kHIScrollViewOptionsVertScroll, &scrollview);
+					HIViewAddSubview(userpane, scrollview);
+					HIViewGetBounds(userpane, &frame);
+					cfListAddrColumnWidth = (int) (frame.size.width * 0.4);
+					frame.origin.y    += 16.0f;
+					frame.size.height -= 16.0f;
+					frame = CGRectInset(frame, 1.0f, 1.0f);
+					HIViewSetFrame(scrollview, &frame);
+					HIViewSetVisible(scrollview, true);
+					cf.scroll = scrollview;
+
+					layoutinfo.version = kHILayoutInfoVersionZero;
+					HIViewGetLayoutInfo(scrollview, &layoutinfo);
+
+					layoutinfo.binding.top.toView    = userpane;
+					layoutinfo.binding.top.kind      = kHILayoutBindTop;
+					layoutinfo.binding.bottom.toView = userpane;
+					layoutinfo.binding.bottom.kind   = kHILayoutBindBottom;
+					layoutinfo.binding.left.toView   = userpane;
+					layoutinfo.binding.left.kind     = kHILayoutBindLeft;
+					layoutinfo.binding.right.toView  = userpane;
+					layoutinfo.binding.right.kind    = kHILayoutBindRight;
+					HIViewSetLayoutInfo(scrollview, &layoutinfo);
+
+					err = HIObjectCreate(kCheatFinderListViewClassID, NULL, &hiObject);
+					listview = (HIViewRef) hiObject;
+					HIViewAddSubview(scrollview, listview);
+					SetControl32BitMinimum(listview, 1);
+					SetControl32BitMaximum(listview, cfNumRows);
+					SetControl32BitValue(listview, 1);
+					HIViewSetVisible(listview, true);
+					cf.list = listview;
+
+					cid.signature = kCFNumBytesPop;
+					HIViewFindByID(root, cid, &ctl);
+					menu = HIMenuViewGetMenu(ctl);
+					for (int i = 1; i <= CountMenuItems(menu); i++)
+						CheckMenuItem(menu, i, false);
+					CheckMenuItem(menu, cfViewNumBytes, true);
+					SetControl32BitValue(ctl, cfViewNumBytes);
+
+					cid.signature = kCFViewModeRad;
+					HIViewFindByID(root, cid, &ctl);
+					SetControl32BitValue(ctl, cfViewMode);
+
+					cid.signature = kCFCompModePop;
+					HIViewFindByID(root, cid, &ctl);
+					menu = HIMenuViewGetMenu(ctl);
+					for (int i = 1; i <= CountMenuItems(menu); i++)
+						CheckMenuItem(menu, i, false);
+					CheckMenuItem(menu, cfCompMode, true);
+					SetControl32BitValue(ctl, cfCompMode);
+
+					if (cfIsNewGame || (!cfIsStored && (cfCompWith == kCFCompWithStored)))
+						cfCompWith = kCFCompWithThis;
+
+					cid.signature = kCFCompStoredRad;
+					HIViewFindByID(root, cid, &ctl);
+					SetControl32BitValue(ctl, cfCompWith == kCFCompWithStored);
+					if (cfIsStored)
+						ActivateControl(ctl);
+					else
+						DeactivateControl(ctl);
+
+					cid.signature = kCFCompLastRad;
+					HIViewFindByID(root, cid, &ctl);
+					SetControl32BitValue(ctl, cfCompWith == kCFCompWithLast);
+					if (!cfIsNewGame)
+						ActivateControl(ctl);
+					else
+						DeactivateControl(ctl);
+
+					cid.signature = kCFCompThisRad;
+					HIViewFindByID(root, cid, &ctl);
+					SetControl32BitValue(ctl, cfCompWith == kCFCompWithThis);
+
+					cid.signature = kCFCompValueTxt;
+					HIViewFindByID(root, cid, &ctl);
+					SetEditTextCFString(ctl, CFSTR(""), false);
+					err = SetKeyboardFocus(cf.main, ctl, kControlFocusNextPart);
+
+					cid.signature = kCFWatchBtn;
+					HIViewFindByID(root, cid, &ctl);
+					SetControl32BitValue(ctl, cfIsWatching);
+
+					cid.signature = kCFDrawerBtn;
+					HIViewFindByID(root, cid, &ctl);
+					SetControl32BitValue(ctl, cfDrawerShow);
+
+					cid.signature = kCFWatchAddrTxt;
+					HIViewFindByID(root, cid, &ctl);
+					if (cfIsWatching)
 					{
-						HIObjectRef		hiObject;
-						HIViewRef		userpane, scrollview, listview, imageview, root;
-						HILayoutInfo	layoutinfo;
-						HIRect			frame;
-						HISize			minSize;
-						CGImageRef		image;
-						Rect			rct;
-						float			pich;
+						sprintf(num, "%06lX", cfWatchAddr + 0x7E0000);
+						SetStaticTextCStr(ctl, num, false);
+					}
+					else
+						SetStaticTextCFString(ctl, CFSTR(""), false);
 
-						GetWindowBounds(cf.main, kWindowContentRgn, &rct);
+					CheatFinderAdjustButtons(&cf);
 
-						minSize.width  = (float) (rct.right  - rct.left);
-						minSize.height = (float) (rct.bottom - rct.top );
-						err = SetWindowResizeLimits(cf.main, &minSize, NULL);
+					pUPP = NewEventHandlerUPP(CheatFinderListFrameEventHandler);
+					err = InstallControlEventHandler(userpane, pUPP, GetEventTypeCount(pEvents), pEvents, (void *) userpane, &pEref);
 
-						root = HIViewGetRoot(cf.main);
-						cid.id = 0;
-						cid.signature = kCFUserPane;
-						HIViewFindByID(root, cid, &userpane);
+					wUPP = NewEventHandlerUPP(CheatFinderWindowEventHandler);
+					err = InstallWindowEventHandler (cf.main,  wUPP, GetEventTypeCount(wEvents), wEvents, (void *) &cf,      &wEref);
 
-						err = HIScrollViewCreate(kHIScrollViewOptionsVertScroll, &scrollview);
-						HIViewAddSubview(userpane, scrollview);
-						HIViewGetBounds(userpane, &frame);
-						cfListAddrColumnWidth = (int) (frame.size.width * 0.4);
-						frame.origin.y    += 16.0f;
-						frame.size.height -= 16.0f;
-						frame = CGRectInset(frame, 1.0f, 1.0f);
-						HIViewSetFrame(scrollview, &frame);
-						HIViewSetVisible(scrollview, true);
-						cf.scroll = scrollview;
+					pich = (float) (IPPU.RenderedScreenHeight >> ((IPPU.RenderedScreenHeight > 256) ? 1 : 0));
 
-						layoutinfo.version = kHILayoutInfoVersionZero;
-						HIViewGetLayoutInfo(scrollview, &layoutinfo);
+					err = SetDrawerParent(cf.drawer, cf.main);
+					err = SetDrawerOffsets(cf.drawer, 0.0f, (float) ((rct.bottom - rct.top) - (pich + 37)));
 
-						layoutinfo.binding.top.toView    = userpane;
-						layoutinfo.binding.top.kind      = kHILayoutBindTop;
-						layoutinfo.binding.bottom.toView = userpane;
-						layoutinfo.binding.bottom.kind   = kHILayoutBindBottom;
-						layoutinfo.binding.left.toView   = userpane;
-						layoutinfo.binding.left.kind     = kHILayoutBindLeft;
-						layoutinfo.binding.right.toView  = userpane;
-						layoutinfo.binding.right.kind    = kHILayoutBindRight;
-						HIViewSetLayoutInfo(scrollview, &layoutinfo);
-
-						err = HIObjectCreate(kCheatFinderListViewClassID, NULL, &hiObject);
-						listview = (HIViewRef) hiObject;
-						HIViewAddSubview(scrollview, listview);
-						SetControl32BitMinimum(listview, 1);
-						SetControl32BitMaximum(listview, cfNumRows);
-						SetControl32BitValue(listview, 1);
-						HIViewSetVisible(listview, true);
-						cf.list = listview;
-
-						cid.signature = kCFNumBytesPop;
-						HIViewFindByID(root, cid, &ctl);
-						menu = HIMenuViewGetMenu(ctl);
-						for (int i = 1; i <= CountMenuItems(menu); i++)
-							CheckMenuItem(menu, i, false);
-						CheckMenuItem(menu, cfViewNumBytes, true);
-						SetControl32BitValue(ctl, cfViewNumBytes);
-
-						cid.signature = kCFViewModeRad;
-						HIViewFindByID(root, cid, &ctl);
-						SetControl32BitValue(ctl, cfViewMode);
-
-						cid.signature = kCFCompModePop;
-						HIViewFindByID(root, cid, &ctl);
-						menu = HIMenuViewGetMenu(ctl);
-						for (int i = 1; i <= CountMenuItems(menu); i++)
-							CheckMenuItem(menu, i, false);
-						CheckMenuItem(menu, cfCompMode, true);
-						SetControl32BitValue(ctl, cfCompMode);
-
-						if (cfIsNewGame || (!cfIsStored && (cfCompWith == kCFCompWithStored)))
-							cfCompWith = kCFCompWithThis;
-
-						cid.signature = kCFCompStoredRad;
-						HIViewFindByID(root, cid, &ctl);
-						SetControl32BitValue(ctl, cfCompWith == kCFCompWithStored);
-						if (cfIsStored)
-							ActivateControl(ctl);
-						else
-							DeactivateControl(ctl);
-
-						cid.signature = kCFCompLastRad;
-						HIViewFindByID(root, cid, &ctl);
-						SetControl32BitValue(ctl, cfCompWith == kCFCompWithLast);
-						if (!cfIsNewGame)
-							ActivateControl(ctl);
-						else
-							DeactivateControl(ctl);
-
-						cid.signature = kCFCompThisRad;
-						HIViewFindByID(root, cid, &ctl);
-						SetControl32BitValue(ctl, cfCompWith == kCFCompWithThis);
-
-						cid.signature = kCFCompValueTxt;
-						HIViewFindByID(root, cid, &ctl);
-						SetEditTextCFString(ctl, CFSTR(""), false);
-						err = SetKeyboardFocus(cf.main, ctl, kControlFocusNextPart);
-
-						cid.signature = kCFWatchBtn;
-						HIViewFindByID(root, cid, &ctl);
-						SetControl32BitValue(ctl, cfIsWatching);
-
-						cid.signature = kCFDrawerBtn;
-						HIViewFindByID(root, cid, &ctl);
-						SetControl32BitValue(ctl, cfDrawerShow);
-
-						cid.signature = kCFWatchAddrTxt;
-						HIViewFindByID(root, cid, &ctl);
-						if (cfIsWatching)
+					image = CreateGameScreenCGImage();
+					if (image)
+					{
+						err = HIImageViewCreate(image, &imageview);
+						if (err == noErr)
 						{
-							sprintf(num, "%06lX", cfWatchAddr + 0x7E0000);
-							SetStaticTextCStr(ctl, num, false);
+							HIViewFindByID(HIViewGetRoot(cf.drawer), kHIViewWindowContentID, &ctl);
+
+							HIViewAddSubview(ctl, imageview);
+							HIImageViewSetOpaque(imageview, false);
+							HIImageViewSetScaleToFit(imageview, true);
+							HIViewSetVisible(imageview, true);
+
+							frame.origin.x = 8.0f;
+							frame.origin.y = 8.0f;
+							frame.size.width  = (float) SNES_WIDTH;
+							frame.size.height = pich;
+							HIViewSetFrame(imageview, &frame);
 						}
-						else
-							SetStaticTextCFString(ctl, CFSTR(""), false);
-
-						CheatFinderAdjustButtons(&cf);
-
-						pUPP = NewEventHandlerUPP(CheatFinderListFrameEventHandler);
-						err = InstallControlEventHandler(userpane, pUPP, GetEventTypeCount(pEvents), pEvents, (void *) userpane, &pEref);
-
-						wUPP = NewEventHandlerUPP(CheatFinderWindowEventHandler);
-						err = InstallWindowEventHandler (cf.main,  wUPP, GetEventTypeCount(wEvents), wEvents, (void *) &cf,      &wEref);
-
-						sUPP = NewEventHandlerUPP(CheatFinderSheetEventHandler);
-						err = InstallWindowEventHandler (cf.sheet, sUPP, GetEventTypeCount(sEvents), sEvents, (void *) &cf,      &sEref);
-
-						pich = (float) (IPPU.RenderedScreenHeight >> ((IPPU.RenderedScreenHeight > 256) ? 1 : 0));
-
-						err = SetDrawerParent(cf.drawer, cf.main);
-						err = SetDrawerOffsets(cf.drawer, 0.0f, (float) ((rct.bottom - rct.top) - (pich + 37)));
-
-						image = CreateGameScreenCGImage();
-						if (image)
-						{
-							err = HIImageViewCreate(image, &imageview);
-							if (err == noErr)
-							{
-								HIViewFindByID(HIViewGetRoot(cf.drawer), kHIViewWindowContentID, &ctl);
-
-								HIViewAddSubview(ctl, imageview);
-								HIImageViewSetOpaque(imageview, false);
-								HIImageViewSetScaleToFit(imageview, true);
-								HIViewSetVisible(imageview, true);
-
-								frame.origin.x = 8.0f;
-								frame.origin.y = 8.0f;
-								frame.size.width  = (float) SNES_WIDTH;
-								frame.size.height = pich;
-								HIViewSetFrame(imageview, &frame);
-							}
-						}
-
-						MoveWindowPosition(cf.main, kWindowCheatFinder, true);
-						ShowWindow(cf.main);
-
-						if (cfDrawerShow)
-							err = OpenDrawer(cf.drawer, kWindowEdgeDefault, false);
-
-						err = RunAppModalLoopForWindow(cf.main);
-
-						HideWindow(cf.main);
-						SaveWindowPosition(cf.main, kWindowCheatFinder);
-
-						err = RemoveEventHandler(pEref);
-						DisposeEventHandlerUPP(pUPP);
-
-						err = RemoveEventHandler(sEref);
-						DisposeEventHandlerUPP(sUPP);
-
-						err = RemoveEventHandler(wEref);
-						DisposeEventHandlerUPP(wUPP);
-
-						if (image)
-							CGImageRelease(image);
 					}
 
-					CFRelease(cf.drawer);
+					MoveWindowPosition(cf.main, kWindowCheatFinder, true);
+					ShowWindow(cf.main);
+
+					if (cfDrawerShow)
+						err = OpenDrawer(cf.drawer, kWindowEdgeDefault, false);
+
+					err = RunAppModalLoopForWindow(cf.main);
+
+					HideWindow(cf.main);
+					SaveWindowPosition(cf.main, kWindowCheatFinder);
+
+					err = RemoveEventHandler(pEref);
+					DisposeEventHandlerUPP(pUPP);
+
+					err = RemoveEventHandler(wEref);
+					DisposeEventHandlerUPP(wUPP);
+
+					if (image)
+						CGImageRelease(image);
 				}
 
-				CFRelease(cf.sheet);
+				CFRelease(cf.drawer);
 			}
 
 			CFRelease(cf.main);
 		}
 
-		DisposeNibReference(nibRef);
+		DisposeNibReference(cf.nibRef);
 
 		memcpy(cfLastRAM, Memory.RAM, MAIN_MEMORY_SIZE);
 		cfIsNewGame = false;
@@ -1280,41 +1294,65 @@ static void CheatFinderHandleAddEntryButton (WindowData *cf)
 
 static void CheatFinderBeginAddEntrySheet (WindowData *cf)
 {
-	OSStatus	err;
-	HIViewRef	ctl, root;
-	HIViewID	cid;
-	UInt32		addr;
-	char		str[256], form[256];
+	OSStatus		err;
+	HIViewRef		ctl, root;
+	HIViewID		cid;
+	UInt32			addr;
+	char			str[256], form[256];
+	EventTypeSpec	sEvents[] = { { kEventClassCommand, kEventCommandProcess      },
+								  { kEventClassCommand, kEventCommandUpdateStatus } };
 
-	addr = cfAddress[cfListSelection];
+	err = CreateWindowFromNib(cf->nibRef, CFSTR("CFAddEntry"), &(cf->sheet));
+	if (err == noErr)
+	{
+		addr = cfAddress[cfListSelection];
 
-	root = HIViewGetRoot(cf->sheet);
-	cid.id = 0;
+		root = HIViewGetRoot(cf->sheet);
+		cid.id = 0;
 
-	cid.signature = kCFSheetAddrTxt;
-	HIViewFindByID(root, cid, &ctl);
-	sprintf(str, "%06lX", addr + 0x7E0000);
-	SetStaticTextCStr(ctl, str, false);
+		cid.signature = kCFSheetAddrTxt;
+		HIViewFindByID(root, cid, &ctl);
+		sprintf(str, "%06lX", addr + 0x7E0000);
+		SetStaticTextCStr(ctl, str, false);
 
-	cid.signature = kCFSheetCurrentValueTxt;
-	HIViewFindByID(root, cid, &ctl);
-	CheatFinderMakeValueFormat(form);
-	sprintf(str, form, CheatFinderReadBytes(cfCurrentRAM, addr));
-	SetStaticTextCStr(ctl, str, false);
+		cid.signature = kCFSheetCurrentValueTxt;
+		HIViewFindByID(root, cid, &ctl);
+		CheatFinderMakeValueFormat(form);
+		sprintf(str, form, CheatFinderReadBytes(cfCurrentRAM, addr));
+		SetStaticTextCStr(ctl, str, false);
 
-	cid.signature = kCFSheetCheetValueTxt;
-	HIViewFindByID(root, cid, &ctl);
-	SetEditTextCStr(ctl, str, false);
+		cid.signature = kCFSheetCheetValueTxt;
+		HIViewFindByID(root, cid, &ctl);
+		SetEditTextCStr(ctl, str, false);
 
-	err = ClearKeyboardFocus(cf->sheet);
-	err = SetKeyboardFocus(cf->sheet, ctl, kControlFocusNextPart);
+		err = ClearKeyboardFocus(cf->sheet);
+		err = SetKeyboardFocus(cf->sheet, ctl, kControlFocusNextPart);
 
-	cid.signature = kCFSheetDescriptionTxt;
-	HIViewFindByID(root, cid, &ctl);
-	sprintf(str, "%06lX-%06lX", addr + 0x7E0000, addr + cfViewNumBytes - 1 + 0x7E0000);
-	SetStaticTextCStr(ctl, str, false);
+		cid.signature = kCFSheetDescriptionTxt;
+		HIViewFindByID(root, cid, &ctl);
+		sprintf(str, "%06lX-%06lX", addr + 0x7E0000, addr + cfViewNumBytes - 1 + 0x7E0000);
+		SetStaticTextCStr(ctl, str, false);
 
-	err = ShowSheetWindow(cf->sheet, cf->main);
+		cf->sUPP = NewEventHandlerUPP(CheatFinderSheetEventHandler);
+		err = InstallWindowEventHandler(cf->sheet, cf->sUPP, GetEventTypeCount(sEvents), sEvents, (void *) cf, &(cf->sEref));
+
+		err = ShowSheetWindow(cf->sheet, cf->main);
+	}
+}
+
+static void CheatFinderEndAddEntrySheet (WindowData *cf)
+{
+	if (cf->sheet)
+	{
+		OSStatus	err;
+
+		err = HideSheetWindow(cf->sheet);
+
+		err = RemoveEventHandler(cf->sEref);
+		DisposeEventHandlerUPP(cf->sUPP);
+
+		CFRelease(cf->sheet);
+	}
 }
 
 static pascal OSStatus CheatFinderSheetEventHandler (EventHandlerCallRef inHandlerCallRef, EventRef inEvent, void *inUserData)
@@ -1383,7 +1421,7 @@ static pascal OSStatus CheatFinderSheetEventHandler (EventHandlerCallRef inHandl
 
 								CheatFinderAddEntry(rv, buf);
 
-								err = HideSheetWindow(cf->sheet);
+								CheatFinderEndAddEntrySheet(cf);
 
 								result = noErr;
 								break;
@@ -1391,7 +1429,7 @@ static pascal OSStatus CheatFinderSheetEventHandler (EventHandlerCallRef inHandl
 
 							case kCFSheetCancelBtn:
 							{
-								err = HideSheetWindow(cf->sheet);
+								CheatFinderEndAddEntrySheet(cf);
 								result = noErr;
 								break;
 							}

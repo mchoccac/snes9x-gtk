@@ -8,7 +8,7 @@
   Begins with fixed length signature, consisting of a string, ':', a 4-digit
   decimal version, and a '\n'.
 
-#!s9xsnp:0006   <-- '\n' after the 1
+#!s9xsnp:0006   <-- '\n' after the 6
 
   Then we have various blocks. The block format is: 3-character block name,
   ':', 6-digit length, ':', then the data. Blocks are written in a defined

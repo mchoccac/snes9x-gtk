@@ -634,8 +634,8 @@ void SPC7110::mmio_write(unsigned addr, uint8 data) {
           rtc_index = (rtc_index + 1) & 15;
         } break;
 
-        case RTCS_Inactive: {
-        } break;
+		case RTCS_Inactive: {
+		} break;
       } //switch(rtc_state)
     } break;
   }

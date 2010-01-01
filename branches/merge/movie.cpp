@@ -1,4 +1,4 @@
-/**********************************************************************************
+/***********************************************************************************
   Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
 
   (c) Copyright 1996 - 2002  Gary Henderson (gary.henderson@ntlworld.com),
@@ -15,11 +15,14 @@
   (c) Copyright 2002 - 2006  funkyass (funkyass@spam.shaw.ca),
                              Kris Bleakley (codeviolation@hotmail.com)
 
-  (c) Copyright 2002 - 2007  Brad Jorsch (anomie@users.sourceforge.net),
+  (c) Copyright 2002 - 2010  Brad Jorsch (anomie@users.sourceforge.net),
                              Nach (n-a-c-h@users.sourceforge.net),
                              zones (kasumitokoduck@yahoo.com)
 
   (c) Copyright 2006 - 2007  nitsuja
+
+  (c) Copyright 2009 - 2010  BearOso,
+                             OV2
 
 
   BS-X C emulator code
@@ -37,7 +40,7 @@
 
   DSP-1 emulator code
   (c) Copyright 1998 - 2006  _Demo_,
-                             Andreas Naive (andreasnaive@gmail.com)
+                             Andreas Naive (andreasnaive@gmail.com),
                              Gary Henderson,
                              Ivar (ivar@snes9x.com),
                              John Weidman,
@@ -52,7 +55,6 @@
                              Lord Nightmare (lord_nightmare@users.sourceforge.net),
                              Matthew Kendora,
                              neviksti
-
 
   DSP-3 emulator code
   (c) Copyright 2003 - 2006  John Weidman,
@@ -70,14 +72,18 @@
   OBC1 emulator code
   (c) Copyright 2001 - 2004  zsKnight,
                              pagefault (pagefault@zsnes.com),
-                             Kris Bleakley,
+                             Kris Bleakley
                              Ported from x86 assembler to C by sanmaiwashi
 
-  SPC7110 and RTC C++ emulator code
+  SPC7110 and RTC C++ emulator code used in 1.39-1.51
   (c) Copyright 2002         Matthew Kendora with research by
                              zsKnight,
                              John Weidman,
                              Dark Force
+
+  SPC7110 and RTC C++ emulator code used in 1.52+
+  (c) Copyright 2009         byuu,
+                             neviksti
 
   S-DD1 C emulator code
   (c) Copyright 2003         Brad Jorsch with research by
@@ -85,7 +91,7 @@
                              John Weidman
 
   S-RTC C emulator code
-  (c) Copyright 2001-2006    byuu,
+  (c) Copyright 2001 - 2006  byuu,
                              John Weidman
 
   ST010 C++ emulator code
@@ -97,16 +103,19 @@
   Super FX x86 assembler emulator code
   (c) Copyright 1998 - 2003  _Demo_,
                              pagefault,
-                             zsKnight,
+                             zsKnight
 
   Super FX C emulator code
   (c) Copyright 1997 - 1999  Ivar,
                              Gary Henderson,
                              John Weidman
 
-  Sound DSP emulator code is derived from SNEeSe and OpenSPC:
+  Sound emulator code used in 1.5-1.51
   (c) Copyright 1998 - 2003  Brad Martin
   (c) Copyright 1998 - 2006  Charles Bilyue'
+
+  Sound emulator code used in 1.52+
+  (c) Copyright 2004 - 2007  Shay Green (gblargg@gmail.com)
 
   SH assembler code partly based on x86 assembler code
   (c) Copyright 2002 - 2004  Marcus Comstedt (marcus@mc.pp.se)
@@ -117,23 +126,30 @@
   HQ2x, HQ3x, HQ4x filters
   (c) Copyright 2003         Maxim Stepin (maxim@hiend3d.com)
 
+  NTSC filter
+  (c) Copyright 2006 - 2007  Shay Green
+
+  GTK+ GUI code
+  (c) Copyright 2004 - 2010  BearOso
+
   Win32 GUI code
   (c) Copyright 2003 - 2006  blip,
                              funkyass,
                              Matthew Kendora,
                              Nach,
                              nitsuja
+  (c) Copyright 2009 - 2010  OV2
 
   Mac OS GUI code
   (c) Copyright 1998 - 2001  John Stiles
-  (c) Copyright 2001 - 2007  zones
+  (c) Copyright 2001 - 2010  zones
 
 
   Specific ports contains the works of other authors. See headers in
   individual files.
 
 
-  Snes9x homepage: http://www.snes9x.com
+  Snes9x homepage: http://www.snes9x.com/
 
   Permission to use, copy, modify and/or distribute Snes9x in both binary
   and source form, for non-commercial purposes, is hereby granted without
@@ -156,12 +172,14 @@
 
   Super NES and Super Nintendo Entertainment System are trademarks of
   Nintendo Co., Limited and its subsidiary companies.
-**********************************************************************************/
+ ***********************************************************************************/
 
 //  Input recording/playback code
 //  (c) Copyright 2004 blip
 
+#ifndef __WIN32__
 #include <unistd.h>
+#endif
 #include "snes9x.h"
 #include "memmap.h"
 #include "controls.h"
@@ -517,7 +535,9 @@ static void flush_movie (void)
 	fseek(Movie.File, 0, SEEK_SET);
 	write_movie_header(Movie.File, &Movie);
 	fseek(Movie.File, Movie.ControllerDataOffset, SEEK_SET);
-        if (fwrite(Movie.InputBuffer, 1, Movie.BytesPerSample * (Movie.MaxSample + 1), Movie.File)) {}
+
+	size_t	ignore;
+	ignore = fwrite(Movie.InputBuffer, 1, Movie.BytesPerSample * (Movie.MaxSample + 1), Movie.File);
 }
 
 static void truncate_movie (void)
@@ -528,7 +548,8 @@ static void truncate_movie (void)
 	if (Movie.SaveStateOffset > Movie.ControllerDataOffset)
 		return;
 
-        if (ftruncate(fileno(Movie.File), Movie.ControllerDataOffset + Movie.BytesPerSample * (Movie.MaxSample + 1))) {}
+	int	ignore;
+	ignore = ftruncate(fileno(Movie.File), Movie.ControllerDataOffset + Movie.BytesPerSample * (Movie.MaxSample + 1));
 }
 
 static int read_movie_header (FILE *fd, SMovie *movie)
@@ -614,7 +635,8 @@ static void write_movie_header (FILE *fd, SMovie *movie)
 			Write8(movie->PortIDs[p][i], ptr);
 	}
 
-        if (fwrite(buf, 1, SMV_HEADER_SIZE, fd)) {}
+	size_t	ignore;
+	ignore = fwrite(buf, 1, SMV_HEADER_SIZE, fd);
 }
 
 static void write_movie_extrarominfo (FILE *fd, SMovie *movie)
@@ -627,7 +649,8 @@ static void write_movie_extrarominfo (FILE *fd, SMovie *movie)
 	Write32(movie->ROMCRC32, ptr);
 	strncpy((char *) ptr, movie->ROMName, 23);
 
-        if (fwrite(buf, 1, SMV_EXTRAROMINFO_SIZE, fd)) {};
+	size_t	ignore;
+	ignore = fwrite(buf, 1, SMV_EXTRAROMINFO_SIZE, fd);
 }
 
 static void change_state (MovieState new_state)
@@ -803,7 +826,9 @@ int S9xMovieOpen (const char *filename, bool8 read_only)
 	Movie.BytesPerSample = bytes_per_sample();
 	Movie.InputBufferPtr = Movie.InputBuffer;
 	reserve_buffer_space(Movie.BytesPerSample * (Movie.MaxSample + 1));
-        if (fread(Movie.InputBufferPtr, 1, Movie.BytesPerSample * (Movie.MaxSample + 1), fd)) {}
+
+	size_t	ignore;
+	ignore = fread(Movie.InputBufferPtr, 1, Movie.BytesPerSample * (Movie.MaxSample + 1), fd);
 
 	// read "baseline" controller data
 	if (Movie.MaxSample && Movie.MaxFrame)
@@ -868,7 +893,8 @@ int S9xMovieCreate (const char *filename, uint8 controllers_mask, uint8 opts, co
 			meta_buf[i * 2 + 1] = (uint8) ((c >> 8) & 0xff);
 		}
 
-                if (fwrite(meta_buf, sizeof(uint16), metadata_length, fd)) {}
+		size_t	ignore;
+		ignore = fwrite(meta_buf, sizeof(uint16), metadata_length, fd);
 	}
 
 	Movie.ROMCRC32 = Memory.ROMCRC32;
@@ -1031,7 +1057,9 @@ void S9xMovieUpdate (bool addFrame)
 			Movie.MaxSample = ++Movie.CurrentSample;
 			if (addFrame)
 				Movie.MaxFrame = ++Movie.CurrentFrame;
-                        if (fwrite((Movie.InputBufferPtr - Movie.BytesPerSample), 1, Movie.BytesPerSample, Movie.File)) {};
+
+			size_t	ignore;
+			ignore = fwrite((Movie.InputBufferPtr - Movie.BytesPerSample), 1, Movie.BytesPerSample, Movie.File);
 
 			break;
 		}
@@ -1055,7 +1083,9 @@ void S9xMovieUpdateOnReset (void)
 		Movie.InputBufferPtr += Movie.BytesPerSample;
 		Movie.MaxSample = ++Movie.CurrentSample;
 		Movie.MaxFrame = ++Movie.CurrentFrame;
-                if (fwrite((Movie.InputBufferPtr - Movie.BytesPerSample), 1, Movie.BytesPerSample, Movie.File)) {}
+
+		size_t	ignore;
+		ignore = fwrite((Movie.InputBufferPtr - Movie.BytesPerSample), 1, Movie.BytesPerSample, Movie.File);
 	}
 }
 

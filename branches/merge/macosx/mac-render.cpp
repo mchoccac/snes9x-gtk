@@ -1,4 +1,4 @@
-/**********************************************************************************
+/***********************************************************************************
   Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
 
   (c) Copyright 1996 - 2002  Gary Henderson (gary.henderson@ntlworld.com),
@@ -15,11 +15,14 @@
   (c) Copyright 2002 - 2006  funkyass (funkyass@spam.shaw.ca),
                              Kris Bleakley (codeviolation@hotmail.com)
 
-  (c) Copyright 2002 - 2007  Brad Jorsch (anomie@users.sourceforge.net),
+  (c) Copyright 2002 - 2010  Brad Jorsch (anomie@users.sourceforge.net),
                              Nach (n-a-c-h@users.sourceforge.net),
                              zones (kasumitokoduck@yahoo.com)
 
   (c) Copyright 2006 - 2007  nitsuja
+
+  (c) Copyright 2009 - 2010  BearOso,
+                             OV2
 
 
   BS-X C emulator code
@@ -37,7 +40,7 @@
 
   DSP-1 emulator code
   (c) Copyright 1998 - 2006  _Demo_,
-                             Andreas Naive (andreasnaive@gmail.com)
+                             Andreas Naive (andreasnaive@gmail.com),
                              Gary Henderson,
                              Ivar (ivar@snes9x.com),
                              John Weidman,
@@ -52,7 +55,6 @@
                              Lord Nightmare (lord_nightmare@users.sourceforge.net),
                              Matthew Kendora,
                              neviksti
-
 
   DSP-3 emulator code
   (c) Copyright 2003 - 2006  John Weidman,
@@ -70,14 +72,18 @@
   OBC1 emulator code
   (c) Copyright 2001 - 2004  zsKnight,
                              pagefault (pagefault@zsnes.com),
-                             Kris Bleakley,
+                             Kris Bleakley
                              Ported from x86 assembler to C by sanmaiwashi
 
-  SPC7110 and RTC C++ emulator code
+  SPC7110 and RTC C++ emulator code used in 1.39-1.51
   (c) Copyright 2002         Matthew Kendora with research by
                              zsKnight,
                              John Weidman,
                              Dark Force
+
+  SPC7110 and RTC C++ emulator code used in 1.52+
+  (c) Copyright 2009         byuu,
+                             neviksti
 
   S-DD1 C emulator code
   (c) Copyright 2003         Brad Jorsch with research by
@@ -85,7 +91,7 @@
                              John Weidman
 
   S-RTC C emulator code
-  (c) Copyright 2001-2006    byuu,
+  (c) Copyright 2001 - 2006  byuu,
                              John Weidman
 
   ST010 C++ emulator code
@@ -97,16 +103,19 @@
   Super FX x86 assembler emulator code
   (c) Copyright 1998 - 2003  _Demo_,
                              pagefault,
-                             zsKnight,
+                             zsKnight
 
   Super FX C emulator code
   (c) Copyright 1997 - 1999  Ivar,
                              Gary Henderson,
                              John Weidman
 
-  Sound DSP emulator code is derived from SNEeSe and OpenSPC:
+  Sound emulator code used in 1.5-1.51
   (c) Copyright 1998 - 2003  Brad Martin
   (c) Copyright 1998 - 2006  Charles Bilyue'
+
+  Sound emulator code used in 1.52+
+  (c) Copyright 2004 - 2007  Shay Green (gblargg@gmail.com)
 
   SH assembler code partly based on x86 assembler code
   (c) Copyright 2002 - 2004  Marcus Comstedt (marcus@mc.pp.se)
@@ -117,23 +126,30 @@
   HQ2x, HQ3x, HQ4x filters
   (c) Copyright 2003         Maxim Stepin (maxim@hiend3d.com)
 
+  NTSC filter
+  (c) Copyright 2006 - 2007  Shay Green
+
+  GTK+ GUI code
+  (c) Copyright 2004 - 2010  BearOso
+
   Win32 GUI code
   (c) Copyright 2003 - 2006  blip,
                              funkyass,
                              Matthew Kendora,
                              Nach,
                              nitsuja
+  (c) Copyright 2009 - 2010  OV2
 
   Mac OS GUI code
   (c) Copyright 1998 - 2001  John Stiles
-  (c) Copyright 2001 - 2007  zones
+  (c) Copyright 2001 - 2010  zones
 
 
   Specific ports contains the works of other authors. See headers in
   individual files.
 
 
-  Snes9x homepage: http://www.snes9x.com
+  Snes9x homepage: http://www.snes9x.com/
 
   Permission to use, copy, modify and/or distribute Snes9x in both binary
   and source form, for non-commercial purposes, is hereby granted without
@@ -156,20 +172,21 @@
 
   Super NES and Super Nintendo Entertainment System are trademarks of
   Nintendo Co., Limited and its subsidiary companies.
-**********************************************************************************/
+ ***********************************************************************************/
 
-/**********************************************************************************
+/***********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
   Snes9x for Mac OS X
 
-  (c) Copyright 2001 - 2007  zones
+  (c) Copyright 2001 - 2010  zones
   (c) Copyright 2002 - 2005  107
   (c) Copyright 2002         PB1400c
   (c) Copyright 2004         Alexander and Sander
   (c) Copyright 2004 - 2005  Steven Seeger
   (c) Copyright 2005         Ryan Vogt
-**********************************************************************************/
+ ***********************************************************************************/
+
 
 #include "snes9x.h"
 #include "memmap.h"
@@ -240,6 +257,8 @@ enum
 	kGLBlit2x,
 	kGLBlit3x,
 	kGLBlit4x,
+	kGLNTS256,
+	kGLNTS512,
 	kGLNumTextures
 };
 
@@ -253,6 +272,8 @@ enum
 	kSC3xExtend,
 	kSC3xNHiRes,
 	kSC3xEHiRes,
+	kSCNTNormal,
+	kSCNTExtend,
 	kSCNumTextures
 };
 
@@ -266,14 +287,14 @@ typedef void (* Blitter) (uint8 *, int, uint8 *, int, int, int);
 
 typedef struct
 {
-	Blitter	blitFn;
-	int		srcWidth;
-	int		srcHeight;
-	int		srcRowBytes;
-	int		dstRowBytes;
-	int		copyWidth;
-	int		copyHeight;
-	uint16	*gfxBuffer;
+	Blitter		blitFn;
+	int			nx;
+	int			srcWidth;
+	int			srcHeight;
+	int			srcRowBytes;
+	int			copyWidth;
+	int			copyHeight;
+	uint16		*gfxBuffer;
 }	MPData;
 
 typedef struct
@@ -328,6 +349,8 @@ static GLfloat				*scScnArray;
 
 static struct timeval		bencht1, bencht2;
 
+static const int			ntsc_width = SNES_NTSC_OUT_WIDTH(SNES_WIDTH); // 602
+
 
 void InitGraphics (void)
 {
@@ -344,20 +367,60 @@ void InitGraphics (void)
 
 	GFX.Screen   = gfxScreen[0];
 
-    if (!snesScreenA || !snesScreenB || !blitGLBuffer)
+	if (!snesScreenA || !snesScreenB || !blitGLBuffer)
 		QuitWithFatalError(0, "render 01");
+
+	if (!S9xBlitNTSCFilterInit())
+		QuitWithFatalError(0, "render 02");
+
+	switch (videoMode)
+	{
+		default:
+		case VIDEOMODE_NTSC_C:
+		case VIDEOMODE_NTSC_TV_C:
+			S9xBlitNTSCFilterSet(&snes_ntsc_composite);
+			break; 
+
+		case VIDEOMODE_NTSC_S:
+		case VIDEOMODE_NTSC_TV_S:
+			S9xBlitNTSCFilterSet(&snes_ntsc_svideo);
+			break; 
+
+		case VIDEOMODE_NTSC_R:
+		case VIDEOMODE_NTSC_TV_R:
+			S9xBlitNTSCFilterSet(&snes_ntsc_rgb);
+			break; 
+
+		case VIDEOMODE_NTSC_M:
+		case VIDEOMODE_NTSC_TV_M:
+			S9xBlitNTSCFilterSet(&snes_ntsc_monochrome);
+			break;
+	}
 
 	S9xBlitInit(555);
 }
 
 void DeinitGraphics (void)
 {
+	S9xBlitNTSCFilterDeinit();
+
 	if (snesScreenA)
+	{
 		free(snesScreenA);
+		snesScreenA  = NULL;
+	}
+
 	if (snesScreenB)
+	{
 		free(snesScreenB);
+		snesScreenB  = NULL;
+	}
+
 	if (blitGLBuffer)
+	{
 		free(blitGLBuffer);
+		blitGLBuffer = NULL;
+	}
 }
 
 static OSStatus BlitMPGLTask (void *parameter)
@@ -375,7 +438,32 @@ static OSStatus BlitMPGLTask (void *parameter)
 
 		if (theCommand == kMPBlitFrame)
 		{
-			(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, mpDataBuffer->srcRowBytes, blitGLBuffer, mpDataBuffer->dstRowBytes, mpDataBuffer->srcWidth, mpDataBuffer->srcHeight);
+			switch (mpDataBuffer->nx)
+			{
+				case -1:
+					(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, mpDataBuffer->srcRowBytes, blitGLBuffer, 1024 * 2, mpDataBuffer->srcWidth, mpDataBuffer->srcHeight);
+					break;
+
+				case -2:
+					if (mpDataBuffer->srcHeight > SNES_HEIGHT_EXTENDED)
+						(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, mpDataBuffer->srcRowBytes, blitGLBuffer, 1024 * 2, mpDataBuffer->srcWidth, mpDataBuffer->srcHeight);
+					else
+					{
+						uint8	*tmpBuffer = blitGLBuffer + (1024 * 512 * BYTES_PER_PIXEL);
+						int		aligned    = ((ntsc_width + 2) >> 1) << 1;
+						(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, mpDataBuffer->srcRowBytes, tmpBuffer, 1024 * 2, mpDataBuffer->srcWidth, mpDataBuffer->srcHeight);
+						S9xBlitPixHiResTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, mpDataBuffer->copyHeight);
+						mpDataBuffer->copyHeight *= 2;
+					}
+
+					break;
+
+				default:
+					int	dstbytes = (OpenGL.rangeExt ? mpDataBuffer->copyWidth : ((mpDataBuffer->copyWidth > 512) ? 1024 : 512)) * 2;
+					(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, mpDataBuffer->srcRowBytes, blitGLBuffer, dstbytes, mpDataBuffer->srcWidth, mpDataBuffer->srcHeight);
+					break;
+			}
+
 			if (!ciFilterEnable)
 				S9xPutImageBlitGL2(mpDataBuffer->copyWidth, mpDataBuffer->copyHeight);
 			else
@@ -567,7 +655,13 @@ void DrawFreezeDefrostScreen (uint8 *draw)
 		MPNotifyQueue(taskQueue, (void *) kMPBlitNone, 0, 0);
 	}
 
-	memcpy(blitGLBuffer, draw, w * h * 2);
+	if (nx < 0 && !ciFilterEnable)
+	{
+		for (int y = 0; y < h; y++)
+			memcpy(blitGLBuffer + y * 1024 * 2, draw + y * w * 2, w * 2);
+	}
+	else
+		memcpy(blitGLBuffer, draw, w * h * 2);
 
 	if (!ciFilterEnable)
 		S9xPutImageBlitGL2(512, kMacWindowHeight);
@@ -587,6 +681,7 @@ void ClearGFXScreen (void)
 			*p++ = *q++ = 0;
 
 	S9xBlitClearDelta();
+	memset(blitGLBuffer, 0, 1024 * 1024 * BYTES_PER_PIXEL);
 
 	imageWidth[0] = imageHeight[0] = 0;
 	imageWidth[1] = imageHeight[1] = 0;
@@ -934,7 +1029,7 @@ static void S9xInitOpenGLContext (void)
 		case 3:	storage_hint = GL_STORAGE_SHARED_APPLE;		break;
 	}
 
-	if (screencurvature || extraOptions.glForceNoTextureRectangle)
+	if (screencurvature || videoMode >= VIDEOMODE_NTSC_C || extraOptions.glForceNoTextureRectangle)
 	{
 		OpenGL.rangeExt = false;
 		OpenGL.target   = GL_TEXTURE_2D;
@@ -960,7 +1055,7 @@ static void S9xInitOpenGLContext (void)
 	glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, storage_apple);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 8);
 
-	// 256 * 256 (256 * 224, 256 * 239)
+	// 256 * 224/239
 
 	OpenGL.texW[kGL256256] = 256;
 	OpenGL.texH[kGL256256] = OpenGL.rangeExt ? SNES_HEIGHT_EXTENDED : 256;
@@ -981,11 +1076,13 @@ static void S9xInitOpenGLContext (void)
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGL256256]);
+
 	if (OpenGL.rangeExt)
 	{
 		glTextureRangeAPPLE(OpenGL.target, OpenGL.texW[kGL256256] * OpenGL.texH[kGL256256] * BYTES_PER_PIXEL, GFX.Screen);
 		glTexParameteri(OpenGL.target, GL_TEXTURE_STORAGE_HINT_APPLE, storage_hint);
 	}
+
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -994,7 +1091,7 @@ static void S9xInitOpenGLContext (void)
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glTexImage2D(OpenGL.target, 0, OpenGL.internal_format, OpenGL.texW[kGL256256], OpenGL.texH[kGL256256], 0, OpenGL.format, OpenGL.type, GFX.Screen);
 
-	// 512 * 256 (512 * 224, 512 * 239)
+	// 512 * 224/239
 
 	OpenGL.texW[kGL512256] = 512;
 	OpenGL.texH[kGL512256] = OpenGL.rangeExt ? SNES_HEIGHT_EXTENDED : 256;
@@ -1015,11 +1112,13 @@ static void S9xInitOpenGLContext (void)
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGL512256]);
+
 	if (OpenGL.rangeExt)
 	{
 		glTextureRangeAPPLE(OpenGL.target, OpenGL.texW[kGL512256] * OpenGL.texH[kGL512256] * BYTES_PER_PIXEL, GFX.Screen);
 		glTexParameteri(OpenGL.target, GL_TEXTURE_STORAGE_HINT_APPLE, storage_hint);
 	}
+
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1028,7 +1127,7 @@ static void S9xInitOpenGLContext (void)
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glTexImage2D(OpenGL.target, 0, OpenGL.internal_format, OpenGL.texW[kGL512256], OpenGL.texH[kGL512256], 0, OpenGL.format, OpenGL.type, GFX.Screen);
 
-	// 512 * 512 (512 * 448, 512 * 478)
+	// 512 * 448/478
 
 	OpenGL.texW[kGL512512] = 512;
 	OpenGL.texH[kGL512512] = OpenGL.rangeExt ? (SNES_HEIGHT_EXTENDED << 1) : 512;
@@ -1049,11 +1148,13 @@ static void S9xInitOpenGLContext (void)
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGL512512]);
+
 	if (OpenGL.rangeExt)
 	{
 		glTextureRangeAPPLE(OpenGL.target, OpenGL.texW[kGL512512] * OpenGL.texH[kGL512512] * BYTES_PER_PIXEL, GFX.Screen);
 		glTexParameteri(OpenGL.target, GL_TEXTURE_STORAGE_HINT_APPLE, storage_hint);
 	}
+
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1083,11 +1184,13 @@ static void S9xInitOpenGLContext (void)
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGLBlit2x]);
+
 	if (OpenGL.rangeExt)
 	{
 		glTextureRangeAPPLE(OpenGL.target, OpenGL.texW[kGLBlit2x] * OpenGL.texH[kGLBlit2x] * BYTES_PER_PIXEL, blitGLBuffer);
 		glTexParameteri(OpenGL.target, GL_TEXTURE_STORAGE_HINT_APPLE, storage_hint);
 	}
+
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1117,11 +1220,13 @@ static void S9xInitOpenGLContext (void)
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGLBlit3x]);
+
 	if (OpenGL.rangeExt)
 	{
 		glTextureRangeAPPLE(OpenGL.target, OpenGL.texW[kGLBlit3x] * OpenGL.texH[kGLBlit3x] * BYTES_PER_PIXEL, blitGLBuffer);
 		glTexParameteri(OpenGL.target, GL_TEXTURE_STORAGE_HINT_APPLE, storage_hint);
 	}
+
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1151,11 +1256,13 @@ static void S9xInitOpenGLContext (void)
 	}
 
 	glBindTexture(OpenGL.target, OpenGL.textures[kGLBlit4x]);
+
 	if (OpenGL.rangeExt)
 	{
 		glTextureRangeAPPLE(OpenGL.target, OpenGL.texW[kGLBlit4x] * OpenGL.texH[kGLBlit4x] * BYTES_PER_PIXEL, blitGLBuffer);
 		glTexParameteri(OpenGL.target, GL_TEXTURE_STORAGE_HINT_APPLE, storage_hint);
 	}
+
 	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -1163,6 +1270,44 @@ static void S9xInitOpenGLContext (void)
 	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 	glTexImage2D(OpenGL.target, 0, OpenGL.internal_format, OpenGL.texW[kGLBlit4x], OpenGL.texH[kGLBlit4x], 0, OpenGL.format, OpenGL.type, blitGLBuffer);
+
+	// Blit NTSC 602 * 224/239
+
+	OpenGL.texW[kGLNTS256] = 1024;
+	OpenGL.texH[kGLNTS256] = 256;
+
+	OpenGL.vertex[kGLNTS256][0] = 0.0f; OpenGL.vertex[kGLNTS256][1] = 0.0f;
+	OpenGL.vertex[kGLNTS256][2] = 1.0f; OpenGL.vertex[kGLNTS256][3] = 0.0f;
+	OpenGL.vertex[kGLNTS256][4] = 1.0f; OpenGL.vertex[kGLNTS256][5] = 1.0f;
+	OpenGL.vertex[kGLNTS256][6] = 0.0f; OpenGL.vertex[kGLNTS256][7] = 1.0f;
+
+	glBindTexture(OpenGL.target, OpenGL.textures[kGLNTS256]);
+	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glTexImage2D(OpenGL.target, 0, OpenGL.internal_format, OpenGL.texW[kGLNTS256], OpenGL.texH[kGLNTS256], 0, OpenGL.format, OpenGL.type, blitGLBuffer);
+
+	// Blit NTSC 602 * 448/478
+
+	OpenGL.texW[kGLNTS512] = 1024;
+	OpenGL.texH[kGLNTS512] = 512;
+
+	OpenGL.vertex[kGLNTS512][0] = 0.0f; OpenGL.vertex[kGLNTS512][1] = 0.0f;
+	OpenGL.vertex[kGLNTS512][2] = 1.0f; OpenGL.vertex[kGLNTS512][3] = 0.0f;
+	OpenGL.vertex[kGLNTS512][4] = 1.0f; OpenGL.vertex[kGLNTS512][5] = 1.0f;
+	OpenGL.vertex[kGLNTS512][6] = 0.0f; OpenGL.vertex[kGLNTS512][7] = 1.0f;
+
+	glBindTexture(OpenGL.target, OpenGL.textures[kGLNTS512]);
+	glTexParameterf(OpenGL.target, GL_TEXTURE_PRIORITY, agp_texturing);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(OpenGL.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glTexImage2D(OpenGL.target, 0, OpenGL.internal_format, OpenGL.texW[kGLNTS512], OpenGL.texH[kGLNTS512], 0, OpenGL.format, OpenGL.type, blitGLBuffer);
 
 	//
 
@@ -1213,6 +1358,12 @@ static void S9xInitOpenGLContext (void)
 		scTexArray[kSC3xEHiRes] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
 		GLMakeTextureMesh(scTexArray[kSC3xEHiRes], kSCMeshX, kSCMeshY, 768.0f / 1024.0f, 717.0f / 2048.0f);
 
+		scTexArray[kSCNTNormal] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
+		GLMakeTextureMesh(scTexArray[kSCNTNormal], kSCMeshX, kSCMeshY, (float) ntsc_width / 1024.0f, 224.0f / 256.0f);
+
+		scTexArray[kSCNTExtend] = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 2];
+		GLMakeTextureMesh(scTexArray[kSCNTExtend], kSCMeshX, kSCMeshY, (float) ntsc_width / 1024.0f, 239.0f / 256.0f);
+
 		scScnArray = new GLfloat [(kSCMeshX + 1) * 2 * kSCMeshY * 3];
 		GLMakeScreenMesh(scScnArray, kSCMeshX, kSCMeshY);
 	}
@@ -1254,6 +1405,8 @@ static void S9xDeinitOpenGLContext (void)
 		delete [] scTexArray[kSC3xExtend];
 		delete [] scTexArray[kSC3xNHiRes];
 		delete [] scTexArray[kSC3xEHiRes];
+		delete [] scTexArray[kSCNTNormal];
+		delete [] scTexArray[kSCNTExtend];
 		delete [] scScnArray;
 
 		scTexArray[kSC2xNormal] = NULL;
@@ -1264,6 +1417,8 @@ static void S9xDeinitOpenGLContext (void)
 		scTexArray[kSC3xExtend] = NULL;
 		scTexArray[kSC3xNHiRes] = NULL;
 		scTexArray[kSC3xEHiRes] = NULL;
+		scTexArray[kSCNTNormal] = NULL;
+		scTexArray[kSCNTExtend] = NULL;
 		scScnArray              = NULL;
 	}
 
@@ -1332,53 +1487,49 @@ void S9xInitDisplay (int argc, char **argv)
 
 	switch (videoMode)
 	{
-		case VIDEOMODE_HQ4X:	nx = 4;	break;
-		case VIDEOMODE_HQ3X:	nx = 3;	break;
-		default:				nx = 2;	break;
+		case VIDEOMODE_HQ4X:
+			nx =  4;
+			break;
+
+		case VIDEOMODE_HQ3X:
+			nx =  3;
+			break;
+
+		case VIDEOMODE_NTSC_C:
+		case VIDEOMODE_NTSC_S:
+		case VIDEOMODE_NTSC_R:
+		case VIDEOMODE_NTSC_M:
+			nx = -1;
+			break;
+
+		case VIDEOMODE_NTSC_TV_C:
+		case VIDEOMODE_NTSC_TV_S:
+		case VIDEOMODE_NTSC_TV_R:
+		case VIDEOMODE_NTSC_TV_M:
+			nx = -2;
+			break;
+
+		default:
+			nx =  2;
+			break;
 	}
 
 	if (fullscreen)
 	{
 		S9xInitFullScreen();
-
-		switch (drawingMethod)
-		{
-			case kDrawingOpenGL:
-				S9xInitOpenGLFullScreen();
-				S9xInitOpenGLContext();
-				if (ciFilterEnable)
-					S9xInitCoreImage();
-				break;
-
-			case kDrawingBlitGL:
-				S9xInitOpenGLFullScreen();
-				S9xInitOpenGLContext();
-				if (ciFilterEnable)
-					S9xInitCoreImage();
-				S9xInitBlitGL();
-		}
+		S9xInitOpenGLFullScreen();
 	}
 	else
 	{
 		S9xInitWindowMode();
-
-		switch (drawingMethod)
-		{
-			case kDrawingOpenGL:
-				S9xInitOpenGLWindowMode();
-				S9xInitOpenGLContext();
-				if (ciFilterEnable)
-					S9xInitCoreImage();
-				break;
-
-			case kDrawingBlitGL:
-				S9xInitOpenGLWindowMode();
-				S9xInitOpenGLContext();
-				if (ciFilterEnable)
-					S9xInitCoreImage();
-				S9xInitBlitGL();
-		}
+		S9xInitOpenGLWindowMode();
 	}
+
+	S9xInitOpenGLContext();
+	if (ciFilterEnable)
+		S9xInitCoreImage();
+	if (drawingMethod == kDrawingBlitGL)
+		S9xInitBlitGL();
 
 	S9xSetSoundMute(false);
 	Microseconds((UnsignedWide *) &lastFrame);
@@ -1397,46 +1548,20 @@ void S9xDeinitDisplay (void)
 
 	S9xSetSoundMute(true);
 
+	if (drawingMethod == kDrawingBlitGL)
+		S9xDeinitBlitGL();
+	if (ciFilterEnable)
+		S9xDeinitCoreImage();
+	S9xDeinitOpenGLContext();
+
 	if (fullscreen)
 	{
-		switch (drawingMethod)
-		{
-			case kDrawingOpenGL:
-				if (ciFilterEnable)
-					S9xDeinitCoreImage();
-				S9xDeinitOpenGLContext();
-				S9xDeinitOpenGLFullScreen();
-				break;
-
-			case kDrawingBlitGL:
-				S9xDeinitBlitGL();
-				if (ciFilterEnable)
-					S9xDeinitCoreImage();
-				S9xDeinitOpenGLContext();
-				S9xDeinitOpenGLFullScreen();
-		}
-
+		S9xDeinitOpenGLFullScreen();
 		S9xDeinitFullScreen();
 	}
 	else
 	{
-		switch (drawingMethod)
-		{
-			case kDrawingOpenGL:
-				if (ciFilterEnable)
-					S9xDeinitCoreImage();
-				S9xDeinitOpenGLContext();
-				S9xDeinitOpenGLWindowMode();
-				break;
-
-			case kDrawingBlitGL:
-				S9xDeinitBlitGL();
-				if (ciFilterEnable)
-					S9xDeinitCoreImage();
-				S9xDeinitOpenGLContext();
-				S9xDeinitOpenGLWindowMode();
-		}
-
+		S9xDeinitOpenGLWindowMode();
 		S9xDeinitWindowMode();
 	}
 
@@ -1563,11 +1688,18 @@ static void S9xPutImageOpenGL (int width, int height)
 {
 	if ((imageWidth[0] != width) || (imageHeight[0] != height) || (windowResizeCount > 0))
 	{
+		if ((imageWidth[0] != width) || (imageHeight[0] != height))
+			windowResizeCount += 2;
+
 		int	vh = (height > 256) ? height : (height << 1);
 
 		if (fullscreen)
 		{
 			CGLSetCurrentContext(glContext);
+
+			glViewport(0, 0, glScreenW, glScreenH);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
 
 			if (glstretch)
 			{
@@ -1587,13 +1719,12 @@ static void S9xPutImageOpenGL (int width, int height)
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
 
-			if (windowExtend)
-				glViewport(0, ((kMacWindowHeight - vh) >> 1) * wh / kMacWindowHeight, ww, vh * wh / kMacWindowHeight);
-			else
-				glViewport(0, 0, ww, wh);
-
+			glViewport(0, 0, ww, wh);
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
+
+			if (windowExtend)
+				glViewport(0, ((kMacWindowHeight - vh) >> 1) * wh / kMacWindowHeight, ww, vh * wh / kMacWindowHeight);
 		}
 
 		windowResizeCount--;
@@ -1733,6 +1864,18 @@ static void S9xPutImageBlitGL (int width, int height)
 			}
 
 			break;
+
+		case -1:
+		case -2:
+			copyWidth  = ntsc_width;
+			copyHeight = height;
+
+			if (width <= 256)
+				blitFn = S9xBlitPixNTSC16;
+			else
+				blitFn = S9xBlitPixHiResNTSC16;
+
+			break;
 	}
 
 	imageWidth[whichBuf]  = width;
@@ -1742,11 +1885,11 @@ static void S9xPutImageBlitGL (int width, int height)
 	{
 		MPWaitOnSemaphore(readySemaphore, kDurationForever);
 
+		mpDataBuffer->nx          = nx;
 		mpDataBuffer->blitFn      = blitFn;
 		mpDataBuffer->srcWidth    = width;
 		mpDataBuffer->srcHeight   = height;
 		mpDataBuffer->srcRowBytes = width * 2;
-		mpDataBuffer->dstRowBytes = (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2;
 		mpDataBuffer->copyWidth   = copyWidth;
 		mpDataBuffer->copyHeight  = copyHeight;
 		mpDataBuffer->gfxBuffer   = GFX.Screen;
@@ -1758,7 +1901,32 @@ static void S9xPutImageBlitGL (int width, int height)
 	}
 	else
 	{
-		blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2, width, height);
+		switch (nx)
+		{
+			case -1:
+				blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, 1024 * 2, width, height);
+				break;
+
+			case -2:
+				if (height > SNES_HEIGHT_EXTENDED)
+					blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, 1024 * 2, width, height);
+				else
+				{
+					uint8	*tmpBuffer = blitGLBuffer + (1024 * 512 * BYTES_PER_PIXEL);
+					int		aligned    = ((ntsc_width + 2) >> 1) << 1;
+					blitFn((uint8 *) GFX.Screen, width * 2, tmpBuffer, 1024 * 2, width, height);
+					S9xBlitPixHiResTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, copyHeight);
+					copyHeight *= 2;
+				}
+
+				break;
+
+			default:
+				int	dstbytes = (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2;
+				blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, dstbytes, width, height);
+				break;
+		}
+
 		if (!ciFilterEnable)
 			S9xPutImageBlitGL2(copyWidth, copyHeight);
 		else
@@ -1770,11 +1938,18 @@ static void S9xPutImageCoreImage (int width, int height)
 {
 	if ((imageWidth[0] != width) || (imageHeight[0] != height) || (windowResizeCount > 0))
 	{
+		if ((imageWidth[0] != width) || (imageHeight[0] != height))
+			windowResizeCount += 2;
+
 		int	vh = (height > 256) ? height : (height << 1);
 
 		if (fullscreen)
 		{
 			CGLSetCurrentContext(glContext);
+
+			glViewport(0, 0, glScreenW, glScreenH);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
 
 			if (glstretch)
 			{
@@ -1794,13 +1969,12 @@ static void S9xPutImageCoreImage (int width, int height)
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
 
-			if (windowExtend)
-				glViewport(0, ((kMacWindowHeight - vh) >> 1) * wh / kMacWindowHeight, ww, vh * wh / kMacWindowHeight);
-			else
-				glViewport(0, 0, ww, wh);
-
+			glViewport(0, 0, ww, wh);
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
+
+			if (windowExtend)
+				glViewport(0, ((kMacWindowHeight - vh) >> 1) * wh / kMacWindowHeight, ww, vh * wh / kMacWindowHeight);
 		}
 
 		windowResizeCount--;
@@ -1833,6 +2007,9 @@ static void S9xPutImageOverscanOpenGL (int width, int height)
 {
 	if ((imageWidth[0] != width) || (imageHeight[0] != height) || (windowResizeCount > 0))
 	{
+		if ((imageWidth[0] != width) || (imageHeight[0] != height))
+			windowResizeCount += 2;
+
 		if ((height == SNES_HEIGHT) || (height == (SNES_HEIGHT << 1)))
 		{
 			int		pitch    = width << 1;
@@ -1848,6 +2025,10 @@ static void S9xPutImageOverscanOpenGL (int width, int height)
 		if (fullscreen)
 		{
 			CGLSetCurrentContext(glContext);
+
+			glViewport(0, 0, glScreenW, glScreenH);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
 
 			if (glstretch)
 			{
@@ -1868,7 +2049,6 @@ static void S9xPutImageOverscanOpenGL (int width, int height)
 			aglUpdateContext(agContext);
 
 			glViewport(0, 0, ww, wh);
-
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
@@ -1946,6 +2126,8 @@ static void S9xPutImageOverscanBlitGL (int width, int height)
 			extarea = (uint32 *) ((uint8 *) GFX.Screen + height * pitch);
 			for (i = 0; i < (((extbtm - height) * pitch) >> 2); i++)
 				extarea[i] = 0;
+
+			memset(blitGLBuffer, 0, 1024 * 1024 * BYTES_PER_PIXEL);
 		}
 
 		if (videoMode == VIDEOMODE_TV)
@@ -1967,7 +2149,7 @@ static void S9xPutImageOverscanBlitGL (int width, int height)
 					default:
 					case VIDEOMODE_TV:			blitFn = S9xBlitPixScaledTV16;		break;
 					case VIDEOMODE_SUPEREAGLE:	blitFn = S9xBlitPixSuperEagle16;	break;
-					case VIDEOMODE_2XSAI:		blitFn = S9xBlitPix2xSaI16;		break;
+					case VIDEOMODE_2XSAI:		blitFn = S9xBlitPix2xSaI16;			break;
 					case VIDEOMODE_SUPER2XSAI:	blitFn = S9xBlitPixSuper2xSaI16;	break;
 					case VIDEOMODE_EPX:			blitFn = S9xBlitPixEPX16;			break;
 					case VIDEOMODE_HQ2X:		blitFn = S9xBlitPixHQ2x16;			break;
@@ -2020,6 +2202,18 @@ static void S9xPutImageOverscanBlitGL (int width, int height)
 			}
 
 			break;
+
+		case -1:
+		case -2:
+			copyWidth  = ntsc_width;
+			copyHeight = extbtm;
+
+			if (width <= 256)
+				blitFn = S9xBlitPixNTSC16;
+			else
+				blitFn = S9xBlitPixHiResNTSC16;
+
+			break;
 	}
 
 	imageWidth[whichBuf]  = width;
@@ -2029,11 +2223,11 @@ static void S9xPutImageOverscanBlitGL (int width, int height)
 	{
 		MPWaitOnSemaphore(readySemaphore, kDurationForever);
 
+		mpDataBuffer->nx          = nx;
 		mpDataBuffer->blitFn      = blitFn;
 		mpDataBuffer->srcWidth    = width;
 		mpDataBuffer->srcHeight   = height;
 		mpDataBuffer->srcRowBytes = width * 2;
-		mpDataBuffer->dstRowBytes = (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2;
 		mpDataBuffer->copyWidth   = copyWidth;
 		mpDataBuffer->copyHeight  = copyHeight;
 		mpDataBuffer->gfxBuffer   = GFX.Screen;
@@ -2045,7 +2239,32 @@ static void S9xPutImageOverscanBlitGL (int width, int height)
 	}
 	else
 	{
-		blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2, width, height);
+		switch (nx)
+		{
+			case -1:
+				blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, 1024 * 2, width, height);
+				break;
+
+			case -2:
+				if (height > SNES_HEIGHT_EXTENDED)
+					blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, 1024 * 2, width, height);
+				else
+				{
+					uint8	*tmpBuffer = blitGLBuffer + (1024 * 512 * BYTES_PER_PIXEL);
+					int		aligned    = ((ntsc_width + 2) >> 1) << 1;
+					blitFn((uint8 *) GFX.Screen, width * 2, tmpBuffer, 1024 * 2, width, height);
+					S9xBlitPixHiResTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, copyHeight);
+					copyHeight *= 2;
+				}
+
+				break;
+
+			default:
+				int	dstbytes = (OpenGL.rangeExt ? copyWidth : ((copyWidth > 512) ? 1024 : 512)) * 2;
+				blitFn((uint8 *) GFX.Screen, width * 2, blitGLBuffer, dstbytes, width, height);
+				break;
+		}
+
 		if (!ciFilterEnable)
 			S9xPutImageBlitGL2(copyWidth, copyHeight);
 		else
@@ -2059,6 +2278,9 @@ static void S9xPutImageOverscanCoreImage (int width, int height)
 
 	if ((imageWidth[0] != width) || (imageHeight[0] != height) || (windowResizeCount > 0))
 	{
+		if ((imageWidth[0] != width) || (imageHeight[0] != height))
+			windowResizeCount += 2;
+
 		if ((height == SNES_HEIGHT) || (height == (SNES_HEIGHT << 1)))
 		{
 			int		pitch    = width << 1;
@@ -2073,6 +2295,10 @@ static void S9xPutImageOverscanCoreImage (int width, int height)
 		if (fullscreen)
 		{
 			CGLSetCurrentContext(glContext);
+
+			glViewport(0, 0, glScreenW, glScreenH);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
 
 			if (glstretch)
 			{
@@ -2093,7 +2319,6 @@ static void S9xPutImageOverscanCoreImage (int width, int height)
 			aglUpdateContext(agContext);
 
 			glViewport(0, 0, ww, wh);
-
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
@@ -2128,9 +2353,16 @@ static void S9xPutImageBlitGL2 (int blit_width, int blit_height)
 {
 	if ((prevBlitWidth != blit_width) || (prevBlitHeight != blit_height) || (windowResizeCount > 0))
 	{
+		if ((prevBlitWidth != blit_width) || (prevBlitHeight != blit_height))
+			windowResizeCount += 2;
+
 		if (fullscreen)
 		{
 			CGLSetCurrentContext(glContext);
+
+			glViewport(0, 0, glScreenW, glScreenH);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
 
 			if (glstretch)
 			{
@@ -2141,8 +2373,19 @@ static void S9xPutImageBlitGL2 (int blit_width, int blit_height)
 			}
 			else
 			{
-				int		sw = SNES_WIDTH * nx,
-						sh = ((blit_height % SNES_HEIGHT) ? SNES_HEIGHT_EXTENDED : SNES_HEIGHT) * nx;
+				int		sw, sh;
+
+				if (nx < 0)
+				{
+					sw = ntsc_width;
+					sh = ((blit_height % SNES_HEIGHT) ? SNES_HEIGHT_EXTENDED : SNES_HEIGHT) * 2;
+				}
+				else
+				{
+					sw = SNES_WIDTH * nx;
+					sh = ((blit_height % SNES_HEIGHT) ? SNES_HEIGHT_EXTENDED : SNES_HEIGHT) * nx;
+				}
+
 				glViewport((glScreenW - sw) >> 1, (glScreenH - sh) >> 1, sw, sh);
 			}
 		}
@@ -2154,40 +2397,54 @@ static void S9xPutImageBlitGL2 (int blit_width, int blit_height)
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
 
+			glViewport(0, 0, ww, wh);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
 			if (windowExtend)
 			{
 				int	bh = (blit_height % SNES_HEIGHT) ? (SNES_HEIGHT_EXTENDED << 1) : (SNES_HEIGHT << 1);
 				glViewport(0, ((kMacWindowHeight - bh) >> 1) * wh / kMacWindowHeight, ww, bh * wh / kMacWindowHeight);
 			}
-			else
-				glViewport(0, 0, ww, wh);
-
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
 		}
 
 		windowResizeCount--;
 
-		switch (blit_width / SNES_WIDTH)
+		if (nx < 0)
+			textureNum = (blit_height > SNES_HEIGHT_EXTENDED) ? kGLNTS512 : kGLNTS256;
+		else
 		{
-			default:
-			case 2:	textureNum = kGLBlit2x;	break;
-			case 3:	textureNum = kGLBlit3x;	break;
-			case 4:	textureNum = kGLBlit4x;	break;
+			switch (blit_width / SNES_WIDTH)
+			{
+				default:
+				case 2:	textureNum = kGLBlit2x;	break;
+				case 3:	textureNum = kGLBlit3x;	break;
+				case 4:	textureNum = kGLBlit4x;	break;
+			}
 		}
 
-		if (OpenGL.rangeExt)
+		if (nx < 0)
 		{
-			OpenGL.vertex[textureNum][2] = OpenGL.vertex[textureNum][4] = blit_width;
-			OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = blit_height;
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, blit_width);
+			int	sh = (blit_height > 256) ?  512 : 256;
+			OpenGL.vertex[textureNum][2] = OpenGL.vertex[textureNum][4] = blit_width  / 1024.0f;
+			OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = blit_height / (float) sh;
+			glPixelStorei(GL_UNPACK_ROW_LENGTH, 1024);
 		}
 		else
 		{
-			int	sl = (blit_width > 512) ? 1024 : 512;
-			OpenGL.vertex[textureNum][2] = OpenGL.vertex[textureNum][4] = blit_width  / (float) sl;
-			OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = blit_height / (float) sl;
-			glPixelStorei(GL_UNPACK_ROW_LENGTH, sl);
+			if (OpenGL.rangeExt)
+			{
+				OpenGL.vertex[textureNum][2] = OpenGL.vertex[textureNum][4] = blit_width;
+				OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = blit_height;
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, blit_width);
+			}
+			else
+			{
+				int	sl = (blit_width > 512) ? 1024 : 512;
+				OpenGL.vertex[textureNum][2] = OpenGL.vertex[textureNum][4] = blit_width  / (float) sl;
+				OpenGL.vertex[textureNum][5] = OpenGL.vertex[textureNum][7] = blit_height / (float) sl;
+				glPixelStorei(GL_UNPACK_ROW_LENGTH, sl);
+			}
 		}
 
 		glBindTexture(OpenGL.target, OpenGL.textures[textureNum]);
@@ -2218,6 +2475,9 @@ static void S9xPutImageBlitGL2 (int blit_width, int blit_height)
 		GLfloat *t, *s;
 		int		tex;
 
+		if (nx < 0)
+			tex = (blit_height % SNES_HEIGHT) ? kSCNTExtend : kSCNTNormal;
+		else
 		if (blit_width > blit_height * 2)
 		{
 			if (blit_width / SNES_WIDTH != 3)
@@ -2259,9 +2519,16 @@ static void S9xPutImageBlitGL2CoreImage (int blit_width, int blit_height)
 {
 	if ((prevBlitWidth != blit_width) || (prevBlitHeight != blit_height) || (windowResizeCount > 0))
 	{
+		if ((prevBlitWidth != blit_width) || (prevBlitHeight != blit_height))
+			windowResizeCount += 2;
+
 		if (fullscreen)
 		{
 			CGLSetCurrentContext(glContext);
+
+			glViewport(0, 0, glScreenW, glScreenH);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
 
 			if (glstretch)
 			{
@@ -2272,8 +2539,19 @@ static void S9xPutImageBlitGL2CoreImage (int blit_width, int blit_height)
 			}
 			else
 			{
-				int		sw = SNES_WIDTH * nx,
-						sh = ((blit_height % SNES_HEIGHT) ? SNES_HEIGHT_EXTENDED : SNES_HEIGHT) * nx;
+				int		sw, sh;
+
+				if (nx < 0)
+				{
+					sw = ntsc_width;
+					sh = ((blit_height % SNES_HEIGHT) ? SNES_HEIGHT_EXTENDED : SNES_HEIGHT) * 2;
+				}
+				else
+				{
+					sw = SNES_WIDTH * nx;
+					sh = ((blit_height % SNES_HEIGHT) ? SNES_HEIGHT_EXTENDED : SNES_HEIGHT) * nx;
+				}
+
 				glViewport((glScreenW - sw) >> 1, (glScreenH - sh) >> 1, sw, sh);
 			}
 		}
@@ -2285,16 +2563,15 @@ static void S9xPutImageBlitGL2CoreImage (int blit_width, int blit_height)
 			aglSetCurrentContext(agContext);
 			aglUpdateContext(agContext);
 
+			glViewport(0, 0, ww, wh);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
 			if (windowExtend)
 			{
 				int	bh = (blit_height % SNES_HEIGHT) ? (SNES_HEIGHT_EXTENDED << 1) : (SNES_HEIGHT << 1);
 				glViewport(0, ((kMacWindowHeight - bh) >> 1) * wh / kMacWindowHeight, ww, bh * wh / kMacWindowHeight);
 			}
-			else
-				glViewport(0, 0, ww, wh);
-
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
 		}
 
 		windowResizeCount--;

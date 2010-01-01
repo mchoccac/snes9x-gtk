@@ -1,4 +1,4 @@
-/**********************************************************************************
+/***********************************************************************************
   Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
 
   (c) Copyright 1996 - 2002  Gary Henderson (gary.henderson@ntlworld.com),
@@ -15,11 +15,14 @@
   (c) Copyright 2002 - 2006  funkyass (funkyass@spam.shaw.ca),
                              Kris Bleakley (codeviolation@hotmail.com)
 
-  (c) Copyright 2002 - 2007  Brad Jorsch (anomie@users.sourceforge.net),
+  (c) Copyright 2002 - 2010  Brad Jorsch (anomie@users.sourceforge.net),
                              Nach (n-a-c-h@users.sourceforge.net),
                              zones (kasumitokoduck@yahoo.com)
 
   (c) Copyright 2006 - 2007  nitsuja
+
+  (c) Copyright 2009 - 2010  BearOso,
+                             OV2
 
 
   BS-X C emulator code
@@ -37,7 +40,7 @@
 
   DSP-1 emulator code
   (c) Copyright 1998 - 2006  _Demo_,
-                             Andreas Naive (andreasnaive@gmail.com)
+                             Andreas Naive (andreasnaive@gmail.com),
                              Gary Henderson,
                              Ivar (ivar@snes9x.com),
                              John Weidman,
@@ -52,7 +55,6 @@
                              Lord Nightmare (lord_nightmare@users.sourceforge.net),
                              Matthew Kendora,
                              neviksti
-
 
   DSP-3 emulator code
   (c) Copyright 2003 - 2006  John Weidman,
@@ -70,14 +72,18 @@
   OBC1 emulator code
   (c) Copyright 2001 - 2004  zsKnight,
                              pagefault (pagefault@zsnes.com),
-                             Kris Bleakley,
+                             Kris Bleakley
                              Ported from x86 assembler to C by sanmaiwashi
 
-  SPC7110 and RTC C++ emulator code
+  SPC7110 and RTC C++ emulator code used in 1.39-1.51
   (c) Copyright 2002         Matthew Kendora with research by
                              zsKnight,
                              John Weidman,
                              Dark Force
+
+  SPC7110 and RTC C++ emulator code used in 1.52+
+  (c) Copyright 2009         byuu,
+                             neviksti
 
   S-DD1 C emulator code
   (c) Copyright 2003         Brad Jorsch with research by
@@ -85,7 +91,7 @@
                              John Weidman
 
   S-RTC C emulator code
-  (c) Copyright 2001-2006    byuu,
+  (c) Copyright 2001 - 2006  byuu,
                              John Weidman
 
   ST010 C++ emulator code
@@ -97,16 +103,19 @@
   Super FX x86 assembler emulator code
   (c) Copyright 1998 - 2003  _Demo_,
                              pagefault,
-                             zsKnight,
+                             zsKnight
 
   Super FX C emulator code
   (c) Copyright 1997 - 1999  Ivar,
                              Gary Henderson,
                              John Weidman
 
-  Sound DSP emulator code is derived from SNEeSe and OpenSPC:
+  Sound emulator code used in 1.5-1.51
   (c) Copyright 1998 - 2003  Brad Martin
   (c) Copyright 1998 - 2006  Charles Bilyue'
+
+  Sound emulator code used in 1.52+
+  (c) Copyright 2004 - 2007  Shay Green (gblargg@gmail.com)
 
   SH assembler code partly based on x86 assembler code
   (c) Copyright 2002 - 2004  Marcus Comstedt (marcus@mc.pp.se)
@@ -117,23 +126,30 @@
   HQ2x, HQ3x, HQ4x filters
   (c) Copyright 2003         Maxim Stepin (maxim@hiend3d.com)
 
+  NTSC filter
+  (c) Copyright 2006 - 2007  Shay Green
+
+  GTK+ GUI code
+  (c) Copyright 2004 - 2010  BearOso
+
   Win32 GUI code
   (c) Copyright 2003 - 2006  blip,
                              funkyass,
                              Matthew Kendora,
                              Nach,
                              nitsuja
+  (c) Copyright 2009 - 2010  OV2
 
   Mac OS GUI code
   (c) Copyright 1998 - 2001  John Stiles
-  (c) Copyright 2001 - 2007  zones
+  (c) Copyright 2001 - 2010  zones
 
 
   Specific ports contains the works of other authors. See headers in
   individual files.
 
 
-  Snes9x homepage: http://www.snes9x.com
+  Snes9x homepage: http://www.snes9x.com/
 
   Permission to use, copy, modify and/or distribute Snes9x in both binary
   and source form, for non-commercial purposes, is hereby granted without
@@ -156,24 +172,26 @@
 
   Super NES and Super Nintendo Entertainment System are trademarks of
   Nintendo Co., Limited and its subsidiary companies.
-**********************************************************************************/
+ ***********************************************************************************/
 
-/**********************************************************************************
+/***********************************************************************************
   SNES9X for Mac OS (c) Copyright John Stiles
 
   Snes9x for Mac OS X
 
-  (c) Copyright 2001 - 2007  zones
+  (c) Copyright 2001 - 2010  zones
   (c) Copyright 2002 - 2005  107
   (c) Copyright 2002         PB1400c
   (c) Copyright 2004         Alexander and Sander
   (c) Copyright 2004 - 2005  Steven Seeger
   (c) Copyright 2005         Ryan Vogt
-**********************************************************************************/
+ ***********************************************************************************/
+
 
 #include "snes9x.h"
 #include "apu.h"
 #include "gfx.h"
+#include "blit.h"
 
 #include <OpenGL/OpenGL.h>
 #define __STDC_FORMAT_MACROS
@@ -252,7 +270,15 @@ enum
 	iOpenGLEPXMode,
 	iOpenGLHQ2xMode,
 	iOpenGLHQ3xMode,
-	iOpenGLHQ4xMode
+	iOpenGLHQ4xMode,
+	iOpenGLNTSC_CMode,
+	iOpenGLNTSC_SMode,
+	iOpenGLNTSC_RMode,
+	iOpenGLNTSC_MMode,
+	iOpenGLNTSC_TV_CMode,
+	iOpenGLNTSC_TV_SMode,
+	iOpenGLNTSC_TV_RMode,
+	iOpenGLNTSC_TV_MMode
 };
 
 static int	lastTabIndex = 1;
@@ -566,6 +592,46 @@ void ConfigurePreferences (void)
 				case VIDEOMODE_HQ4X:
 					CheckMenuItem(menu, iOpenGLHQ4xMode, true);
 					SetControl32BitValue(ctl, iOpenGLHQ4xMode);
+					break;
+
+				case VIDEOMODE_NTSC_C:
+					CheckMenuItem(menu, iOpenGLNTSC_CMode, true);
+					SetControl32BitValue(ctl, iOpenGLNTSC_CMode);
+					break;
+
+				case VIDEOMODE_NTSC_S:
+					CheckMenuItem(menu, iOpenGLNTSC_SMode, true);
+					SetControl32BitValue(ctl, iOpenGLNTSC_SMode);
+					break;
+
+				case VIDEOMODE_NTSC_R:
+					CheckMenuItem(menu, iOpenGLNTSC_RMode, true);
+					SetControl32BitValue(ctl, iOpenGLNTSC_RMode);
+					break;
+
+				case VIDEOMODE_NTSC_M:
+					CheckMenuItem(menu, iOpenGLNTSC_MMode, true);
+					SetControl32BitValue(ctl, iOpenGLNTSC_MMode);
+					break;
+
+				case VIDEOMODE_NTSC_TV_C:
+					CheckMenuItem(menu, iOpenGLNTSC_TV_CMode, true);
+					SetControl32BitValue(ctl, iOpenGLNTSC_TV_CMode);
+					break;
+
+				case VIDEOMODE_NTSC_TV_S:
+					CheckMenuItem(menu, iOpenGLNTSC_TV_SMode, true);
+					SetControl32BitValue(ctl, iOpenGLNTSC_TV_SMode);
+					break;
+
+				case VIDEOMODE_NTSC_TV_R:
+					CheckMenuItem(menu, iOpenGLNTSC_TV_RMode, true);
+					SetControl32BitValue(ctl, iOpenGLNTSC_TV_RMode);
+					break;
+
+				case VIDEOMODE_NTSC_TV_M:
+					CheckMenuItem(menu, iOpenGLNTSC_TV_MMode, true);
+					SetControl32BitValue(ctl, iOpenGLNTSC_TV_MMode);
 					break;
 			}
 
@@ -931,6 +997,54 @@ void ConfigurePreferences (void)
 				case iOpenGLHQ4xMode:
 					drawingMethod = kDrawingBlitGL;
 					videoMode = VIDEOMODE_HQ4X;
+					break;
+
+				case iOpenGLNTSC_CMode:
+					drawingMethod = kDrawingBlitGL;
+					videoMode = VIDEOMODE_NTSC_C;
+					S9xBlitNTSCFilterSet(&snes_ntsc_composite);
+					break;
+
+				case iOpenGLNTSC_SMode:
+					drawingMethod = kDrawingBlitGL;
+					videoMode = VIDEOMODE_NTSC_S;
+					S9xBlitNTSCFilterSet(&snes_ntsc_svideo);
+					break;
+
+				case iOpenGLNTSC_RMode:
+					drawingMethod = kDrawingBlitGL;
+					videoMode = VIDEOMODE_NTSC_R;
+					S9xBlitNTSCFilterSet(&snes_ntsc_rgb);
+					break;
+
+				case iOpenGLNTSC_MMode:
+					drawingMethod = kDrawingBlitGL;
+					videoMode = VIDEOMODE_NTSC_M;
+					S9xBlitNTSCFilterSet(&snes_ntsc_monochrome);
+					break;
+
+				case iOpenGLNTSC_TV_CMode:
+					drawingMethod = kDrawingBlitGL;
+					videoMode = VIDEOMODE_NTSC_TV_C;
+					S9xBlitNTSCFilterSet(&snes_ntsc_composite);
+					break;
+
+				case iOpenGLNTSC_TV_SMode:
+					drawingMethod = kDrawingBlitGL;
+					videoMode = VIDEOMODE_NTSC_TV_S;
+					S9xBlitNTSCFilterSet(&snes_ntsc_svideo);
+					break;
+
+				case iOpenGLNTSC_TV_RMode:
+					drawingMethod = kDrawingBlitGL;
+					videoMode = VIDEOMODE_NTSC_TV_R;
+					S9xBlitNTSCFilterSet(&snes_ntsc_rgb);
+					break;
+
+				case iOpenGLNTSC_TV_MMode:
+					drawingMethod = kDrawingBlitGL;
+					videoMode = VIDEOMODE_NTSC_TV_M;
+					S9xBlitNTSCFilterSet(&snes_ntsc_monochrome);
 					break;
 			}
 

@@ -1,4 +1,4 @@
-/**********************************************************************************
+/***********************************************************************************
   Snes9x - Portable Super Nintendo Entertainment System (TM) emulator.
 
   (c) Copyright 1996 - 2002  Gary Henderson (gary.henderson@ntlworld.com),
@@ -15,11 +15,14 @@
   (c) Copyright 2002 - 2006  funkyass (funkyass@spam.shaw.ca),
                              Kris Bleakley (codeviolation@hotmail.com)
 
-  (c) Copyright 2002 - 2007  Brad Jorsch (anomie@users.sourceforge.net),
+  (c) Copyright 2002 - 2010  Brad Jorsch (anomie@users.sourceforge.net),
                              Nach (n-a-c-h@users.sourceforge.net),
                              zones (kasumitokoduck@yahoo.com)
 
   (c) Copyright 2006 - 2007  nitsuja
+
+  (c) Copyright 2009 - 2010  BearOso,
+                             OV2
 
 
   BS-X C emulator code
@@ -37,7 +40,7 @@
 
   DSP-1 emulator code
   (c) Copyright 1998 - 2006  _Demo_,
-                             Andreas Naive (andreasnaive@gmail.com)
+                             Andreas Naive (andreasnaive@gmail.com),
                              Gary Henderson,
                              Ivar (ivar@snes9x.com),
                              John Weidman,
@@ -52,7 +55,6 @@
                              Lord Nightmare (lord_nightmare@users.sourceforge.net),
                              Matthew Kendora,
                              neviksti
-
 
   DSP-3 emulator code
   (c) Copyright 2003 - 2006  John Weidman,
@@ -70,14 +72,18 @@
   OBC1 emulator code
   (c) Copyright 2001 - 2004  zsKnight,
                              pagefault (pagefault@zsnes.com),
-                             Kris Bleakley,
+                             Kris Bleakley
                              Ported from x86 assembler to C by sanmaiwashi
 
-  SPC7110 and RTC C++ emulator code
+  SPC7110 and RTC C++ emulator code used in 1.39-1.51
   (c) Copyright 2002         Matthew Kendora with research by
                              zsKnight,
                              John Weidman,
                              Dark Force
+
+  SPC7110 and RTC C++ emulator code used in 1.52+
+  (c) Copyright 2009         byuu,
+                             neviksti
 
   S-DD1 C emulator code
   (c) Copyright 2003         Brad Jorsch with research by
@@ -85,7 +91,7 @@
                              John Weidman
 
   S-RTC C emulator code
-  (c) Copyright 2001-2006    byuu,
+  (c) Copyright 2001 - 2006  byuu,
                              John Weidman
 
   ST010 C++ emulator code
@@ -97,16 +103,19 @@
   Super FX x86 assembler emulator code
   (c) Copyright 1998 - 2003  _Demo_,
                              pagefault,
-                             zsKnight,
+                             zsKnight
 
   Super FX C emulator code
   (c) Copyright 1997 - 1999  Ivar,
                              Gary Henderson,
                              John Weidman
 
-  Sound DSP emulator code is derived from SNEeSe and OpenSPC:
+  Sound emulator code used in 1.5-1.51
   (c) Copyright 1998 - 2003  Brad Martin
   (c) Copyright 1998 - 2006  Charles Bilyue'
+
+  Sound emulator code used in 1.52+
+  (c) Copyright 2004 - 2007  Shay Green (gblargg@gmail.com)
 
   SH assembler code partly based on x86 assembler code
   (c) Copyright 2002 - 2004  Marcus Comstedt (marcus@mc.pp.se)
@@ -117,23 +126,30 @@
   HQ2x, HQ3x, HQ4x filters
   (c) Copyright 2003         Maxim Stepin (maxim@hiend3d.com)
 
+  NTSC filter
+  (c) Copyright 2006 - 2007  Shay Green
+
+  GTK+ GUI code
+  (c) Copyright 2004 - 2010  BearOso
+
   Win32 GUI code
   (c) Copyright 2003 - 2006  blip,
                              funkyass,
                              Matthew Kendora,
                              Nach,
                              nitsuja
+  (c) Copyright 2009 - 2010  OV2
 
   Mac OS GUI code
   (c) Copyright 1998 - 2001  John Stiles
-  (c) Copyright 2001 - 2007  zones
+  (c) Copyright 2001 - 2010  zones
 
 
   Specific ports contains the works of other authors. See headers in
   individual files.
 
 
-  Snes9x homepage: http://www.snes9x.com
+  Snes9x homepage: http://www.snes9x.com/
 
   Permission to use, copy, modify and/or distribute Snes9x in both binary
   and source form, for non-commercial purposes, is hereby granted without
@@ -156,7 +172,7 @@
 
   Super NES and Super Nintendo Entertainment System are trademarks of
   Nintendo Co., Limited and its subsidiary companies.
-**********************************************************************************/
+ ***********************************************************************************/
 
 
 #include <string>
@@ -925,6 +941,8 @@ static bool8 is_SufamiTurbo_Cart (uint8 *, uint32);
 static bool8 is_SameGame_BIOS (uint8 *, uint32);
 static bool8 is_SameGame_Add_On (uint8 *, uint32);
 static uint32 caCRC32 (uint8 *, uint32, uint32 crc32 = 0xffffffff);
+static uint32 ReadUPSPointer (const uint8 *, unsigned &, unsigned);
+static bool8 ReadUPSPatch (Reader *, long, int32 &);
 static long ReadInt (Reader *, unsigned);
 static bool8 ReadIPSPatch (Reader *, long, int32 &);
 #ifdef UNZIP_SUPPORT
@@ -1508,7 +1526,7 @@ again:
 		return (FALSE);
 
 	if (!Settings.NoPatch)
-		CheckForIPSPatch(filename, HeaderCount != 0, totalFileSize);
+		CheckForAnyPatch(filename, HeaderCount != 0, totalFileSize);
 
 	int	hi_score, lo_score;
 
@@ -1805,7 +1823,7 @@ bool8 CMemory::LoadSufamiTurbo (const char *cartA, const char *cartB)
 		Multi.sramMaskA = Multi.sramSizeA ? ((1 << (Multi.sramSizeA + 3)) * 128 - 1) : 0;
 
 		if (!Settings.NoPatch)
-			CheckForIPSPatch(cartA, HeaderCount != 0, Multi.cartSizeA);
+			CheckForAnyPatch(cartA, HeaderCount != 0, Multi.cartSizeA);
 
 		strcpy(Multi.fileNameA, cartA);
 		memcpy(ROM + Multi.cartOffsetA, ROM, Multi.cartSizeA);
@@ -1829,7 +1847,7 @@ bool8 CMemory::LoadSufamiTurbo (const char *cartA, const char *cartB)
 		Multi.sramMaskB = Multi.sramSizeB ? ((1 << (Multi.sramSizeB + 3)) * 128 - 1) : 0;
 
 		if (!Settings.NoPatch)
-			CheckForIPSPatch(cartB, HeaderCount != 0, Multi.cartSizeB);
+			CheckForAnyPatch(cartB, HeaderCount != 0, Multi.cartSizeB);
 
 		strcpy(Multi.fileNameB, cartB);
 		memcpy(ROM + Multi.cartOffsetB, ROM, Multi.cartSizeB);
@@ -1882,7 +1900,7 @@ bool8 CMemory::LoadSameGame (const char *cartA, const char *cartB)
 	Multi.sramMaskB = 0;
 
 	if (!Settings.NoPatch)
-		CheckForIPSPatch(cartA, HeaderCount != 0, Multi.cartSizeA);
+		CheckForAnyPatch(cartA, HeaderCount != 0, Multi.cartSizeA);
 
 	strcpy(Multi.fileNameA, cartA);
 
@@ -1909,14 +1927,13 @@ bool8 CMemory::LoadSameGame (const char *cartA, const char *cartB)
 bool8 CMemory::LoadSRTC (void)
 {
 	FILE	*fp;
+	size_t	ignore;
 
 	fp = fopen(S9xGetFilename(".rtc", SRAM_DIR), "rb");
 	if (!fp)
 		return (FALSE);
 
-        if (fread(RTCData.reg, 1, 20, fp))
-        {
-        }
+	ignore = fread(RTCData.reg, 1, 20, fp);
 	fclose(fp);
 
 	return (TRUE);
@@ -1925,14 +1942,13 @@ bool8 CMemory::LoadSRTC (void)
 bool8 CMemory::SaveSRTC (void)
 {
 	FILE	*fp;
+	size_t	ignore;
 
 	fp = fopen(S9xGetFilename(".rtc", SRAM_DIR), "wb");
 	if (!fp)
 		return (FALSE);
 
-        if (fwrite(RTCData.reg, 1, 20, fp))
-        {
-        }
+	ignore = fwrite(RTCData.reg, 1, 20, fp);
 	fclose(fp);
 
 	return (TRUE);
@@ -2059,10 +2075,11 @@ bool8 CMemory::SaveSRAM (const char *filename)
 		file = fopen(name, "wb");
 		if (file)
 		{
-                        if (fwrite((char *) Multi.sramB, size, 1, file)) {}
+			size_t	ignore;
+			ignore = fwrite((char *) Multi.sramB, size, 1, file);
 			fclose(file);
 		#ifdef __linux
-                        if (chown(name, getuid(), getgid())) {}
+			ignore = chown(name, getuid(), getgid());
 		#endif
 		}
 
@@ -2078,10 +2095,11 @@ bool8 CMemory::SaveSRAM (const char *filename)
 		file = fopen(sramName, "wb");
 		if (file)
 		{
-                        if (fwrite((char *) SRAM, size, 1, file)) {}
+			size_t	ignore;
+			ignore = fwrite((char *) SRAM, size, 1, file);
 			fclose(file);
 		#ifdef __linux
-                        if (chown(sramName, getuid(), getgid())) {}
+			ignore = chown(sramName, getuid(), getgid());
 		#endif
 
 			if (Settings.SRTC || Settings.SPC7110RTC)
@@ -3934,7 +3952,107 @@ void CMemory::ApplyROMFixes (void)
 	}
 }
 
-// IPS
+// UPS % IPS
+
+static uint32 ReadUPSPointer (const uint8 *data, unsigned &addr, unsigned size)
+{
+	uint32 offset = 0, shift = 1;
+	while(addr < size) {
+		uint8 x = data[addr++];
+		offset += (x & 0x7f) * shift;
+		if(x & 0x80) break;
+		shift <<= 7;
+		offset += shift;
+	}
+	return offset;
+}
+
+//NOTE: UPS patches are *never* created against a headered ROM!
+//this is per the UPS file specification. however, do note that it is
+//technically possible for a non-compliant patcher to ignore this requirement.
+//therefore, it is *imperative* that no emulator support such patches.
+//thusly, we ignore the "long offset" parameter below. failure to do so would
+//completely invalidate the purpose of UPS; which is to avoid header vs
+//no-header patching errors that result in IPS patches having a 50/50 chance of
+//being applied correctly.
+
+static bool8 ReadUPSPatch (Reader *r, long, int32 &rom_size)
+{
+	//Reader lacks size() and rewind(), so we need to read in the file to get its size
+	uint8 *data = new uint8[8 * 1024 * 1024];  //allocate a lot of memory, better safe than sorry ...
+	uint32 size = 0;
+	while(true) {
+		int value = r->get_char();
+		if(value == EOF) break;
+		data[size++] = value;
+		if(size >= 8 * 1024 * 1024) {
+			//prevent buffer overflow: SNES-made UPS patches should never be this big anyway ...
+			delete[] data;
+			return false;
+		}
+	}
+
+	//4-byte header + 1-byte input size + 1-byte output size + 4-byte patch CRC32 + 4-byte unpatched CRC32 + 4-byte patched CRC32
+	if(size < 18) { delete[] data; return false; }  //patch is too small
+
+	uint32 addr = 0;
+	if(data[addr++] != 'U') { delete[] data; return false; }  //patch has an invalid header
+	if(data[addr++] != 'P') { delete[] data; return false; }  //...
+	if(data[addr++] != 'S') { delete[] data; return false; }  //...
+	if(data[addr++] != '1') { delete[] data; return false; }  //...
+
+	uint32 patch_crc32 = caCRC32(data, size - 4);  //don't include patch CRC32 itself in CRC32 calculation
+	uint32 rom_crc32 = caCRC32(Memory.ROM, rom_size);
+	uint32 px_crc32 = (data[size - 12] << 0) + (data[size - 11] << 8) + (data[size - 10] << 16) + (data[size -  9] << 24);
+	uint32 py_crc32 = (data[size -  8] << 0) + (data[size -  7] << 8) + (data[size -  6] << 16) + (data[size -  5] << 24);
+	uint32 pp_crc32 = (data[size -  4] << 0) + (data[size -  3] << 8) + (data[size -  2] << 16) + (data[size -  1] << 24);
+	if(patch_crc32 != pp_crc32) { delete[] data; return false; }  //patch is corrupted
+	if((rom_crc32 != px_crc32) && (rom_crc32 != py_crc32)) { delete[] data; return false; }  //patch is for a different ROM
+
+	uint32 px_size = ReadUPSPointer(data, addr, size);
+	uint32 py_size = ReadUPSPointer(data, addr, size);
+	uint32 out_size = ((uint32) rom_size == px_size) ? py_size : px_size;
+	if(out_size > CMemory::MAX_ROM_SIZE) { delete[] data; return false; }  //applying this patch will overflow Memory.ROM buffer
+
+	//fill expanded area with 0x00s; so that XORing works as expected below.
+	//note that this is needed (and works) whether output ROM is larger or smaller than pre-patched ROM
+	for(unsigned i = min((uint32) rom_size, out_size); i < max((uint32) rom_size, out_size); i++) {
+		Memory.ROM[i] = 0x00;
+	}
+
+	uint32 relative = 0;
+	while(addr < size - 12) {
+		relative += ReadUPSPointer(data, addr, size);
+		while(addr < size - 12) {
+			uint8 x = data[addr++];
+			Memory.ROM[relative++] ^= x;
+			if(!x) break;
+		}
+	}
+
+	rom_size = out_size;
+	delete[] data;
+
+	uint32 out_crc32 = caCRC32(Memory.ROM, rom_size);
+	if(((rom_crc32 == px_crc32) && (out_crc32 == py_crc32))
+	|| ((rom_crc32 == py_crc32) && (out_crc32 == px_crc32))
+	) {
+		return true;
+	} else {
+		//technically, reaching here means that patching has failed.
+		//we should return false, but unfortunately Memory.ROM has already
+		//been modified above and cannot be undone. to do this properly, we
+		//would need to make a copy of Memory.ROM, apply the patch, and then
+		//copy that back to Memory.ROM.
+		//
+		//however, the only way for this case to happen is if the UPS patch file
+		//itself is corrupted, which should be detected by the patch CRC32 check
+		//above anyway. errors due to the wrong ROM or patch file being used are
+		//already caught above.
+		fprintf(stderr, "WARNING: UPS patching appears to have failed.\nGame may not be playable.\n");
+		return true;
+	}
+}
 
 static long ReadInt (Reader *r, unsigned nbytes)
 {
@@ -4053,7 +4171,7 @@ static int unzFindExtension (unzFile &file, const char *ext, bool restart, bool 
 		if (len >= l + 1 && name[len - l - 1] == '.' && strcasecmp(name + len - l, ext) == 0 && unzOpenCurrentFile(file) == UNZ_OK)
 		{
 			if (print)
-				printf("Using IPS patch %s", name);
+				printf("Using IPS or UPS patch %s", name);
 
 			return (port);
 		}
@@ -4065,17 +4183,82 @@ static int unzFindExtension (unzFile &file, const char *ext, bool restart, bool 
 }
 #endif
 
-void CMemory::CheckForIPSPatch (const char *rom_filename, bool8 header, int32 &rom_size)
+void CMemory::CheckForAnyPatch (const char *rom_filename, bool8 header, int32 &rom_size)
 {
 	if (Settings.NoPatch)
 		return;
 
-	STREAM	patch_file  = NULL;
-	uint32	i;
-	long	offset = header ? 512 : 0;
-	int		ret;
-	bool	flag;
-	char	dir[_MAX_DIR + 1], drive[_MAX_DRIVE + 1], name[_MAX_FNAME + 1], ext[_MAX_EXT + 1], ips[_MAX_EXT + 3], fname[PATH_MAX + 1];
+	STREAM		patch_file  = NULL;
+	uint32		i;
+	long		offset = header ? 512 : 0;
+	int			ret;
+	bool		flag;
+	char		dir[_MAX_DIR + 1], drive[_MAX_DRIVE + 1], name[_MAX_FNAME + 1], ext[_MAX_EXT + 1], ips[_MAX_EXT + 3], fname[PATH_MAX + 1];
+	const char	*n;
+
+	// UPS
+
+	_splitpath(rom_filename, drive, dir, name, ext);
+	_makepath(fname, drive, dir, name, "ups");
+
+	if ((patch_file = OPEN_STREAM(fname, "rb")) != NULL)
+	{
+		printf("Using UPS patch %s", fname);
+
+		ret = ReadUPSPatch(new fReader(patch_file), 0, rom_size);
+		CLOSE_STREAM(patch_file);
+
+		if (ret)
+		{
+			printf("!\n");
+			return;
+		}
+		else
+			printf(" failed!\n");
+	}
+
+#ifdef UNZIP_SUPPORT
+	if (!strcasecmp(ext, "zip") || !strcasecmp(ext, ".zip"))
+	{
+		unzFile	file = unzOpen(rom_filename);
+		if (file)
+		{
+			int	port = unzFindExtension(file, "ups");
+			if (port == UNZ_OK)
+			{
+				printf(" in %s", rom_filename);
+
+				ret = ReadUPSPatch(new unzReader(file), offset, rom_size);
+				unzCloseCurrentFile(file);
+
+				if (ret)
+					printf("!\n");
+				else
+					printf(" failed!\n");
+			}
+		}
+	}
+#endif
+
+	n = S9xGetFilename(".ups", IPS_DIR);
+
+	if ((patch_file = OPEN_STREAM(n, "rb")) != NULL)
+	{
+		printf("Using UPS patch %s", n);
+
+		ret = ReadUPSPatch(new fReader(patch_file), 0, rom_size);
+		CLOSE_STREAM(patch_file);
+
+		if (ret)
+		{
+			printf("!\n");
+			return;
+		}
+		else
+			printf(" failed!\n");
+	}
+
+	// IPS
 
 	_splitpath(rom_filename, drive, dir, name, ext);
 	_makepath(fname, drive, dir, name, "ips");
@@ -4201,7 +4384,7 @@ void CMemory::CheckForIPSPatch (const char *rom_filename, bool8 header, int32 &r
 	}
 
 #ifdef UNZIP_SUPPORT
-	if (strcasecmp(ext, "zip") == 0)
+	if (!strcasecmp(ext, "zip") || !strcasecmp(ext, ".zip"))
 	{
 		unzFile	file = unzOpen(rom_filename);
 		if (file)
@@ -4330,8 +4513,6 @@ void CMemory::CheckForIPSPatch (const char *rom_filename, bool8 header, int32 &r
 		}
 	}
 #endif
-
-	const char	*n;
 
 	n = S9xGetFilename(".ips", IPS_DIR);
 

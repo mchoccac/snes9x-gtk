@@ -413,7 +413,7 @@ S9xOpenROMDialog (void)
 
     top_level->pause_from_focus_change ();
 
-    dialog = gtk_file_chooser_dialog_new ("Open SNES ROM",
+    dialog = gtk_file_chooser_dialog_new ("Open SNES ROM Image",
                                           top_level->get_window (),
                                           GTK_FILE_CHOOSER_ACTION_OPEN,
                                           GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
@@ -421,7 +421,7 @@ S9xOpenROMDialog (void)
                                           NULL);
 
     filter = gtk_file_filter_new ();
-    gtk_file_filter_set_name (filter, "SNES ROMs");
+    gtk_file_filter_set_name (filter, "SNES ROM Images");
     for (int i = 0; extensions[i]; i++)
     {
         gtk_file_filter_add_pattern (filter, extensions[i]);

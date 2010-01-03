@@ -1208,11 +1208,13 @@ void
 Snes9xWindow::update_statusbar (void)
 {
     GtkStatusbar *bar = GTK_STATUSBAR (get_widget ("statusbar"));
-    char         msg[256];
+    char         status_string[256];
+    char         title_string[1024];
 
     if (!config->rom_loaded)
     {
-        msg[0] = '\0';
+        snprintf (title_string, 1024, "Snes9x");
+        status_string[0] = '\0';
     }
     else
     {
@@ -1221,7 +1223,7 @@ Snes9xWindow::update_statusbar (void)
         {
             if (config->netplay_server_up)
             {
-                snprintf (msg,
+                snprintf (status_string,
                           256,
                           _("%sHosting NetPlay - %s"),
                           is_paused () || NetPlay.Paused ? _("Paused - ") : "",
@@ -1229,7 +1231,7 @@ Snes9xWindow::update_statusbar (void)
             }
             else
             {
-                snprintf (msg,
+                snprintf (status_string,
                           256,
                           _("%s%s on NetPlay %s:%d - Player %d"),
                           is_paused () || NetPlay.Paused ? _("Paused - ") : "",
@@ -1243,16 +1245,19 @@ Snes9xWindow::update_statusbar (void)
         else
 #endif
         {
-            snprintf (msg,
+            snprintf (status_string,
                       256,
                       "%s%s",
                       is_paused () ? _("Paused - ") : "",
                       S9xBasenameNoExt (Memory.ROMFilename));
         }
+
+        snprintf (title_string, 1024, "%s - Snes9x", S9xBasenameNoExt (Memory.ROMFilename));
     }
 
+    gtk_window_set_title (GTK_WINDOW (window), title_string);
     gtk_statusbar_pop (bar, gtk_statusbar_get_context_id (bar, "none"));
-    gtk_statusbar_push (bar, gtk_statusbar_get_context_id (bar, "none"), msg);
+    gtk_statusbar_push (bar, gtk_statusbar_get_context_id (bar, "none"), status_string);
 
     return;
 }

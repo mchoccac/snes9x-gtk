@@ -468,6 +468,18 @@ JoyDevice::register_centers (void)
     for (int i = 0; i < num_axes; i++)
     {
         calibration[i].center = SDL_JoystickGetAxis (filedes, i);
+
+        /* Snap centers to specific target points */
+        if (calibration[i].center < -24576)
+            calibration[i].center = -32768;
+        else if (calibration[i].center < -8192)
+            calibration[i].center = -16384;
+        else if (calibration[i].center < 8192)
+            calibration[i].center = 0;
+        else if (calibration[i].center < 24576)
+            calibration[i].center = 16383;
+        else
+            calibration.center = 32767;
     }
 
     return;

@@ -335,16 +335,13 @@ Snes9xPreferences::calibration_dialog (void)
     GtkWidget *dialog;
 
     config->joystick_register_centers ();
-    config->set_joystick_mode (JOY_MODE_CALIBRATE);
     dialog = gtk_message_dialog_new (NULL,
                                      (GtkDialogFlags) 0,
                                      GTK_MESSAGE_INFO,
                                      GTK_BUTTONS_OK,
-                                     _("Rotate all axes to their maximum values, then press OK"));
+                                     _("Current joystick centers have been saved."));
 
     gtk_dialog_run (GTK_DIALOG (dialog));
-
-    config->set_joystick_mode (JOY_MODE_GLOBAL);
 
     gtk_widget_destroy (dialog);
 

@@ -479,7 +479,7 @@ JoyDevice::register_centers (void)
         else if (calibration[i].center < 24576)
             calibration[i].center = 16383;
         else
-            calibration.center = 32767;
+            calibration[i].center = 32767;
     }
 
     return;

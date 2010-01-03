@@ -498,7 +498,6 @@ Snes9xPreferences::move_settings_to_dialog (void)
 {
     set_check ("full_screen_on_open",       config->full_screen_on_open);
     set_check ("show_frame_rate",           Settings.DisplayFrameRate);
-    set_check ("transparency",              Settings.Transparency);
     set_check ("change_display_resolution", config->change_display_resolution);
     set_check ("scale_to_fit",              config->scale_to_fit);
     set_check ("overscan",                  config->overscan);
@@ -513,16 +512,13 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_combo ("resolution_combo",          config->xrr_index);
     set_combo ("scale_method_combo",        config->scale_method);
     set_entry_value ("save_sram_after_sec", Settings.AutoSaveDelay);
-    set_check ("speedhacks_check",          Settings.ShutdownMaster);
     set_check ("block_invalid_vram_access", Settings.BlockInvalidVRAMAccessMaster);
     set_check ("upanddown",                 Settings.UpAndDown);
     set_combo ("default_esc_behavior",      config->default_esc_behavior);
     set_check ("prevent_screensaver",       config->prevent_screensaver);
     set_check ("force_inverted_byte_order", config->force_inverted_byte_order);
     set_check ("hdma_check",                !(Settings.DisableHDMA));
-    set_check ("16bit_check",               Settings.SixteenBitSound);
     set_check ("stereo_check",              Settings.Stereo);
-    set_check ("reverse_stereo_check",      Settings.ReverseStereo);
     set_combo ("playback_combo",            7 - config->sound_playback_rate);
     set_combo ("hw_accel",                  combo_value (config->hw_accel));
     set_check ("pause_emulation_on_switch", config->pause_emulation_on_switch);
@@ -615,8 +611,6 @@ Snes9xPreferences::get_settings_from_dialog (void)
         (Settings.Stereo            != get_check ("stereo_check"))          ||
         (config->sound_playback_rate !=
                      (7 - (get_combo ("playback_combo"))))                  ||
-        (Settings.SixteenBitSound   != get_check ("16bit_check"))           ||
-        (Settings.ReverseStereo     != get_check ("reverse_stereo_check"))  ||
         (config->sound_input_rate   != get_slider ("sound_input_rate"))     ||
         (Settings.SoundSync         != get_check ("sync_sound"))
         )         
@@ -659,7 +653,6 @@ Snes9xPreferences::get_settings_from_dialog (void)
 
     config->full_screen_on_open       = get_check ("full_screen_on_open");
     Settings.DisplayFrameRate         = get_check ("show_frame_rate");
-    Settings.Transparency             = get_check ("transparency");
     config->scale_to_fit              = get_check ("scale_to_fit");
     config->overscan                  = get_check ("overscan");
     config->maintain_aspect_ratio     = get_check ("maintain_aspect_ratio");
@@ -680,11 +673,8 @@ Snes9xPreferences::get_settings_from_dialog (void)
     Settings.DisableHDMA              = !(get_check ("hdma_check"));
     Settings.BlockInvalidVRAMAccessMaster   = get_check ("block_invalid_vram_access");
     Settings.UpAndDown                = get_check ("upanddown");
-    Settings.ShutdownMaster           = get_check ("speedhacks_check");
     config->sound_driver              = get_combo ("sound_driver");
-    Settings.SixteenBitSound          = get_check ("16bit_check");
     Settings.Stereo                   = get_check ("stereo_check");
-    Settings.ReverseStereo            = get_check ("reverse_stereo_check");
     config->sound_playback_rate       = 7 - (get_combo ("playback_combo"));
     config->sound_buffer_size         = get_spin ("sound_buffer_size");
     config->sound_input_rate          = get_slider ("sound_input_rate");

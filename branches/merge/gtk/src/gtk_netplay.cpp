@@ -38,7 +38,6 @@ S9xNetplayConnect (void)
 
     uint32 flags = CPU.Flags;
 
-    Settings.Multi = FALSE;
     if (*(gui_config->netplay_last_rom) &&
         top_level->try_open_rom (gui_config->netplay_last_rom))
     {
@@ -139,7 +138,6 @@ S9xNetplayStartServer (void)
 
     flags = CPU.Flags;
 
-    Settings.Multi = FALSE;
     if (*(gui_config->netplay_last_rom) == 0 ||
         top_level->try_open_rom (gui_config->netplay_last_rom))
     {

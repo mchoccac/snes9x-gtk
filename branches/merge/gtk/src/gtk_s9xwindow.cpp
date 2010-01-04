@@ -667,10 +667,8 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
 
     gtk_widget_realize (window);
     gtk_widget_realize (GTK_WIDGET (drawing_area));
-/*  May interfere with colorkey drawing.
     gdk_window_set_back_pixmap (window->window, NULL, FALSE);
     gdk_window_set_back_pixmap (GTK_WIDGET (drawing_area)->window, NULL, FALSE);
-*/
 
     gtk_check_menu_item_set_active (
         GTK_CHECK_MENU_ITEM (get_widget ("show_statusbar_item")),
@@ -766,7 +764,7 @@ Snes9xWindow::open_multicart_dialog (void)
                                           GTK_DIALOG_DESTROY_WITH_PARENT,
                                           GTK_MESSAGE_ERROR,
                                           GTK_BUTTONS_CLOSE,
-                                          _("Couldn't load files"));
+                                          _("Couldn't load files."));
             gtk_dialog_run (GTK_DIALOG (msg));
             gtk_widget_destroy (msg);
         }
@@ -892,6 +890,8 @@ Snes9xWindow::try_open_rom (const char *filename)
 {
     pause_from_focus_change ();
 
+    Settings.Multi = FALSE;
+
     if (S9xOpenROM (filename))
     {
         GtkWidget *msg;
@@ -904,8 +904,6 @@ Snes9xWindow::try_open_rom (const char *filename)
                                       filename);
         gtk_dialog_run (GTK_DIALOG (msg));
         gtk_widget_destroy (msg);
-
-        S9xNoROMLoaded ();
 
         unpause_from_focus_change ();
 

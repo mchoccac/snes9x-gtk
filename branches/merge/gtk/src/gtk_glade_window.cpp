@@ -63,10 +63,9 @@ GladeWindow::resize (int width, int height)
 }
 
 void
-GladeWindow::refresh (const char *widget)
+GladeWindow::refresh (void)
 {
-    gtk_widget_queue_draw (get_widget (widget));
-    gtk_widget_show (get_widget (widget));
+    gtk_widget_queue_draw (GTK_WIDGET (window));
 
     return;
 }

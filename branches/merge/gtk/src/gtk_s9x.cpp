@@ -176,10 +176,10 @@ S9xOpenROM (const char *rom_filename)
         {
             fprintf (stderr, _("Error opening: %s\n"), rom_filename);
 
-            return -1;
+            loaded = FALSE;
         }
-
-        loaded = TRUE;
+        else
+            loaded = TRUE;
     }
 
     if (loaded)
@@ -190,9 +190,13 @@ S9xOpenROM (const char *rom_filename)
     else
     {
         S9xReset ();
+
+        CPU.Flags = flags;
         Settings.Paused = 1;
 
         S9xNoROMLoaded ();
+        top_level->refresh ();
+
         return 1;
     }
 
@@ -228,6 +232,7 @@ S9xNoROMLoaded (void)
     S9xSoundStop ();
     gui_config->rom_loaded = FALSE;
     top_level->configure_widgets ();
+    top_level->update_statusbar ();
 
     return;
 }

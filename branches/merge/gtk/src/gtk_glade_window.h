@@ -17,6 +17,7 @@ class GladeWindow
         GtkWidget *get_widget (const char *name);
         void resize (int width, int height);
         GtkWindow *get_window (void);
+        void refresh (void);
         int get_width (void);
         int get_height (void);
 
@@ -38,7 +39,6 @@ class GladeWindow
         void set_combo (const char *name, unsigned char value);
         void set_spin (const char *name, unsigned int value);
         void set_slider (const char *name, float value);
-        void refresh (const char *widget);
         int has_focus (const char *widget);
 
         GtkWidget *window;

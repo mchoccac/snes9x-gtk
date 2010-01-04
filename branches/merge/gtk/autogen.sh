@@ -3,5 +3,5 @@
 glib-gettextize -f -c
 intltoolize --copy --force --automake
 aclocal
-automake --add-missing
+automake --add-missing --copy
 autoconf

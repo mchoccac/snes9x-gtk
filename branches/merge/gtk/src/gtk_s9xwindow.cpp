@@ -67,6 +67,14 @@ event_open_cheats (GtkWidget *widget, gpointer data)
 }
 
 static gboolean
+event_open_multicart (GtkWidget *widget, gpointer data)
+{
+    ((Snes9xWindow *) data)->open_multicart_dialog ();
+
+    return TRUE;
+}
+
+static gboolean
 event_rom_info (GtkWidget *widget, gpointer data)
 {
     Snes9xWindow *window = (Snes9xWindow *) data;
@@ -625,6 +633,7 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
         { "correct_3x", G_CALLBACK (event_correct_aspect_3x) },
         { "correct_4x", G_CALLBACK (event_correct_aspect_4x) },
         { "correct_5x", G_CALLBACK (event_correct_aspect_5x) },
+        { "open_multicart", G_CALLBACK (event_open_multicart) },
 
         { NULL, NULL }
     };
@@ -705,6 +714,69 @@ Snes9xWindow::focus_notify (int state)
         unpause_from_focus_change ();
         paused_from_focus_loss = FALSE;
     }
+
+    return;
+}
+
+void
+Snes9xWindow::open_multicart_dialog (void)
+{
+    int result;
+    GladeWindow *dialog = new GladeWindow (snes9x_glade, snes9x_glade_size, "multicart_dialog");
+    GtkFileChooser *slota, *slotb;
+    GtkWidget *multicart_dialog = GTK_WIDGET (dialog->get_window ());
+
+    gtk_window_set_transient_for (dialog->get_window (), get_window ());
+
+    pause_from_focus_change ();
+
+    slota = GTK_FILE_CHOOSER (dialog->get_widget ("multicart_slota"));
+    slotb = GTK_FILE_CHOOSER (dialog->get_widget ("multicart_slotb"));
+
+    gtk_file_chooser_set_current_folder (slota, config->last_directory);
+    gtk_file_chooser_set_current_folder (slotb, config->last_directory);
+
+    result = gtk_dialog_run (GTK_DIALOG (multicart_dialog));
+
+    gtk_widget_hide (multicart_dialog);
+
+    if (result == GTK_RESPONSE_OK)
+    {
+        const gchar *filename;
+
+        filename = gtk_file_chooser_get_filename (slota);
+        if (filename)
+            strncpy (Settings.CartAName, filename, PATH_MAX);
+        else
+            Settings.CartAName[0] = '\0';
+
+        filename = gtk_file_chooser_get_filename (slotb);
+        if (filename)
+            strncpy (Settings.CartBName, filename, PATH_MAX);
+        else
+            Settings.CartBName[0] = '\0';
+
+        Settings.Multi = TRUE;
+
+        if (S9xOpenROM (NULL))
+        {
+            GtkWidget *msg;
+
+            msg = gtk_message_dialog_new (GTK_WINDOW (this->window),
+                                          GTK_DIALOG_DESTROY_WITH_PARENT,
+                                          GTK_MESSAGE_ERROR,
+                                          GTK_BUTTONS_CLOSE,
+                                          _("Couldn't load files"));
+            gtk_dialog_run (GTK_DIALOG (msg));
+            gtk_widget_destroy (msg);
+        }
+    }
+
+    gtk_widget_destroy (multicart_dialog);
+
+    unpause_from_focus_change ();
+
+    delete dialog;
 
     return;
 }
@@ -804,6 +876,7 @@ Snes9xWindow::open_rom_dialog ()
 
     if (filename)
     {
+        Settings.Multi = FALSE;
         try_open_rom (filename);
 
         g_free (filename);

@@ -191,6 +191,9 @@ S9xOpenROM (const char *rom_filename)
     {
         S9xReset ();
         Settings.Paused = 1;
+
+        S9xNoROMLoaded ();
+        return 1;
     }
 
     CPU.Flags = flags;

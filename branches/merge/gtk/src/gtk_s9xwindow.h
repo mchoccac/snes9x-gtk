@@ -48,6 +48,7 @@ class Snes9xWindow : public GladeWindow
         int try_open_rom (const char *filename);
         const char *open_movie_dialog (bool readonly);
         void movie_seek_dialog (void);
+        void open_multicart_dialog (void);
         void show_rom_info (void);
 
         /* GTK-base-related functions */

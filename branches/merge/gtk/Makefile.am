@@ -10,11 +10,6 @@ noinst_LIBRARIES =
 
 INCLUDES = -I$(top_srcdir) -I.. -DSNES9XLOCALEDIR=\""$(snes9xlocaledir)"\"
 
-EXTRA_DIST = \
-    intltool-extract.in \
-    intltool-merge.in \
-    intltool-update.in
-
 CLEANFILES = \
     src/gtk_glade.cpp \
     src/sourcify

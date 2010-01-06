@@ -29,17 +29,27 @@ class S9xXVDisplayDriver : public S9xDisplayDriver
         void update_image_size (int width, int height);
 
         Display *display;
+        Window xwindow;
+        GC xgc;
+        Colormap xcolormap;
+        GdkWindow *gdk_window;
+
         XvImage *xv_image;
         int xv_portid;
         XShmSegmentInfo shm;
-        int gdk_buffer_width;
-        int gdk_buffer_height;
+
+        int output_window_width;
+        int output_window_height;
+        int last_known_width;
+        int last_known_height;
         int desired_width;
         int desired_height;
         int format;
         int bpp;
         int bytes_per_pixel;
+        int depth;
         int rshift, gshift, bshift;
+
         uint8 y_table[65536];
         uint8 u_table[65536];
         uint8 v_table[65536];

@@ -231,6 +231,7 @@ S9xNoROMLoaded (void)
 {
     S9xSoundStop ();
     gui_config->rom_loaded = FALSE;
+    S9xDisplayRefresh (-1, -1);
     top_level->configure_widgets ();
     top_level->update_statusbar ();
 

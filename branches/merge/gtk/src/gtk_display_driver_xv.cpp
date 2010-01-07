@@ -29,9 +29,7 @@ S9xXVDisplayDriver::S9xXVDisplayDriver (Snes9xWindow *window,
     this->window = window;
     this->config = config;
     this->drawing_area = GTK_WIDGET (window->drawing_area);
-    display =
-        gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (drawing_area->window));
-    last_known_width = last_known_height = -1;
+    display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (drawing_area->window));
 
     return;
 }
@@ -40,26 +38,21 @@ void
 S9xXVDisplayDriver::update (int width, int height)
 {
     int   current_width, current_height, final_pitch;
+    int   dst_x, dst_y, dst_w, dst_h;
     uint8 *final_buffer;
-    int   dst_x, dst_y, dst_width, dst_height;
+    GdkGC *gc = drawing_area->style->bg_gc[GTK_WIDGET_STATE (drawing_area)];
 
     current_width = drawing_area->allocation.width;
     current_height = drawing_area->allocation.height;
 
-    if (width <= 0)
+    if (width == SIZE_FLAG_DIRTY)
     {
-        XMoveResizeWindow (display, xwindow, -1, -1, 1, 1);
+        this->clear ();
         return;
     }
 
-    if (output_window_width != current_width ||
-        output_window_height!= current_height)
-    {
-        XMoveResizeWindow (display, xwindow, 0, 0, current_width, current_height);
-        XSync (display, False);
-        output_window_width = current_width;
-        output_window_height = current_height;
-    }
+    if (width <= 0)
+        return;
 
     if (config->scale_method > 0)
     {
@@ -86,7 +79,8 @@ S9xXVDisplayDriver::update (int width, int height)
 
     if (!config->scale_to_fit && (width > current_width || height > current_height))
     {
-        clear ();
+        this->clear ();
+
         return;
     }
 
@@ -129,63 +123,51 @@ S9xXVDisplayDriver::update (int width, int height)
             {
                 dst_x = (current_width - (int) (current_height * snes_aspect)) / 2;
                 dst_y = 0;
-                dst_width = (int) (current_height * snes_aspect);
-                dst_height = current_height;
+                dst_w = (int) (current_height * snes_aspect);
+                dst_h = current_height;
             }
             else
             {
                 dst_x = 0;
                 dst_y = (current_height - current_width / snes_aspect) / 2;
-                dst_width = current_width;
-                dst_height = (current_width / snes_aspect);
+                dst_w = current_width;
+                dst_h = (current_width / snes_aspect);
             }
         }
         else
         {
             dst_x = 0;
             dst_y = 0;
-            dst_width = current_width;
-            dst_height = current_height;
+            dst_w = current_width;
+            dst_h = current_height;
         }
     }
     else
     {
         dst_x = (current_width - width) / 2;
         dst_y = (current_height - height) / 2;
-        dst_width = width;
-        dst_height = height;
-    }
-
-
-    if (last_known_width != dst_width || last_known_height != dst_height)
-    {
-        last_known_width = dst_width;
-        last_known_height = dst_height;
-        clear ();
+        dst_w = width;
+        dst_h = height;
     }
 
     XLockDisplay (display);
 
     XvShmPutImage (display,
                    xv_portid,
-                   xwindow,
-                   xgc,
+                   GDK_WINDOW_XWINDOW (drawing_area->window),
+                   GDK_GC_XGC (gc),
                    xv_image,
-                   0,
-                   0,
-                   width,
-                   height,
-                   dst_x,
-                   dst_y,
-                   dst_width,
-                   dst_height,
-                   False);
+                   0, 0,
+                   width, height,
+                   dst_x, dst_y,
+                   dst_w, dst_h,
+                   True);
 
-    top_level->set_mouseable_area (dst_x, dst_y, dst_width, dst_height);
-
-    XUnlockDisplay (display);
+    top_level->set_mouseable_area (dst_x, dst_y, dst_w, dst_h);
 
     XSync (display, False);
+
+    XUnlockDisplay (display);
 
     return;
 }
@@ -247,7 +229,6 @@ S9xXVDisplayDriver::init (void)
     XvImageFormatValues *formats = NULL;
     XvAdaptorInfo       *adaptors;
     XvAttribute         *port_attr;
-    VisualID            visualid = None;
     unsigned int        num_adaptors;
     GdkScreen           *screen;
     GdkWindow           *root;
@@ -291,7 +272,6 @@ S9xXVDisplayDriver::init (void)
             {
                 xv_portid = adaptors[i].base_id;
                 highest_formats = num_formats;
-                visualid = adaptors[i].formats->visual_id;
             }
 
             free (formats);
@@ -338,7 +318,6 @@ S9xXVDisplayDriver::init (void)
                 format = formats[i].id;
                 bpp = formats[i].bits_per_pixel;
                 bytes_per_pixel = (bpp == 15) ? 2 : bpp >> 3;
-                depth = formats[i].depth;
 
                 this->rshift = get_inv_shift (formats[i].red_mask, bpp);
                 this->gshift = get_inv_shift (formats[i].green_mask, bpp);
@@ -368,8 +347,6 @@ S9xXVDisplayDriver::init (void)
         {
             if (formats[i].id == FOURCC_YUY2)
             {
-                depth = formats[i].depth;
-
                 if (formats[i].byte_order == LSBFirst)
                 {
                     if (config->force_inverted_byte_order)
@@ -392,77 +369,6 @@ S9xXVDisplayDriver::init (void)
 
     free (formats);
 
-    /* Build a table for yuv conversion */
-    if (format == FOURCC_YUY2)
-    {
-        for (unsigned int color = 0; color < 65536; color++)
-        {
-            int r, g, b;
-            int y, u, v;
-
-            r = (color & 0x7c00) >> 7;
-            g = (color & 0x03e0) >> 2;
-            b = (color & 0x001F) << 3;
-
-            y = (int) ((0.257  * ((double) r)) + (0.504  * ((double) g)) + (0.098  * ((double) b)) + 16.0);
-            u = (int) ((-0.148 * ((double) r)) + (-0.291 * ((double) g)) + (0.439  * ((double) b)) + 128.0);
-            v = (int) ((0.439  * ((double) r)) + (-0.368 * ((double) g)) + (-0.071 * ((double) b)) + 128.0);
-
-            y_table[color] = CLAMP (y, 0, 255);
-            u_table[color] = CLAMP (u, 0, 255);
-            v_table[color] = CLAMP (v, 0, 255);
-        }
-
-        S9xRegisterYUVTables (y_table, u_table, v_table);
-    }
-
-    /* Create a sub-window */
-    XVisualInfo vi_template, *vi;
-    int vi_num_items;
-
-    vi_template.visualid = visualid;
-    vi_template.screen   = GDK_SCREEN_XNUMBER (screen);
-    vi_template.depth    = depth;
-    vi = XGetVisualInfo (display, VisualIDMask | VisualScreenMask | VisualDepthMask, &vi_template, &vi_num_items);
-
-    XSetWindowAttributes window_attr;
-    xcolormap = XCreateColormap (display,
-                                GDK_WINDOW_XWINDOW (drawing_area->window),
-                                vi->visual,
-                                AllocNone);
-
-    window_attr.colormap = xcolormap;
-    window_attr.border_pixel = 0;
-    window_attr.event_mask = StructureNotifyMask | ExposureMask | SubstructureNotifyMask | VisibilityChangeMask;
-    window_attr.background_pixel = 0;
-
-    xwindow = XCreateWindow (display,
-                             GDK_WINDOW_XWINDOW (drawing_area->window),
-                             -1,
-                             -1,
-                             1,
-                             1,
-                             0,
-                             depth,
-                             InputOutput,
-                             vi->visual,
-                             CWColormap | CWBorderPixel | CWBackPixel | CWEventMask,
-                             &window_attr);
-
-    output_window_width = output_window_height = 1;
-
-    xgc = XCreateGC (display, xwindow, 0, NULL);
-
-    XFree (vi);
-
-    XMapWindow (display, xwindow);
-
-    XSync (display, False);
-
-    gdk_window = gdk_window_foreign_new (xwindow);
-    gdk_window_set_user_data (gdk_window, drawing_area);
-
-    /* Allocate a shared memory image. */
     xv_image = XvShmCreateImage (display,
                                  xv_portid,
                                  format,
@@ -488,6 +394,30 @@ S9xXVDisplayDriver::init (void)
     desired_width = scaled_max_width;
     desired_height = scaled_max_width;
 
+    /* Build a table for yuv conversion */
+    if (format == FOURCC_YUY2)
+    {
+        for (unsigned int color = 0; color < 65536; color++)
+        {
+            int r, g, b;
+            int y, u, v;
+
+            r = (color & 0x7c00) >> 7;
+            g = (color & 0x03e0) >> 2;
+            b = (color & 0x001F) << 3;
+
+            y = (int) ((0.257  * ((double) r)) + (0.504  * ((double) g)) + (0.098  * ((double) b)) + 16.0);
+            u = (int) ((-0.148 * ((double) r)) + (-0.291 * ((double) g)) + (0.439  * ((double) b)) + 128.0);
+            v = (int) ((0.439  * ((double) r)) + (-0.368 * ((double) g)) + (-0.071 * ((double) b)) + 128.0);
+
+            y_table[color] = CLAMP (y, 0, 255);
+            u_table[color] = CLAMP (u, 0, 255);
+            v_table[color] = CLAMP (v, 0, 255);
+        }
+
+        S9xRegisterYUVTables (y_table, u_table, v_table);
+    }
+
     clear_buffers ();
 
     /* Give Snes9x core a pointer to draw on */
@@ -500,15 +430,8 @@ S9xXVDisplayDriver::init (void)
 void
 S9xXVDisplayDriver::deinit (void)
 {
-    XSync (display, False);
-    XUnmapWindow (display, xwindow);
-
     XShmDetach (display, &shm);
     XSync (display, 0);
-
-    XFreeColormap (display, xcolormap);
-
-    XDestroyWindow (display, xwindow);
 
     free (buffer[0]);
     free (buffer[1]);
@@ -525,9 +448,82 @@ S9xXVDisplayDriver::deinit (void)
 void
 S9xXVDisplayDriver::clear (void)
 {
+    int      w, h;
+    GdkColor black = { 0, 0, 0, 0 };
+    int      width = drawing_area->allocation.width;
+    int      height = drawing_area->allocation.height;
+    GdkGC    *gc = NULL;
+
+    gc = drawing_area->style->fg_gc[GTK_WIDGET_STATE (drawing_area)];
+    gdk_gc_set_rgb_fg_color (gc, &black);
+
     XLockDisplay (display);
-    XClearWindow (display, xwindow);
-    XSync (display, False);
+    if (window->last_width <= 0 || window->last_height <= 0)
+    {
+
+        gdk_draw_rectangle (drawing_area->window,
+                            gc,
+                            TRUE,
+                            0, 0,
+                            width, height);
+        XUnlockDisplay (display);
+        return;
+    }
+
+    /* Get width of modified display */
+    w = window->last_width;
+    h = window->last_height;
+    get_filter_scale (w, h);
+
+    if (config->scale_to_fit)
+    {
+        double screen_aspect = (double) width / (double) height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (width, height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
+        {
+            int bar_size;
+
+            if (screen_aspect > snes_aspect)
+            {
+                /* Black bars on left and right */
+                w = (int) (height * snes_aspect);
+                bar_size = (width - w) / 2;
+
+                gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, 0, bar_size, height);
+                gdk_draw_rectangle (drawing_area->window, gc, TRUE, bar_size + w, 0, width - bar_size - w, height);
+            }
+            else
+            {
+                /* Black bars on top and bottom */
+                h = (int) (width / snes_aspect);
+                bar_size = (height - h) / 2;
+                gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, 0, width, bar_size);
+                gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, bar_size + h, width, height - bar_size - h);
+            }
+        }
+        else
+        {
+            XUnlockDisplay (display);
+            return;
+        }
+    }
+    else
+    {
+        /* Black bars on top, bottom, left, and right :-) */
+        int bar_width, bar_height;
+        bar_height = (height - h) / 2;
+        bar_width = (width - w) / 2;
+
+        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, 0, width, bar_height);
+        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, bar_height + h, width, height - (bar_height + h));
+        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, bar_height, bar_width, h);
+        gdk_draw_rectangle (drawing_area->window, gc, TRUE, bar_width + w, bar_height, width - (bar_width + w), h);
+    }
+
     XUnlockDisplay (display);
 
     return;
@@ -537,10 +533,9 @@ void
 S9xXVDisplayDriver::refresh (int width, int height)
 {
     if (!config->rom_loaded)
-    {
-        output_window_width = output_window_height = 1;
-        XMoveResizeWindow (display, xwindow, -1, -1, 1, 1);
-    }
+        return;
+
+    clear ();
 
     return;
 }

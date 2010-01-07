@@ -443,20 +443,27 @@ S9xXVDisplayDriver::init (void)
                              vi->visual,
                              CWColormap | CWBorderPixel | CWBackPixmap | CWEventMask,
                              &window_attr);
+    XSync (display, False);
 
     output_window_width = 256;
     output_window_height = 224;
 
-    xgc = XCreateGC (display, xwindow, 0, NULL);
-    XFree (vi);
     XMapWindow (display, xwindow);
     XSync (display, False);
+
+    xgc = XCreateGC (display, xwindow, 0, NULL);
+    XFree (vi);
+
     gdk_display_sync (gtk_widget_get_display (drawing_area));
-
     gdk_window = gdk_window_foreign_new (xwindow);
-
     XSync (display, False);
     gdk_display_sync (gtk_widget_get_display (drawing_area));
+
+    if (gdk_window == NULL)
+    {
+        fprintf (stderr, "Failed to wrap native window.\n");
+        return -1;
+    }
 
     gdk_window_set_user_data (gdk_window, drawing_area);
     gdk_window_hide (gdk_window);

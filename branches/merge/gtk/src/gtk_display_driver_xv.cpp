@@ -150,8 +150,6 @@ S9xXVDisplayDriver::update (int width, int height)
         dst_h = height;
     }
 
-    XLockDisplay (display);
-
     XvShmPutImage (display,
                    xv_portid,
                    GDK_WINDOW_XWINDOW (drawing_area->window),
@@ -166,8 +164,6 @@ S9xXVDisplayDriver::update (int width, int height)
     top_level->set_mouseable_area (dst_x, dst_y, dst_w, dst_h);
 
     XSync (display, False);
-
-    XUnlockDisplay (display);
 
     return;
 }
@@ -448,25 +444,25 @@ S9xXVDisplayDriver::deinit (void)
 void
 S9xXVDisplayDriver::clear (void)
 {
-    int      w, h;
-    GdkColor black = { 0, 0, 0, 0 };
-    int      width = drawing_area->allocation.width;
-    int      height = drawing_area->allocation.height;
-    GdkGC    *gc = NULL;
+    int          x, y, w, h;
+    GdkColor     black = { 0, 0, 0, 0 };
+    int          width = drawing_area->allocation.width;
+    int          height = drawing_area->allocation.height;
+    GdkGC        *gc = NULL;
+    GdkRectangle recta = { 0, 0, width, height };
 
     gc = drawing_area->style->fg_gc[GTK_WIDGET_STATE (drawing_area)];
     gdk_gc_set_rgb_fg_color (gc, &black);
 
-    XLockDisplay (display);
     if (window->last_width <= 0 || window->last_height <= 0)
     {
 
+        gdk_gc_set_clip_rectangle (gc, &recta);
         gdk_draw_rectangle (drawing_area->window,
                             gc,
                             TRUE,
                             0, 0,
                             width, height);
-        XUnlockDisplay (display);
         return;
     }
 
@@ -485,46 +481,43 @@ S9xXVDisplayDriver::clear (void)
             !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
               screen_aspect >= snes_aspect * (1.0 - granularity)))
         {
-            int bar_size;
-
             if (screen_aspect > snes_aspect)
             {
                 /* Black bars on left and right */
                 w = (int) (height * snes_aspect);
-                bar_size = (width - w) / 2;
-
-                gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, 0, bar_size, height);
-                gdk_draw_rectangle (drawing_area->window, gc, TRUE, bar_size + w, 0, width - bar_size - w, height);
+                h = height;
+                x = (width - w) / 2;
+                y = 0;
             }
             else
             {
                 /* Black bars on top and bottom */
+                w = width;
                 h = (int) (width / snes_aspect);
-                bar_size = (height - h) / 2;
-                gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, 0, width, bar_size);
-                gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, bar_size + h, width, height - bar_size - h);
+                x = 0;
+                y = (height - h) / 2;
             }
         }
         else
         {
-            XUnlockDisplay (display);
             return;
         }
     }
     else
     {
-        /* Black bars on top, bottom, left, and right :-) */
-        int bar_width, bar_height;
-        bar_height = (height - h) / 2;
-        bar_width = (width - w) / 2;
-
-        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, 0, width, bar_height);
-        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, bar_height + h, width, height - (bar_height + h));
-        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, bar_height, bar_width, h);
-        gdk_draw_rectangle (drawing_area->window, gc, TRUE, bar_width + w, bar_height, width - (bar_width + w), h);
+        x = (width - w) / 2;
+        y = (height - h) / 2;
     }
 
-    XUnlockDisplay (display);
+    GdkRectangle rectb = { x, y, w, h };
+    GdkRegion *a = gdk_region_rectangle (&recta);
+    GdkRegion *b = gdk_region_rectangle (&rectb);
+
+    gdk_region_subtract (a, b);
+    gdk_gc_set_clip_region (gc, a);
+    gdk_region_destroy (a);
+    gdk_region_destroy (b);
+    gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, 0, width, height);
 
     return;
 }

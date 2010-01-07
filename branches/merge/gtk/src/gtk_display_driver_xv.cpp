@@ -601,6 +601,7 @@ S9xXVDisplayDriver::refresh (int width, int height)
     if (!config->rom_loaded)
     {
         gdk_window_hide (gdk_window);
+        return;
     }
 
     clear ();

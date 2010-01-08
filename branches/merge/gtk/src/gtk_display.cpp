@@ -1889,8 +1889,8 @@ S9xInitDisplay (int argc, char **argv)
 {
     Settings.SupportHiRes = TRUE;
     S9xSetRenderPixelFormat (RGB555);
-    InitLUTs ();
-    Init_2xSaI (555);
+    S9xBlit2xSaIFilterInit ();
+    S9xBlitHQ2xFilterInit ();
     
     S9xQueryDrivers ();
     S9xInitDriver ();

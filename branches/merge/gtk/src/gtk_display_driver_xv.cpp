@@ -239,7 +239,7 @@ int
 S9xXVDisplayDriver::init (void)
 {
     int                 padding;
-    int                 num_formats, num_attrs, highest_formats = 0;
+    int                 depth = 0, num_formats, num_attrs, highest_formats = 0;
     XvImageFormatValues *formats = NULL;
     XvAdaptorInfo       *adaptors;
     XvAttribute         *port_attr;

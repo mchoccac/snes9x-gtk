@@ -47,7 +47,6 @@ class S9xXVDisplayDriver : public S9xDisplayDriver
         int format;
         int bpp;
         int bytes_per_pixel;
-        int depth;
         int rshift, gshift, bshift;
 
         uint8 y_table[65536];

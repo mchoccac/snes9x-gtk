@@ -531,7 +531,6 @@ void S9xInitDisplay (int argc, char **argv)
 		case 32:
 		case 24:
 			S9xSetRenderPixelFormat(RGB555);
-			S9xBlitInit(555);
 			GUI.pixel_format = 555;
 			break;
 
@@ -547,7 +546,6 @@ void S9xInitDisplay (int argc, char **argv)
 				else
 					S9xSetRenderPixelFormat(BGR565);
 
-				S9xBlitInit(565);
 				GUI.pixel_format = 565;
 				break;
 			}
@@ -561,10 +559,13 @@ void S9xInitDisplay (int argc, char **argv)
 			else
 				S9xSetRenderPixelFormat(BGR555);
 
-			S9xBlitInit(555);
 			GUI.pixel_format = 555;
 			break;
 	}
+
+	S9xBlitFilterInit();
+	S9xBlit2xSaIFilterInit();
+	S9xBlitHQ2xFilterInit();
 
 	XSetWindowAttributes	attrib;
 
@@ -635,6 +636,9 @@ void S9xDeinitDisplay (void)
 	TakedownImage();
 	XSync(GUI.display, False);
 	XCloseDisplay(GUI.display);
+	S9xBlitFilterDeinit();
+	S9xBlit2xSaIFilterDeinit();
+	S9xBlitHQ2xFilterDeinit();
 }
 
 static void TakedownImage (void)

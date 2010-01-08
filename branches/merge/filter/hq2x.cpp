@@ -175,7 +175,8 @@
  ***********************************************************************************/
 
 
-#include "port.h"
+#include "snes9x.h"
+#include "gfx.h"
 #include "hq2x.h"
 
 #define	Ymask	0xFF0000
@@ -185,14 +186,11 @@
 #define	trU		0x000700
 #define	trV		0x000006
 
-#undef R5G6B5
-
-#ifdef R5G6B5
-#define	Mask_2	0x07E0
-#define	Mask13	0xF81F
+#ifdef GFX_MULTI_FORMAT
+static uint16	Mask_2 = 0, Mask13 = 0;
 #else
-#define	Mask_2	0x03E0
-#define	Mask13	0x7C1F
+#define	Mask_2	SECOND_COLOR_MASK
+#define	Mask13	FIRST_THIRD_COLOR_MASK
 #endif
 
 #define Interp01(c1, c2) \
@@ -504,14 +502,58 @@
 #define Absolute(c) \
 (!(c & (1 << 31)) ? c : (~c + 1))
 
-#ifdef R5G6B5
-#define	NUMBITS	(16)
-#else
-#define	NUMBITS	(15)
+static int	*RGBtoYUV = NULL;
+
+static void InitLUTs (void);
+static inline bool Diff (int, int);
+
+
+bool8 S9xBlitHQ2xFilterInit (void)
+{
+	uint32	n = 1 << ((FIRST_COLOR_MASK & 0x8000) ? 16 : 15);
+	RGBtoYUV = new int[n];
+	if (!RGBtoYUV)
+		return (FALSE);
+
+#ifdef GFX_MULTI_FORMAT
+	Mask_2 = SECOND_COLOR_MASK;
+	Mask13 = FIRST_THIRD_COLOR_MASK;
 #endif
 
-static int	RGBtoYUV[1 << NUMBITS];
+	InitLUTs();
 
+	return (TRUE);
+}
+
+void S9xBlitHQ2xFilterDeinit (void)
+{
+	if (RGBtoYUV)
+	{
+		delete[] RGBtoYUV;
+		RGBtoYUV = NULL;
+	}
+}
+
+static void InitLUTs (void)
+{
+	uint32	r, g, b;
+	int		y, u, v;
+
+	uint32	n = 1 << ((FIRST_COLOR_MASK & 0x8000) ? 16 : 15);
+	for (uint32 c = 0 ; c < n ; c++)
+	{
+		DECOMPOSE_PIXEL(c, r, g, b);
+		r <<= 3;
+		g <<= 3;
+		b <<= 3;
+
+		y = (int) ( 0.256788f * r + 0.504129f * g + 0.097906f * b + 0.5f) + 16;
+		u = (int) (-0.148223f * r - 0.290993f * g + 0.439216f * b + 0.5f) + 128;
+		v = (int) ( 0.439216f * r - 0.367788f * g - 0.071427f * b + 0.5f) + 128;
+
+		RGBtoYUV[c] = (y << 16) + (u << 8) + v;
+	}
+}
 
 static inline bool Diff (int c1, int c2)
 {
@@ -528,30 +570,6 @@ static inline bool Diff (int c1, int c2)
 		return (true);
 
 	return (false);
-}
-
-void InitLUTs (void)
-{
-	int	r, g, b, y, u, v;
-
-	for (int c = 0 ; c < (1 << NUMBITS) ; c++)
-	{
-	#ifdef R5G6B5
-		b = (int) ((c & 0x001F)) << 3;
-		g = (int) ((c & 0x07E0)) >> 3;
-		r = (int) ((c & 0xF800)) >> 8;
-	#else
-		b = (int) ((c & 0x001F)) << 3;
-		g = (int) ((c & 0x03E0)) >> 2;
-		r = (int) ((c & 0x7C00)) >> 7;
-	#endif
-
-		y = (int) ( 0.256788f * r + 0.504129f * g + 0.097906f * b + 0.5f) + 16;
-		u = (int) (-0.148223f * r - 0.290993f * g + 0.439216f * b + 0.5f) + 128;
-		v = (int) ( 0.439216f * r - 0.367788f * g - 0.071427f * b + 0.5f) + 128;
-
-		RGBtoYUV[c] = (y << 16) + (u << 8) + v;
-	}
 }
 
 void HQ2X_16 (uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height)

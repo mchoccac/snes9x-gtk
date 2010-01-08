@@ -3531,14 +3531,6 @@ void CMemory::ApplyROMFixes (void)
 
 	//// Warnings
 
-	// Don't steal my work! -MK
-	if ((ROMCRC32 == 0x1B4A5616) && match_nn("RUDORA NO HIHOU"))
-	{
-		strncpy(ROMName, "THIS SCRIPT WAS STOLEN", 22);
-		Settings.DisplayColor = BUILD_PIXEL(31, 0, 0);
-		SET_UI_COLOR(255, 0, 0);
-	}
-
 	// Reject strange hacked games
 	if ((ROMCRC32 == 0x6810aa95) ||
 		(ROMCRC32 == 0x340f23e5) ||

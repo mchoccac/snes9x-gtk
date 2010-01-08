@@ -190,13 +190,17 @@
 #include <sys/types.h>
 
 #ifdef __WIN32__
+#define NOMINMAX
 #include <windows.h>
 #endif
 
 #define GFX_MULTI_FORMAT
 
 #ifdef __WIN32__
-#define RIGHTSHIFT_IS_SAR
+//#define RIGHTSHIFT_IS_SAR
+#define RIGHTSHIFT_int8_IS_SAR
+#define RIGHTSHIFT_int16_IS_SAR
+#define RIGHTSHIFT_int32_IS_SAR
 #define SNES_JOY_READ_CALLBACKS
 #endif
 
@@ -239,8 +243,10 @@ typedef signed int			int32;
 #endif
 typedef unsigned int		uint32;
 #endif
+typedef unsigned char		uint8_t;
 typedef signed __int64		int64;
 typedef unsigned __int64	uint64;
+typedef int					socklen_t;
 #else	// __WIN32__
 typedef signed char			int8;
 typedef unsigned char		uint8;
@@ -289,9 +295,11 @@ void _splitpath (const char *, char *, char *, char *, char *);
 void _makepath (char *, const char *, const char *, const char *, const char *);
 #define S9xDisplayString	DisplayStringFromBottom
 #else
+#define snprintf _snprintf
 #define strcasecmp	stricmp
 #define strncasecmp	strnicmp
-#define S9xDisplayString	S9xCustomDisplayString
+void WinDisplayStringFromBottom(const char *string, int linesFromBottom, int pixelsFromLeft, bool allowWrap);
+#define S9xDisplayString	WinDisplayStringFromBottom
 #endif
 
 #ifdef __DJGPP
@@ -315,7 +323,7 @@ void _makepath (char *, const char *, const char *, const char *, const char *);
 #define TITLE "Snes9x"
 #endif
 
-#if defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__x86_64__) || defined(__alpha__) || defined(__MIPSEL__)
+#if defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__x86_64__) || defined(__alpha__) || defined(__MIPSEL__) || defined(_M_IX86)
 #define LSB_FIRST
 #define FAST_LSB_WORD_ACCESS
 #else

@@ -370,7 +370,15 @@ void InitGraphics (void)
 	if (!snesScreenA || !snesScreenB || !blitGLBuffer)
 		QuitWithFatalError(0, "render 01");
 
-	if (!S9xBlitNTSCFilterInit())
+#ifdef GFX_MULTI_FORMAT
+	S9xSetRenderPixelFormat(RGB555);
+	printf("GFX_MULTI_FORMAT is #defined.\n");
+#endif
+
+	if (!S9xBlitFilterInit()      |
+		!S9xBlit2xSaIFilterInit() |
+		!S9xBlitHQ2xFilterInit()  |
+		!S9xBlitNTSCFilterInit())
 		QuitWithFatalError(0, "render 02");
 
 	switch (videoMode)
@@ -396,13 +404,14 @@ void InitGraphics (void)
 			S9xBlitNTSCFilterSet(&snes_ntsc_monochrome);
 			break;
 	}
-
-	S9xBlitInit(555);
 }
 
 void DeinitGraphics (void)
 {
 	S9xBlitNTSCFilterDeinit();
+	S9xBlitHQ2xFilterDeinit();
+	S9xBlit2xSaIFilterDeinit();
+	S9xBlitFilterDeinit();
 
 	if (snesScreenA)
 	{
@@ -452,7 +461,7 @@ static OSStatus BlitMPGLTask (void *parameter)
 						uint8	*tmpBuffer = blitGLBuffer + (1024 * 512 * BYTES_PER_PIXEL);
 						int		aligned    = ((ntsc_width + 2) >> 1) << 1;
 						(mpDataBuffer->blitFn) ((uint8 *) mpDataBuffer->gfxBuffer, mpDataBuffer->srcRowBytes, tmpBuffer, 1024 * 2, mpDataBuffer->srcWidth, mpDataBuffer->srcHeight);
-						S9xBlitPixHiResTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, mpDataBuffer->copyHeight);
+						S9xBlitPixHiResMixedTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, mpDataBuffer->copyHeight);
 						mpDataBuffer->copyHeight *= 2;
 					}
 
@@ -1915,7 +1924,7 @@ static void S9xPutImageBlitGL (int width, int height)
 					uint8	*tmpBuffer = blitGLBuffer + (1024 * 512 * BYTES_PER_PIXEL);
 					int		aligned    = ((ntsc_width + 2) >> 1) << 1;
 					blitFn((uint8 *) GFX.Screen, width * 2, tmpBuffer, 1024 * 2, width, height);
-					S9xBlitPixHiResTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, copyHeight);
+					S9xBlitPixHiResMixedTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, copyHeight);
 					copyHeight *= 2;
 				}
 
@@ -2253,7 +2262,7 @@ static void S9xPutImageOverscanBlitGL (int width, int height)
 					uint8	*tmpBuffer = blitGLBuffer + (1024 * 512 * BYTES_PER_PIXEL);
 					int		aligned    = ((ntsc_width + 2) >> 1) << 1;
 					blitFn((uint8 *) GFX.Screen, width * 2, tmpBuffer, 1024 * 2, width, height);
-					S9xBlitPixHiResTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, copyHeight);
+					S9xBlitPixHiResMixedTV16(tmpBuffer, 1024 * 2, blitGLBuffer, 1024 * 2, aligned, copyHeight);
 					copyHeight *= 2;
 				}
 

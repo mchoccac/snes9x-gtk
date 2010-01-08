@@ -119,7 +119,7 @@ static void init_filters( init_t* impl, snes_ntsc_setup_t const* setup )
 		{
 			int x = kernel_size * 3 / 2 - kernel_half + i;
 			kernels [x] *= sum;
-			//assert( kernels [x] == kernels [x] ); /* catch numerical instability */
+			/* assert( kernels [x] == kernels [x] ); catch numerical instability */
 		}
 	}
 
@@ -154,7 +154,7 @@ static void init_filters( init_t* impl, snes_ntsc_setup_t const* setup )
 			for ( x = i; x < kernel_size; x += 2 )
 			{
 				kernels [x] *= sum;
-				//assert( kernels [x] == kernels [x] ); /* catch numerical instability */
+				/* assert( kernels [x] == kernels [x] ); catch numerical instability */
 			}
 		}
 	}

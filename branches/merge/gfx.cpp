@@ -2272,18 +2272,42 @@ void S9xDrawCrosshair (const char *crosshair, uint8 fgcolor, uint8 bgcolor, int1
 
 #ifdef GFX_MULTI_FORMAT
 
+static uint32 BuildPixelRGB565  (uint32, uint32, uint32);
+static uint32 BuildPixelRGB555  (uint32, uint32, uint32);
+static uint32 BuildPixelBGR565  (uint32, uint32, uint32);
+static uint32 BuildPixelBGR555  (uint32, uint32, uint32);
+static uint32 BuildPixelGBR565  (uint32, uint32, uint32);
+static uint32 BuildPixelGBR555  (uint32, uint32, uint32);
+static uint32 BuildPixelRGB5551 (uint32, uint32, uint32);
+
+static uint32 BuildPixel2RGB565  (uint32, uint32, uint32);
+static uint32 BuildPixel2RGB555  (uint32, uint32, uint32);
+static uint32 BuildPixel2BGR565  (uint32, uint32, uint32);
+static uint32 BuildPixel2BGR555  (uint32, uint32, uint32);
+static uint32 BuildPixel2GBR565  (uint32, uint32, uint32);
+static uint32 BuildPixel2GBR555  (uint32, uint32, uint32);
+static uint32 BuildPixel2RGB5551 (uint32, uint32, uint32);
+
+static void DecomposePixelRGB565  (uint32, uint32 &, uint32 &, uint32 &);
+static void DecomposePixelRGB555  (uint32, uint32 &, uint32 &, uint32 &);
+static void DecomposePixelBGR565  (uint32, uint32 &, uint32 &, uint32 &);
+static void DecomposePixelBGR555  (uint32, uint32 &, uint32 &, uint32 &);
+static void DecomposePixelGBR565  (uint32, uint32 &, uint32 &, uint32 &);
+static void DecomposePixelGBR555  (uint32, uint32 &, uint32 &, uint32 &);
+static void DecomposePixelRGB5551 (uint32, uint32 &, uint32 &, uint32 &);
+
 #define _BUILD_PIXEL(F) \
-uint32 BuildPixel##F (uint32 R, uint32 G, uint32 B) \
+static uint32 BuildPixel##F (uint32 R, uint32 G, uint32 B) \
 { \
 	return (BUILD_PIXEL_##F(R, G, B)); \
 } \
 \
-uint32 BuildPixel2##F (uint32 R, uint32 G, uint32 B) \
+static uint32 BuildPixel2##F (uint32 R, uint32 G, uint32 B) \
 { \
 	return (BUILD_PIXEL2_##F(R, G, B)); \
 } \
 \
-void DecomposePixel##F (uint32 pixel, uint32 &R, uint32 &G, uint32 &B) \
+static void DecomposePixel##F (uint32 pixel, uint32 &R, uint32 &G, uint32 &B) \
 { \
 	DECOMPOSE_PIXEL_##F(pixel, R, G, B); \
 }
@@ -2325,6 +2349,8 @@ HIGH_BITS_SHIFTED_TWO_MASK = ((FIRST_COLOR_MASK | SECOND_COLOR_MASK | THIRD_COLO
 
 bool8 S9xSetRenderPixelFormat (int format)
 {
+	GFX.PixelFormat = format;
+
 	switch (format)
 	{
 		case RGB565:

@@ -175,13 +175,19 @@
  ***********************************************************************************/
 
 
-#include "port.h"
+#include "snes9x.h"
 #include "2xsai.h"
 
-static uint32	colorMask     = 0x7BDE7BDE,
-				lowPixelMask  = 0x04210421,
-				qcolorMask    = 0x739C739C,
-				qlowpixelMask = 0x0C630C63;
+#define ALL_COLOR_MASK	(FIRST_COLOR_MASK | SECOND_COLOR_MASK | THIRD_COLOR_MASK)
+
+#ifdef GFX_MULTI_FORMAT
+static uint32	colorMask = 0, qcolorMask = 0, lowPixelMask = 0, qlowpixelMask = 0;
+#else
+#define colorMask		(((~RGB_LOW_BITS_MASK & ALL_COLOR_MASK) << 16) | (~RGB_LOW_BITS_MASK & ALL_COLOR_MASK))
+#define qcolorMask		(((~TWO_LOW_BITS_MASK & ALL_COLOR_MASK) << 16) | (~TWO_LOW_BITS_MASK & ALL_COLOR_MASK))
+#define lowPixelMask	((RGB_LOW_BITS_MASK << 16) | RGB_LOW_BITS_MASK)
+#define qlowpixelMask	((TWO_LOW_BITS_MASK << 16) | TWO_LOW_BITS_MASK)
+#endif
 
 static inline int GetResult (uint32, uint32, uint32, uint32);
 static inline int GetResult1 (uint32, uint32, uint32, uint32, uint32);
@@ -241,27 +247,21 @@ static inline uint32 Q_INTERPOLATE (uint32 A, uint32 B, uint32 C, uint32 D)
 	return (x + y);
 }
 
-int Init_2xSaI (int BitFormat)
+bool8 S9xBlit2xSaIFilterInit (void)
 {
-	if (BitFormat == 565)
-	{
-		colorMask     = 0xF7DEF7DE;
-		lowPixelMask  = 0x08210821;
-		qcolorMask    = 0xE79CE79C;
-		qlowpixelMask = 0x18631863;
-	}
-	else
-	if (BitFormat == 555)
-	{
-		colorMask     = 0x7BDE7BDE;
-		lowPixelMask  = 0x04210421;
-		qcolorMask    = 0x739C739C;
-		qlowpixelMask = 0x0C630C63;
-	}
-	else
-		return (0);
+#ifdef GFX_MULTI_FORMAT
+	colorMask     = ((~RGB_LOW_BITS_MASK & ALL_COLOR_MASK) << 16) | (~RGB_LOW_BITS_MASK & ALL_COLOR_MASK);
+	qcolorMask    = ((~TWO_LOW_BITS_MASK & ALL_COLOR_MASK) << 16) | (~TWO_LOW_BITS_MASK & ALL_COLOR_MASK);
+	lowPixelMask  = (RGB_LOW_BITS_MASK << 16) | RGB_LOW_BITS_MASK;
+	qlowpixelMask = (TWO_LOW_BITS_MASK << 16) | TWO_LOW_BITS_MASK;
+#endif
 
-	return (1);
+	return (TRUE);
+}
+
+void S9xBlit2xSaIFilterDeinit (void)
+{
+	return;
 }
 
 void SuperEagle (uint8 *srcPtr, int srcRowBytes, uint8 *dstPtr, int dstRowBytes, int width, int height)

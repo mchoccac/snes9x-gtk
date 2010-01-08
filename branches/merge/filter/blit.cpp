@@ -176,39 +176,47 @@
 
 
 #include "snes9x.h"
-#include "2xsai.h"
-#include "epx.h"
-#include "hq2x.h"
 #include "blit.h"
 
-static snes_ntsc_t	*ntsc;
-static uint32		colorMask = 0x3DEF3DEF, lowPixelMask = 0x0421;
-static uint8		XDelta[SNES_WIDTH * SNES_HEIGHT_EXTENDED * 4];
+#define ALL_COLOR_MASK	(FIRST_COLOR_MASK | SECOND_COLOR_MASK | THIRD_COLOR_MASK)
+
+#ifdef GFX_MULTI_FORMAT
+static uint16	lowPixelMask = 0, qlowPixelMask = 0;
+static uint32	colorMask = 0;
+#else
+#define lowPixelMask	(RGB_LOW_BITS_MASK)
+#define qlowPixelMask	((RGB_HI_BITS_MASK >> 3) | TWO_LOW_BITS_MASK)
+#define colorMask		(((~RGB_HI_BITS_MASK & ALL_COLOR_MASK) << 16) | (~RGB_HI_BITS_MASK & ALL_COLOR_MASK))
+#endif
+
+static snes_ntsc_t	*ntsc   = NULL;
+static uint8		*XDelta = NULL;
 
 
-void S9xBlitInit (int pixelformat)
+bool8 S9xBlitFilterInit (void)
 {
+	XDelta = new uint8[SNES_WIDTH * SNES_HEIGHT_EXTENDED * 4];
+	if (!XDelta)
+		return (FALSE);
+
 	S9xBlitClearDelta();
 
-	if (pixelformat == 555)
-	{
-		colorMask = 0x3DEF3DEF;
-		lowPixelMask = 0x0421;
-	}
-	else
-	if (pixelformat == 565)
-	{
-		colorMask = 0x7BEF7BEF;
-		lowPixelMask = 0x0821;
-	}
-	else
-	{
-		colorMask = 0;
-		lowPixelMask = 0;
-	}
+#ifdef GFX_MULTI_FORMAT
+	lowPixelMask  = RGB_LOW_BITS_MASK;
+	qlowPixelMask = (RGB_HI_BITS_MASK >> 3) | TWO_LOW_BITS_MASK;
+	colorMask     = ((~RGB_HI_BITS_MASK & ALL_COLOR_MASK) << 16) | (~RGB_HI_BITS_MASK & ALL_COLOR_MASK);
+#endif
 
-	Init_2xSaI(pixelformat);
-	InitLUTs(); // FIXME
+	return (TRUE);
+}
+
+void S9xBlitFilterDeinit (void)
+{
+	if (XDelta)
+	{
+		delete[] XDelta;
+		XDelta = NULL;
+	}
 }
 
 void S9xBlitClearDelta (void)
@@ -451,6 +459,47 @@ void S9xBlitPixHiResTV16 (uint8 *srcPtr, int srcRowBytes, uint8 *dstPtr, int dst
 		srcPtr  += srcRowBytes;
 		dstPtr  += dstRowBytes;
 		dstPtr2 += dstRowBytes;
+	}
+}
+
+void S9xBlitPixHiResMixedTV16 (uint8 *srcPtr, int srcRowBytes, uint8 *dstPtr, int dstRowBytes, int width, int height)
+{
+	uint8	*dstPtr2 = dstPtr + dstRowBytes, *srcPtr2 = srcPtr + srcRowBytes;
+	dstRowBytes <<= 1;
+
+	for (; height > 1; height--)
+	{
+		uint16	*dP1 = (uint16 *) dstPtr, *dP2 = (uint16 *) dstPtr2, *bP1 = (uint16 *) srcPtr, *bP2 = (uint16 *) srcPtr2;
+		uint16	prev, next, mixed;
+
+		for (int i = 0; i < width; i++)
+		{
+			prev  = *bP1++;
+			next  = *bP2++;
+			mixed = prev + next + ((prev ^ next) & lowPixelMask);
+
+			*dP1++ = prev;
+			*dP2++ = (mixed >> 1) - (mixed >> 4 & qlowPixelMask);
+		}
+
+		srcPtr  += srcRowBytes;
+		srcPtr2 += srcRowBytes;
+		dstPtr  += dstRowBytes;
+		dstPtr2 += dstRowBytes;
+	}
+
+	// Last 1 line
+
+	uint16	*dP1 = (uint16 *) dstPtr, *dP2 = (uint16 *) dstPtr2, *bP1 = (uint16 *) srcPtr;
+	uint16	prev, mixed;
+
+	for (int i = 0; i < width; i++)
+	{
+		prev = *bP1++;
+		mixed = prev + ((prev ^ 0) & lowPixelMask);
+
+		*dP1++ = prev;
+		*dP2++ = (mixed >> 1) - (mixed >> 4 & qlowPixelMask);
 	}
 }
 

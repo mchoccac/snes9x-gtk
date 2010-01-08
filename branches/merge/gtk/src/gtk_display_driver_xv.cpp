@@ -420,12 +420,18 @@ S9xXVDisplayDriver::init (void)
     vi_template.depth = depth;
     vi_template.visual = NULL;
     vi = XGetVisualInfo (display, VisualIDMask | VisualDepthMask, &vi_template, &vi_num_items);
+
     if (!vi)
     {
-        fprintf (stderr, "Couldn't map visual.\n");
-        return -1;
-    }
+        vi_template.depth = 0;
+        vi = XGetVisualInfo (display, VisualIDMask, &vi_template, &vi_num_items);
 
+        if (!vi)
+        {
+            fprintf (stderr, "Couldn't map visual.\n");
+            return -1;
+        }
+    }
 
     XSetWindowAttributes window_attr;
     xcolormap = XCreateColormap (display,

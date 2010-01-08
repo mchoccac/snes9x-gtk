@@ -451,7 +451,7 @@ S9xXVDisplayDriver::init (void)
                              256,
                              224,
                              0,
-                             depth,
+                             vi->depth,
                              InputOutput,
                              vi->visual,
                              CWColormap | CWBorderPixel | CWBackPixmap | CWEventMask,

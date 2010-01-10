@@ -596,8 +596,8 @@ static FreezeData	SnapFX[] =
 	INT_ENTRY(6, vCacheBaseReg),
 	INT_ENTRY(6, vCacheFlags),
 	INT_ENTRY(6, vLastRamAdr),
-	POINTER_ENTRY(6, pvDreg, avReg),
-	POINTER_ENTRY(6, pvSreg, avReg),
+	POINTER_ENTRY(6, pvDreg, avRegAddr),
+	POINTER_ENTRY(6, pvSreg, avRegAddr),
 	INT_ENTRY(6, vRomBuffer),
 	INT_ENTRY(6, vPipe),
 	INT_ENTRY(6, vPipeAdr),
@@ -1300,7 +1300,10 @@ void S9xFreezeToStream (STREAM stream)
 
 #ifndef ZSNES_FX
 	if (Settings.SuperFX)
+	{
+		GSU.avRegAddr = (uint8 *) &GSU.avReg;
 		FreezeStruct(stream, "SFX", &GSU, SnapFX, COUNT(SnapFX));
+	}
 #endif
 
 	if (Settings.SA1)
@@ -1634,7 +1637,10 @@ int S9xUnfreezeFromStream (STREAM stream)
 
 	#ifndef ZSNES_FX
 		if (local_superfx)
+		{
+			GSU.avRegAddr = (uint8 *) &GSU.avReg;
 			UnfreezeStructFromCopy(&GSU, SnapFX, COUNT(SnapFX), local_superfx, version);
+		}
 	#endif
 
 		if (local_sa1)
@@ -1709,13 +1715,6 @@ int S9xUnfreezeFromStream (STREAM stream)
 		{
 			GSU.pfPlot = fx_PlotTable[GSU.vMode];
 			GSU.pfRpix = fx_PlotTable[GSU.vMode + 5];
-
-			// Sanity check for 64-bit register offset problem
-			if (GSU.pvSreg < &GSU.avReg[0] || GSU.pvSreg >= ((uint32 *) &GSU.avReg[0]) + 16)
-				GSU.pvSreg = &GSU.avReg[0];
-
-			if (GSU.pvDreg < &GSU.avReg[0] || GSU.pvDreg >= ((uint32 *) &GSU.avReg[0]) + 16)
-				GSU.pvDreg = &GSU.avReg[0];
 		}
 	#else
 		if (Settings.SuperFX)

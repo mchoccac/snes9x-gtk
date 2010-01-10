@@ -30,7 +30,7 @@
 #define bind_textdomain_codeset(Domain,Codeset) (Codeset)
 #endif /* ENABLE_NLS */
 
-#define SNES9X_GTK_AUTHORS "(c) Copyright 2007 - 2009  Brandon Wright (bearoso@gmail.com)"
+#define SNES9X_GTK_AUTHORS "(c) Copyright 2007 - 2010  Brandon Wright (bearoso@gmail.com)"
 #define SNES9X_GTK_VERSION "79"
 
 extern Snes9xWindow *top_level;

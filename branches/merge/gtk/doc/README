@@ -16,7 +16,7 @@ Requirements / Build Notes:
     ------------------------------------
     GTK+                   >= 2.10 and dependencies
     libxml2                >= 2.0
-    One or more of portaudio, SDL or OSS
+    One or more of portaudio, PulseAudio, SDL, ALSA, or OSS
 
   And for joystick support:
 

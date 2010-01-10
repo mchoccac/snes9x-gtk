@@ -155,6 +155,7 @@ S9xGetDirectory (enum s9x_getdirtype dirtype)
         case CHEAT_DIR:
         case SRAM_DIR:
         case ROMFILENAME_DIR:
+        case BIOS_DIR:
             char *loc;
 
             strcpy (path, Memory.ROMFilename);

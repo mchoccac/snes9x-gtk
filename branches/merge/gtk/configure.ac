@@ -97,12 +97,6 @@ AC_ARG_WITH(zsnesfx,
   [],
   [with_zsnesfx=$with_assembler])
 
-AC_ARG_WITH(correct-vram-reads,
-  [AS_HELP_STRING([--with(out)-correct-vram-reads],
-    [Use Correct VRAM read logic (default: with)])],
-  [],
-  [with_correct_vram_reads=yes])
-
 AC_ARG_WITH(debugger, 
   [AS_HELP_STRING([--with(out)-debugger],
     [Enable debugger (default: without)])],

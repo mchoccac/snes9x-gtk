@@ -37,12 +37,6 @@ AC_ARG_WITH(opengl,
   [],
   [with_opengl=yes])
 
-AC_ARG_WITH(gtk,
-  [AS_HELP_STRING([--with(out)-gtk],
-    [Use GTK GUI as frontend. (default: with)])],
-  [],
-  [with_gtk=yes])
-
 AC_ARG_WITH(joystick, 
   [AS_HELP_STRING([--with(out)-joystick],
     [Enable joystick support if available (default: with)])],
@@ -172,135 +166,130 @@ NASM='not_found'
 
 OPENGL=0
 
-GTK=0
-
 if test yes = "$with_opengl" ; then
   OPENGL=yes
 fi
 
-if test yes = "$with_gtk" ; then
-    GTK=yes
-    snes9x_info_display="GTK"
-    
-    
-    PKG_CHECK_MODULES([GTK], [gtk+-2.0 >= 2.10])
-    PKG_CHECK_MODULES([GLIB], [gthread-2.0 >= 2.6 gobject-2.0 >= 2.6])
-    PKG_CHECK_MODULES([GLADE], [libglade-2.0 >= 2.0])
-    PKG_CHECK_MODULES([LIBXML], [libxml-2.0 >= 2.0])
-                              
-    if test yes = "$with_opengl" ; then
+GTK=yes
+snes9x_info_display="GTK"
 
-        AC_CHECK_LIB(GL,glGetString,[
-            OPENGL=yes
-            CFLAGS="$CFLAGS -DUSE_OPENGL"
-            LIBS="-lGL"
-        ],[
-            OPENGL=0
-        ])
-    fi
+PKG_CHECK_MODULES([GTK], [gtk+-2.0 >= 2.10])
+PKG_CHECK_MODULES([GLIB], [gthread-2.0 >= 2.6 gobject-2.0 >= 2.6])
+PKG_CHECK_MODULES([GLADE], [libglade-2.0 >= 2.0])
+PKG_CHECK_MODULES([LIBXML], [libxml-2.0 >= 2.0])
+                          
+if test yes = "$with_opengl" ; then
 
-    GTKJOY=0
-    SDL_CFLAGS=""
-    SDL_LIBS=""
-    if test yes = "$with_joystick"; then
-        PKG_CHECK_MODULES([SDL],[sdl],[
-            GTKJOY=yes
-            CFLAGS="$CFLAGS -DUSE_JOYSTICK"
-        ],[
-            AC_CHECK_PROG(SDLCONFIGFOUND,[sdl-config],yes,no)
-            
-            if test yes = "$SDLCONFIGFOUND" ; then
-                SDL_CFLAGS="-DUSE_JOYSTICK `sdl-config --cflags`"
-                SDL_LIBS="`sdl-config --libs`"
-                GTKJOY=yes
-            else
-                echo "Cannot find SDL. Disabling joystick support."
-            fi
-        ])
-    fi
-
-    XV=0
-    XV_CFLAGS=""
-    XV_LIBS=""
-    if test yes = "$with_xv" ; then
-        PKG_CHECK_MODULES([XV],[xv],[
-            XV=yes
-            CFLAGS="$CFLAGS -DUSE_XV"
-        ],[
-            echo "Cannot find libXv. Make sure the X11 development headers are installed."
-            echo "--> Disabling Xv support"
-        ])
-    fi
-
-    PORTAUDIO=0
-    PORTAUDIO_CFLAGS=""
-    PORTAUDIO_LIBS=""
-    if test yes = "$with_portaudio" ; then
-        PKG_CHECK_MODULES([PORTAUDIO], [portaudio-2.0 >= 10],[
-            PORTAUDIO=yes
-            CFLAGS="$CFLAGS -DUSE_PORTAUDIO"
-        ],[
-            echo "Cannot find PortAudio."
-            echo "--> Disabling PortAudio support"
-        ])
-    fi
-
-    OSS=0
-    if test yes = "$with_oss" ; then
-
-        AC_CHECK_HEADER(sys/soundcard.h, [
-          CFLAGS="$CFLAGS -DUSE_OSS"
-          OSS=yes
-        ],[
-            echo "Cannot find OSS headers."
-            echo "--> Disabling OSS support"
-        ])    
-    fi
-
-    ALSA=0
-    ALSA_CFLAGS=""
-    ALSA_LIBS=""
-    if test yes = "$with_alsa" ; then
-
-        PKG_CHECK_MODULES([ALSA], [alsa],[
-            ALSA=yes
-            CFLAGS="$CFLAGS -DUSE_ALSA"
-        ],[
-            echo "Cannot find ALSA development support."
-            echo "--> Disabling ALSA"
-        ])
-    fi
-
-    PULSEAUDIO=0
-    PULSEAUDIO_CFLAGS=""
-    PULSEAUDIO_LIBS=""
-    if test yes = "$with_pulseaudio" ; then
-        PKG_CHECK_MODULES([PULSEAUDIO], [libpulse-simple],[
-            PULSEAUDIO=yes
-            CFLAGS="$CFLAGS -DUSE_PULSEAUDIO"
-        ],[
-            echo "Cannot find PulseAudio library."
-            echo "--> Disabling PulseAudio"
-        ])
-    fi
-   
-    XRANDR=0
-    XRANDR_CFLAGS=""
-    XRANDR_LIBS=""
-    if test yes = "$with_xrandr" ; then
-        PKG_CHECK_MODULES([XRANDR],[xrandr],[
-            XRANDR=yes
-            CFLAGS="$CFLAGS -DUSE_XRANDR"
-        ],[
-            echo "Cannot find libXrandr. Make sure the X11 development headers are installed."
-            echo "--> Disabling Xrandr support."
-        ])
-    fi
-    PKG_CHECK_MODULES([LIBPNG],libpng)
-
-    CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $ALSA_CFLAGS $PULSEAUDIO_CFLAGS"
-    LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $ALSA_LIBS $PULSEAUDIO_LIBS"
+    AC_CHECK_LIB(GL,glGetString,[
+        OPENGL=yes
+        CFLAGS="$CFLAGS -DUSE_OPENGL"
+        LIBS="-lGL"
+    ],[
+        OPENGL=0
+    ])
 fi
+
+GTKJOY=0
+SDL_CFLAGS=""
+SDL_LIBS=""
+if test yes = "$with_joystick"; then
+    PKG_CHECK_MODULES([SDL],[sdl],[
+        GTKJOY=yes
+        CFLAGS="$CFLAGS -DUSE_JOYSTICK"
+    ],[
+        AC_CHECK_PROG(SDLCONFIGFOUND,[sdl-config],yes,no)
+        
+        if test yes = "$SDLCONFIGFOUND" ; then
+            SDL_CFLAGS="-DUSE_JOYSTICK `sdl-config --cflags`"
+            SDL_LIBS="`sdl-config --libs`"
+            GTKJOY=yes
+        else
+            echo "Cannot find SDL. Disabling joystick support."
+        fi
+    ])
+fi
+
+XV=0
+XV_CFLAGS=""
+XV_LIBS=""
+if test yes = "$with_xv" ; then
+    PKG_CHECK_MODULES([XV],[xv],[
+        XV=yes
+        CFLAGS="$CFLAGS -DUSE_XV"
+    ],[
+        echo "Cannot find libXv. Make sure the X11 development headers are installed."
+        echo "--> Disabling Xv support"
+    ])
+fi
+
+PORTAUDIO=0
+PORTAUDIO_CFLAGS=""
+PORTAUDIO_LIBS=""
+if test yes = "$with_portaudio" ; then
+    PKG_CHECK_MODULES([PORTAUDIO], [portaudio-2.0 >= 10],[
+        PORTAUDIO=yes
+        CFLAGS="$CFLAGS -DUSE_PORTAUDIO"
+    ],[
+        echo "Cannot find PortAudio."
+        echo "--> Disabling PortAudio support"
+    ])
+fi
+
+OSS=0
+if test yes = "$with_oss" ; then
+
+    AC_CHECK_HEADER(sys/soundcard.h, [
+      CFLAGS="$CFLAGS -DUSE_OSS"
+      OSS=yes
+    ],[
+        echo "Cannot find OSS headers."
+        echo "--> Disabling OSS support"
+    ])    
+fi
+
+ALSA=0
+ALSA_CFLAGS=""
+ALSA_LIBS=""
+if test yes = "$with_alsa" ; then
+
+    PKG_CHECK_MODULES([ALSA], [alsa],[
+        ALSA=yes
+        CFLAGS="$CFLAGS -DUSE_ALSA"
+    ],[
+        echo "Cannot find ALSA development support."
+        echo "--> Disabling ALSA"
+    ])
+fi
+
+PULSEAUDIO=0
+PULSEAUDIO_CFLAGS=""
+PULSEAUDIO_LIBS=""
+if test yes = "$with_pulseaudio" ; then
+    PKG_CHECK_MODULES([PULSEAUDIO], [libpulse-simple],[
+        PULSEAUDIO=yes
+        CFLAGS="$CFLAGS -DUSE_PULSEAUDIO"
+    ],[
+        echo "Cannot find PulseAudio library."
+        echo "--> Disabling PulseAudio"
+    ])
+fi
+
+XRANDR=0
+XRANDR_CFLAGS=""
+XRANDR_LIBS=""
+if test yes = "$with_xrandr" ; then
+    PKG_CHECK_MODULES([XRANDR],[xrandr],[
+        XRANDR=yes
+        CFLAGS="$CFLAGS -DUSE_XRANDR"
+    ],[
+        echo "Cannot find libXrandr. Make sure the X11 development headers are installed."
+        echo "--> Disabling Xrandr support."
+    ])
+fi
+PKG_CHECK_MODULES([LIBPNG],libpng)
+
+CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $ALSA_CFLAGS $PULSEAUDIO_CFLAGS"
+LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $ALSA_LIBS $PULSEAUDIO_LIBS"
 
 
 AC_MSG_CHECKING(if the CPU is IA32)
@@ -316,6 +305,7 @@ AC_CACHE_VAL(snes9x_cv_i386_cpu, [
 
 dnl Enable assembler optimizations if CPU is x86
 
+NASM="not_found"
 if test yes = "$with_assembler"; then
   AC_PATH_PROG(prog_nasm, nasm, no)
 
@@ -344,10 +334,8 @@ if test $NASM != "not_found"; then
   CPUINC='-Ii386'
 fi
 
-if test yes = "$with_correct_vram_reads"; then
-  CFLAGS="$CFLAGS -DCORRECT_VRAM_READS"
-  CORRECT_VRAM_READS=1
-fi
+CFLAGS="$CFLAGS -DCORRECT_VRAM_READS"
+CORRECT_VRAM_READS=1
 
 if test yes = "$with_debugger"; then
    CFLAGS="$CFLAGS -DDEBUGGER"
@@ -381,7 +369,7 @@ else
    :
 fi
 
-if test x$with_zlib = xyes ; then
+if test yes = "$with_zlib"; then
   AC_CHECK_HEADERS(zlib.h)
   AC_CHECK_LIB(z, gzread, [
         CFLAGS="$CFLAGS -DZLIB"

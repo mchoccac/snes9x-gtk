@@ -615,6 +615,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
         sound_needs_restart = 1;
     }
 
+#ifdef USE_XRANDR
     if ((config->change_display_resolution != get_check ("change_display_resolution") ||
             (config->change_display_resolution &&
                     (config->xrr_index != get_combo ("resolution_combo")))) &&
@@ -633,6 +634,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
         config->xrr_width = config->xrr_sizes[config->xrr_index].width;
         config->xrr_height = config->xrr_sizes[config->xrr_index].height;
     }
+#endif
 
     config->change_display_resolution = get_check ("change_display_resolution");
 

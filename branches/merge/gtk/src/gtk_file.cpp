@@ -408,7 +408,7 @@ S9xOpenROMDialog (void)
     {
             "*.smc", "*.SMC", "*.fig", "*.FIG", "*.sfc", "*.SFC",
             "*.jma", "*.JMA", "*.zip", "*.ZIP", "*.gd3", "*.GD3",
-            "*.swc", "*.SWC",
+            "*.swc", "*.SWC", "*.gz" , "*.GZ"
             NULL
     };
 

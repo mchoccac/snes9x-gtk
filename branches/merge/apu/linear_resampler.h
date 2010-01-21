@@ -9,7 +9,7 @@
 static const int    f_prec = 15;
 static const uint32 f__one = (1 << f_prec);
 
-#define lerp(t, a, b) ((((f__one) - (t)) * (a) + ((t) * (b))) >> f_prec)
+#define lerp(t, a, b) (((((b) - (a)) * (t)) >> f_prec) + (a))
 
 class LinearResampler : public Resampler
 {

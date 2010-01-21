@@ -180,7 +180,8 @@
 #include "apu.h"
 #include "snapshot.h"
 #include "display.h"
-#include "resampler.h"
+#include "linear_resampler.h"
+#include "hermite_resampler.h"
 
 #define APU_DEFAULT_INPUT_RATE		32000
 #define APU_MINIMUM_SAMPLE_COUNT	512
@@ -189,6 +190,7 @@
 #define APU_DENOMINATOR_NTSC		118125
 #define APU_NUMERATOR_PAL			102400
 #define APU_DENOMINATOR_PAL			2128137
+#define APU_DEFAULT_RESAMPLER		HermiteResampler
 
 SNES_SPC	*spc_core = NULL;
 
@@ -445,7 +447,7 @@ bool8 S9xInitSound (int buffer_ms, int lag_ms)
 	   arguments. Use 2x in the resampler for buffer leveling with SoundSync */
 	if (!spc::resampler)
 	{
-		spc::resampler = new Resampler(spc::buffer_size >> (Settings.SoundSync ? 0 : 1));
+		spc::resampler = new HermiteResampler(spc::buffer_size >> (Settings.SoundSync ? 0 : 1));
 		if (!spc::resampler)
 		{
 			delete[] spc::landing_buffer;

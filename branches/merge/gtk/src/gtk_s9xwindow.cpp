@@ -1270,7 +1270,7 @@ Snes9xWindow::show_status_message (const char *message)
     gtk_statusbar_pop (statusbar, gtk_statusbar_get_context_id (statusbar, "info"));
     gtk_statusbar_push (statusbar, gtk_statusbar_get_context_id (statusbar, "info"), message);
 
-    g_timeout_add_seconds (2, statusbar_timeout, statusbar);
+    g_timeout_add (2000, statusbar_timeout, statusbar);
 
     return;
 }

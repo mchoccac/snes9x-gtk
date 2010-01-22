@@ -397,6 +397,7 @@ S9xParseArg (char **argv, int &i, int argc)
             {
                 gui_config->scale_method = FILTER_SUPER2XSAI;
             }
+#ifdef USE_HQ2X
             else if (!strcasecmp (argv[i], "hq2x"))
             {
                 gui_config->scale_method = FILTER_HQ2X;
@@ -409,6 +410,7 @@ S9xParseArg (char **argv, int &i, int argc)
             {
                 gui_config->scale_method = FILTER_HQ4X;
             }
+#endif /* USE_HQ2X */
             else if (!strcasecmp (argv[i], "epx"))
             {
                 gui_config->scale_method = FILTER_EPX;

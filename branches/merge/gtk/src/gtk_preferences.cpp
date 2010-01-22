@@ -853,6 +853,16 @@ Snes9xPreferences::show (void)
     {
         gtk_widget_hide (get_widget ("resolution_box"));
     }
+    
+#ifdef USE_HQ2X
+    combo = get_widget ("scale_method_combo");
+    gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
+                               _("HQ2x"));
+    gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
+                               _("HQ3x"));
+    gtk_combo_box_append_text (GTK_COMBO_BOX (combo),
+                               _("HQ4x"));
+#endif
 
     combo = get_widget ("hw_accel");
     gtk_combo_box_append_text (GTK_COMBO_BOX (combo),

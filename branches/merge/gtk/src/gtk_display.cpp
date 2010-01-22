@@ -1031,6 +1031,7 @@ get_filter_scale (int &width, int &height)
             height *= 2;
             break;
 
+#ifdef USE_HQ2X
         case FILTER_HQ4X:
             if (((width * 4) <= S9xDisplayDriver::scaled_max_width) &&
                 ((height * 4) <= S9xDisplayDriver::scaled_max_height))
@@ -1053,6 +1054,7 @@ get_filter_scale (int &width, int &height)
             width *= 2;
             height *= 2;
             break;
+#endif /* USE_HQ2X */
 
         case FILTER_EPX:
             width *= 2;
@@ -1120,7 +1122,7 @@ internal_filter (uint8 *src_buffer,
 
             break;
 
-
+#ifdef USE_HQ2X
         case FILTER_HQ4X:
 
             if (((width * 4) <= S9xDisplayDriver::scaled_max_width) &&
@@ -1163,6 +1165,7 @@ internal_filter (uint8 *src_buffer,
                      height);
 
             break;
+#endif /* USE_HQ2X */
 
         case FILTER_EPX:
 
@@ -1890,7 +1893,9 @@ S9xInitDisplay (int argc, char **argv)
     Settings.SupportHiRes = TRUE;
     S9xSetRenderPixelFormat (RGB555);
     S9xBlit2xSaIFilterInit ();
+#ifdef USE_HQ2X
     S9xBlitHQ2xFilterInit ();
+#endif /* USE_HQ2SX */
     
     S9xQueryDrivers ();
     S9xInitDriver ();

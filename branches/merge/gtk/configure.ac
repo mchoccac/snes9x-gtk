@@ -109,6 +109,12 @@ AC_ARG_WITH(sdd1-decomp,
   [],
   [with_sdd1_decomp=yes])
 
+AC_ARG_WITH(hq2x, 
+  [AS_HELP_STRING([--with(out)-hq2x],
+    [Enable OSS sound driver support (default: with)])],
+  [],
+  [with_hq2x=yes])
+
 AC_ARG_WITH(netplay,
   [AS_HELP_STRING([--with(out)-netplay],
     [Enable netplay support (default: without)])],
@@ -281,6 +287,13 @@ if test yes = "$with_xrandr" ; then
     ])
 fi
 PKG_CHECK_MODULES([LIBPNG],libpng)
+
+if test yes = "$with_hq2x" ; then
+    HQ2X=yes
+    CFLAGS="$CFLAGS -DUSE_HQ2X"
+else
+    HQ2X=0
+fi
 
 CFLAGS="$CFLAGS $GTK_CFLAGS $GLIB_CFLAGS $GLADE_CFLAGS $LIBXML_CFLAGS $PORTAUDIO_CFLAGS $LIBPNG_CFLAGS $SDL_CFLAGS $XV_CFLAGS $XRANDR_CFLAGS $ALSA_CFLAGS $PULSEAUDIO_CFLAGS"
 LIBS="$LIBS $GTK_LIBS $GLIB_LIBS $GLADE_LIBS $LIBXML_LIBS $PORTAUDIO_LIBS $LIBPNG_LIBS $SDL_LIBS $XV_LIBS $XRANDR_LIBS $ALSA_LIBS $PULSEAUDIO_LIBS"
@@ -471,6 +484,7 @@ AM_CONDITIONAL(DEBUG, [test yes = "$with_debug" ])
 AM_CONDITIONAL(SDL, [test yes = "$GTKJOY"])
 AM_CONDITIONAL(ALSA, [test yes = "$ALSA"])
 AM_CONDITIONAL(PULSEAUDIO, [test yes = "$PULSEAUDIO"])
+AM_CONDITIONAL(HQ2X, [test yes = "$HQ2X"])
 
 AC_SUBST(NASM)
 AC_SUBST(NASM_FLAGS)
@@ -544,4 +558,8 @@ if ! test yes = "$PORTAUDIO" ; then
             fi
         fi
     fi
+fi
+
+if ! test yes = "$HQ2X"; then
+    echo "HQ2x filter compilation is disabled."
 fi

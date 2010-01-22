@@ -1406,8 +1406,6 @@ internal_threaded_convert (void *src_buffer,
         g_thread_pool_push (pool, (gpointer) &(job[i]), NULL);
     }
 
-    i = gui_config->num_threads - 1;
-
     job[i].operation_type = (bpp == -1 ? JOB_CONVERT_YUV : JOB_CONVERT);
     job[i].src_buffer =
         ((uint8 *) src_buffer) + (src_pitch * i * (height / gui_config->num_threads));
@@ -1472,8 +1470,6 @@ internal_threaded_convert_mask (void *src_buffer,
         g_thread_pool_push (pool, (gpointer) &(job[i]), NULL);
     }
 
-    i = gui_config->num_threads - 1;
-
     job[i].operation_type = (bpp == -1 ? JOB_CONVERT_YUV : JOB_CONVERT);
     job[i].src_buffer =
         ((uint8 *) src_buffer) + (src_pitch * i * (height / gui_config->num_threads));
@@ -1515,8 +1511,11 @@ internal_threaded_filter (uint8 *src_buffer,
 {
     int i, flag;
     int dwidth = width, dheight = height;
+    int src_coverage = 0, dst_coverage = 0;
+    int height_scale;
 
     get_filter_scale (dwidth, dheight);
+    height_scale = dheight / height;
 
     /* If the threadpool doesn't exist, create it */
     create_thread_pool ();
@@ -1524,34 +1523,29 @@ internal_threaded_filter (uint8 *src_buffer,
     for (i = 0; i < gui_config->num_threads - 1; i++)
     {
         job[i].operation_type = JOB_FILTER;
-        job[i].src_buffer =
-            src_buffer + (src_pitch * i * (height / gui_config->num_threads));
-        job[i].src_pitch = src_pitch;
-        job[i].dst_buffer =
-            dst_buffer + (dst_pitch * i * (dheight / gui_config->num_threads));
-        job[i].dst_pitch = dst_pitch;
+        job[i].complete = 0;        
         job[i].width = width;
-        job[i].height = height / gui_config->num_threads;
-        job[i].complete = 0;
-        job[i].dst_width = width;
-        job[i].dst_height = height;
+        job[i].src_pitch = src_pitch;
+        job[i].dst_pitch = dst_pitch;
+        job[i].src_buffer = src_buffer + (src_pitch * src_coverage);
+        job[i].dst_buffer = dst_buffer + (dst_pitch * dst_coverage);
+        
+        job[i].height = (height / gui_config->num_threads) & ~3; /* Cut to multiple of 4 */
+        src_coverage += job[i].height;
+        dst_coverage += job[i].height * height_scale;
+        
 
         g_thread_pool_push (pool, (gpointer) &(job[i]), NULL);
     }
 
-    i = gui_config->num_threads - 1;
-
     job[i].operation_type = JOB_FILTER;
-    job[i].src_buffer =
-        src_buffer + (src_pitch * i * (height / gui_config->num_threads));
-    job[i].src_pitch = src_pitch;
-    job[i].dst_buffer =
-        dst_buffer + (dst_pitch * i * (dheight / gui_config->num_threads));
-    job[i].dst_pitch = dst_pitch;
     job[i].width = width;
-    job[i].height = height - ((gui_config->num_threads - 1) * (height / gui_config->num_threads));
-    job[i].dst_width = width;
-    job[i].dst_height = height;
+    job[i].src_pitch = src_pitch;
+    job[i].dst_pitch = dst_pitch;   
+    job[i].src_buffer = src_buffer + (src_pitch * src_coverage);
+    job[i].dst_buffer = dst_buffer + (dst_pitch * dst_coverage);
+    
+    job[i].height = height - src_coverage;
 
     thread_worker ((gpointer) &(job[i]), NULL);
 

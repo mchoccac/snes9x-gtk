@@ -573,9 +573,7 @@ internal_convert_scale (void *src_buffer,
                         int  dest_height,
                         int  bpp)
 {
-    register uint32 x_error = 0, x_fraction;
-    uint32          y_error = 0, y_fraction;
-    int             yy = 0;
+    register uint32 x_fraction, y_fraction;
 
     x_fraction = (width * 0x10000) / dest_width;
     y_fraction = (height * 0x10000) / dest_height;
@@ -589,19 +587,10 @@ internal_convert_scale (void *src_buffer,
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
-
                 register uint16 *snes =
-                    (uint16 *) (((uint8 *) src_buffer) + yy * src_pitch);
+                    (uint16 *) (((uint8 *) src_buffer) + ((y_fraction * y) >> 16) * src_pitch);
 
-                y_error += y_fraction;
-
-                while (y_error >= 0x10000)
-                {
-                    yy++;
-                    y_error -= 0x10000;
-                }
-                x_error = 0;
-
+                register uint32 x_error = 0;
                 for (register int x = 0; x < dest_width; x++)
                 {
                     uint32 pixel = *snes;
@@ -628,19 +617,10 @@ internal_convert_scale (void *src_buffer,
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
-
                 register uint16 *snes =
-                    (uint16 *) (((uint8 *) src_buffer) + yy * src_pitch);
+                    (uint16 *) (((uint8 *) src_buffer) + ((y_fraction * y) >> 16) * src_pitch);
 
-                y_error += y_fraction;
-
-                while (y_error >= 0x10000)
-                {
-                    yy++;
-                    y_error -= 0x10000;
-                }
-                x_error = 0;
-
+                register uint32 x_error = 0;
                 for (register int x = 0; x < dest_width; x++)
                 {
                     uint32 pixel = *snes;
@@ -670,17 +650,9 @@ internal_convert_scale (void *src_buffer,
                     (uint8 *) dst_buffer + y * dst_pitch;
 
                 register uint16 *snes =
-                    (uint16 *) (((uint8 *) src_buffer) + yy * src_pitch);
+                    (uint16 *) (((uint8 *) src_buffer) + ((y_fraction * y) >> 16) * src_pitch);
 
-                y_error += y_fraction;
-
-                while (y_error >= 0x10000)
-                {
-                    yy++;
-                    y_error -= 0x10000;
-                }
-                x_error = 0;
-
+                register uint32 x_error = 0;
                 for (register int x = 0; x < dest_width; x++)
                 {
                     uint32 pixel = *snes;
@@ -709,17 +681,9 @@ internal_convert_scale (void *src_buffer,
                     (uint8 *) dst_buffer + y * dst_pitch;
 
                 register uint16 *snes =
-                    (uint16 *) (((uint8 *) src_buffer) + yy * src_pitch);
-
-                y_error += y_fraction;
-
-                while (y_error >= 0x10000)
-                {
-                    yy++;
-                    y_error -= 0x10000;
-                }
-                x_error = 0;
-
+                    (uint16 *) (((uint8 *) src_buffer) + ((y_fraction * y) >> 16) * src_pitch);
+                
+                register uint32 x_error = 0;
                 for (register int x = 0; x < dest_width; x++)
                 {
                     uint32 pixel = *snes;
@@ -753,17 +717,9 @@ internal_convert_scale (void *src_buffer,
                     (uint8 *) dst_buffer + y * dst_pitch;
 
                 register uint16 *snes =
-                    (uint16 *) (((uint8 *) src_buffer) + yy * src_pitch);
+                    (uint16 *) (((uint8 *) src_buffer) + ((y_fraction * y) >> 16) * src_pitch);
 
-                y_error += y_fraction;
-
-                while (y_error >= 0x10000)
-                {
-                    yy++;
-                    y_error -= 0x10000;
-                }
-                x_error = 0;
-
+                register uint32 x_error = 0;
                 for (register int x = 0; x < dest_width; x++)
                 {
                     uint32 pixel = *snes;
@@ -792,17 +748,9 @@ internal_convert_scale (void *src_buffer,
                     (uint8 *) dst_buffer + y * dst_pitch;
 
                 register uint16 *snes =
-                    (uint16 *) (((uint8 *) src_buffer) + yy * src_pitch);
+                    (uint16 *) (((uint8 *) src_buffer) + ((y_fraction * y) >> 16) * src_pitch);
 
-                y_error += y_fraction;
-
-                while (y_error >= 0x10000)
-                {
-                    yy++;
-                    y_error -= 0x10000;
-                }
-                x_error = 0;
-
+                register uint32 x_error = 0;
                 for (register int x = 0; x < dest_width; x++)
                 {
                     uint32 pixel = *snes;
@@ -832,17 +780,9 @@ internal_convert_scale (void *src_buffer,
                     (uint8 *) dst_buffer + y * dst_pitch;
 
                 register uint16 *snes =
-                    (uint16 *) (((uint8 *) src_buffer) + yy * src_pitch);
+                    (uint16 *) (((uint8 *) src_buffer) + ((y_fraction * y) >> 16) * src_pitch);
 
-                y_error += y_fraction;
-
-                while (y_error >= 0x10000)
-                {
-                    yy++;
-                    y_error -= 0x10000;
-                }
-                x_error = 0;
-
+                register uint32 x_error = 0;
                 for (register int x = 0; x < dest_width; x++)
                 {
                     uint32 pixel = *snes;
@@ -871,16 +811,9 @@ internal_convert_scale (void *src_buffer,
                     (uint8 *) dst_buffer + y * dst_pitch;
 
                 register uint16 *snes =
-                    (uint16 *) (((uint8 *) src_buffer) + yy * src_pitch);
+                    (uint16 *) (((uint8 *) src_buffer) + ((y_fraction * y) >> 16) * src_pitch);
 
-                y_error += y_fraction;
-
-                while (y_error >= 0x10000)
-                {
-                    yy++;
-                    y_error -= 0x10000;
-                }
-
+                register uint32 x_error = 0;
                 for (register int x = 0; x < dest_width; x++)
                 {
                     uint32 pixel = *snes;

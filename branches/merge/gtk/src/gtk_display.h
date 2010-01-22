@@ -50,6 +50,8 @@ typedef struct thread_job_t
     int inv_rmask;
     int inv_gmask;
     int inv_bmask;
+    int line_start;
+    int line_end;
 
     volatile int complete;
 }

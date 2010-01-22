@@ -571,6 +571,8 @@ internal_convert_scale (void *src_buffer,
                         int  height,
                         int  dest_width,
                         int  dest_height,
+                        int  line_start,
+                        int  line_end,
                         int  bpp)
 {
     register uint32 x_fraction, y_fraction;
@@ -583,7 +585,7 @@ internal_convert_scale (void *src_buffer,
         if (bpp == 15)
         {
             /* Format in fourcc is xrrrrrgg gggbbbbb */
-            for (register int y = 0; y < dest_height; y++)
+            for (register int y = line_start; y < line_end; y++)
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
@@ -613,7 +615,7 @@ internal_convert_scale (void *src_buffer,
         else if (bpp == 16)
         {
             /* Format in fourcc is rrrrrggg gggbbbbb */
-            for (register int y = 0; y < dest_height; y++)
+            for (register int y = line_start; y < line_end; y++)
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
@@ -644,7 +646,7 @@ internal_convert_scale (void *src_buffer,
         else if (bpp == 24)
         {
             /* Format in fourcc is rrrrrrrr gggggggg bbbbbbbb */
-            for (register int y = 0; y < dest_height; y++)
+            for (register int y = line_start; y < line_end; y++)
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
@@ -675,7 +677,7 @@ internal_convert_scale (void *src_buffer,
         else if (bpp == 32)
         {
             /* Format in fourcc is xxxxxxxx rrrrrrrr gggggggg bbbbbbbb */
-            for (register int y = 0; y < dest_height; y++)
+            for (register int y = line_start; y < line_end; y++)
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
@@ -711,7 +713,7 @@ internal_convert_scale (void *src_buffer,
         {
             /* Format in fourcc is xrrrrrgg gggbbbbb */
 
-            for (register int y = 0; y < dest_height; y++)
+            for (register int y = line_start; y < line_end; y++)
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
@@ -742,7 +744,7 @@ internal_convert_scale (void *src_buffer,
         else if (bpp == 16)
         {
             /* Format in fourcc is rrrrrggg gggbbbbb */
-            for (register int y = 0; y < dest_height; y++)
+            for (register int y = line_start; y < line_end; y++)
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
@@ -774,7 +776,7 @@ internal_convert_scale (void *src_buffer,
         else if (bpp == 24)
         {
             /* Format in fourcc is rrrrrrrr gggggggg bbbbbbbb */
-            for (register int y = 0; y < dest_height; y++)
+            for (register int y = line_start; y < line_end; y++)
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
@@ -805,7 +807,7 @@ internal_convert_scale (void *src_buffer,
         else if (bpp == 32)
         {
             /* Format in fourcc is xxxxxxxx rrrrrrrr gggggggg bbbbbbbb */
-            for (register int y = 0; y < dest_height; y++)
+            for (register int y = line_start; y < line_end; y++)
             {
                 register uint8 *data =
                     (uint8 *) dst_buffer + y * dst_pitch;
@@ -1216,6 +1218,8 @@ thread_worker (gpointer data,
                                     job->height,
                                     job->dst_width,
                                     job->dst_height,
+                                    job->line_start,
+                                    job->line_end,
                                     job->bpp);
             break;
     }
@@ -1259,37 +1263,33 @@ internal_threaded_convert_scale (void *src_buffer,
     for (i = 0; i < gui_config->num_threads - 1; i++)
     {
         job[i].operation_type = JOB_SCALE_AND_CONVERT;
-        job[i].src_buffer =
-            ((uint8 *) src_buffer) + (src_pitch * i * (height / gui_config->num_threads));
+        job[i].src_buffer = (uint8 *) src_buffer;
         job[i].src_pitch = src_pitch;
-        job[i].dst_buffer =
-            ((uint8 *) dst_buffer) + (dst_pitch * i * (dst_height / gui_config->num_threads));
+        job[i].dst_buffer = (uint8 *) dst_buffer;
         job[i].dst_pitch = dst_pitch;
         job[i].width = width;
-        job[i].height = height / gui_config->num_threads;
+        job[i].height = height;
         job[i].dst_width = dst_width;
-        job[i].dst_height = dst_height / gui_config->num_threads;
+        job[i].dst_height = dst_height;
+        job[i].line_start = i * (dst_height / gui_config->num_threads);
+        job[i].line_end   = (i + 1) * (dst_height / gui_config->num_threads);
         job[i].bpp = bpp;
         job[i].complete = 0;
 
         g_thread_pool_push (pool, (gpointer) &(job[i]), NULL);
     }
 
-    i = gui_config->num_threads - 1;
-
     job[i].operation_type = JOB_SCALE_AND_CONVERT;
-    job[i].src_buffer =
-        ((uint8 *) src_buffer) + (src_pitch * i * (height / gui_config->num_threads));
+    job[i].src_buffer = (uint8 *) src_buffer;
     job[i].src_pitch = src_pitch;
-    job[i].dst_buffer =
-        ((uint8 *) dst_buffer) + (dst_pitch * i * (dst_height / gui_config->num_threads));
+    job[i].dst_buffer = (uint8 *) dst_buffer;
     job[i].dst_pitch = dst_pitch;
     job[i].width = width;
-    job[i].height =
-        height - ((gui_config->num_threads - 1) * (height / gui_config->num_threads));
+    job[i].height = height;
     job[i].dst_width = dst_width;
-    job[i].dst_height =
-        dst_height - ((gui_config->num_threads - 1) * (dst_height / gui_config->num_threads));
+    job[i].dst_height = dst_height;
+    job[i].line_start = i * (height / gui_config->num_threads);
+    job[i].line_end   = dst_height;
     job[i].bpp = bpp;
 
     thread_worker ((gpointer) &(job[i]), NULL);
@@ -1646,6 +1646,8 @@ S9xConvertScale (void *src,
                                 width,
                                 height,
                                 dest_width,
+                                dest_height,
+                                0,
                                 dest_height,
                                 bpp);
     return;

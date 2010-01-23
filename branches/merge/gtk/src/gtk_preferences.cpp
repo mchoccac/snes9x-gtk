@@ -217,20 +217,61 @@ event_reset_current_joypad (GtkButton *widget, gpointer data)
 }
 
 static void
-event_fragment_shader_clear (GtkButton *widget, gpointer data)
+event_shader_select (GtkButton *widget, gpointer data)
 {
-    gtk_file_chooser_unselect_all (GTK_FILE_CHOOSER (((Snes9xPreferences *) data)->get_widget ("fragment_shader")));
+#ifdef USE_OPENGL
+    Snes9xPreferences *window = (Snes9xPreferences *) data;
+    GtkWidget     *dialog;
+    char          *filename = NULL;
+    gint          result;
+    GtkEntry      *entry;
+    
+    if (!strcmp (gtk_widget_get_name (GTK_WIDGET (widget)), "fragment_shader_button"))
+    {
+        entry = GTK_ENTRY (window->get_widget ("fragment_shader"));
+    }
+    else
+    {
+        entry = GTK_ENTRY (window->get_widget ("vertex_shader"));
+    }
+    
+    dialog = gtk_file_chooser_dialog_new ("Select Shader File",
+                                          window->get_window (),
+                                          GTK_FILE_CHOOSER_ACTION_OPEN,
+                                          GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                                          GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+                                          NULL);
+    
+    if (strcmp (gui_config->last_directory, ""))
+    {
+        gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (dialog),
+                                             gui_config->last_directory);
+    }
 
+    if (strlen (gtk_entry_get_text (entry)))
+        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (dialog),
+                                       gtk_entry_get_text (entry));
+        
+    
+    result = gtk_dialog_run (GTK_DIALOG (dialog));
+    gtk_widget_hide_all (dialog);
+    
+    if (result == GTK_RESPONSE_ACCEPT)
+    {
+        filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
+        if (filename != NULL)
+        {
+            gtk_entry_set_text (entry, filename);
+            g_free (filename);
+        }
+    }
+    
+    gtk_widget_destroy (dialog);
+    
     return;
+#endif
 }
 
-static void
-event_vertex_shader_clear (GtkButton *widget, gpointer data)
-{
-    gtk_file_chooser_unselect_all (GTK_FILE_CHOOSER (((Snes9xPreferences *) data)->get_widget ("vertex_shader")));
-
-    return;
-}
 
 static void
 event_hw_accel_changed (GtkComboBox *widget, gpointer data)
@@ -385,8 +426,7 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
         { "ntsc_svideo_preset", G_CALLBACK (event_ntsc_svideo_preset) },
         { "ntsc_rgb_preset", G_CALLBACK (event_ntsc_rgb_preset) },
         { "ntsc_monochrome_preset", G_CALLBACK (event_ntsc_monochrome_preset) },
-        { "fragment_shader_clear", G_CALLBACK (event_fragment_shader_clear) },
-        { "vertex_shader_clear", G_CALLBACK (event_vertex_shader_clear) },
+        { "shader_select", G_CALLBACK (event_shader_select) },
 #ifdef USE_JOYSTICK
         { "calibrate", G_CALLBACK (event_calibrate) },
 #endif
@@ -597,26 +637,8 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_combo ("pixel_format",              config->pbo_format);
     set_check ("npot_textures",             config->npot_textures);
     set_check ("use_shaders",               config->use_shaders);
-    if (strlen (config->fragment_shader) > 0)
-    {
-        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (get_widget ("fragment_shader")),
-                                       config->fragment_shader);
-    }
-    else
-    {
-        gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (get_widget ("fragment_shader")),
-                                             config->last_directory);
-    }
-    if (strlen (config->vertex_shader) > 0)
-    {
-        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (get_widget ("vertex_shader")),
-                                       config->vertex_shader);
-    }
-    else
-    {
-        gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (get_widget ("vertex_shader")),
-                                             config->last_directory);
-    }
+    set_entry_text ("fragment_shader",      config->fragment_shader);
+    set_entry_text ("vertex_shader",        config->vertex_shader);
 #endif
 
 #ifdef USE_JOYSTICK
@@ -748,19 +770,8 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->npot_textures             = get_check ("npot_textures");
     config->use_shaders               = get_check ("use_shaders");
     
-    gchar *shader;
-    shader = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (get_widget ("fragment_shader")));
-    if (shader != NULL)
-        strncpy (config->fragment_shader, shader, PATH_MAX);
-    else
-        config->fragment_shader[0] = '\0';
-    g_free (shader);
-    shader = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (get_widget ("vertex_shader")));
-    if (shader != NULL)
-        strncpy (config->vertex_shader, shader, PATH_MAX);         
-    else
-        config->vertex_shader[0] = '\0';
-    g_free (shader);
+    strncpy (config->fragment_shader, get_entry_text ("fragment_shader"), PATH_MAX);
+    strncpy (config->vertex_shader, get_entry_text ("vertex_shader"), PATH_MAX);    
     
     config->pbo_format = get_combo ("pixel_format");
 

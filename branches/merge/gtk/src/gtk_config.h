@@ -140,6 +140,9 @@ class Snes9xConfig
         unsigned char use_pbos;
         int           pbo_format;
         unsigned char npot_textures;
+        unsigned char use_shaders;
+        char          fragment_shader[PATH_MAX];
+        char          vertex_shader[PATH_MAX];
 #endif
 
 #ifdef USE_JOYSTICK

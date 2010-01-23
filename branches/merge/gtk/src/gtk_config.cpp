@@ -177,6 +177,9 @@ Snes9xConfig::load_defaults (void)
     use_pbos = 1;
     pbo_format = 0;
     npot_textures = FALSE;
+    use_shaders = 0;
+    fragment_shader[0] = '\0';
+    vertex_shader[0] = '\0';
 #endif
 
     /* Snes9X Variables */
@@ -320,6 +323,9 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "use_pbos", use_pbos);
     xml_out_int (xml, "pbo_format", pbo_format);
     xml_out_int (xml, "npot_textures", npot_textures);
+    xml_out_int (xml, "use_shaders", use_shaders);
+    xml_out_string (xml, "fragment_shader", fragment_shader);
+    xml_out_string (xml, "vertex_shader", vertex_shader);
 #endif
 
 #ifdef USE_JOYSTICK
@@ -516,6 +522,24 @@ Snes9xConfig::set_option (const char *name, const char *value)
         npot_textures = atoi (value);
 #endif
     }
+    else if (!strcasecmp (name, "use_shaders"))
+    {
+#ifdef USE_OPENGL
+        use_shaders = atoi (value);
+#endif
+    }
+    else if (!strcasecmp (name, "fragment_shader"))
+    {
+#ifdef USE_OPENGL
+        strncpy (fragment_shader, value, PATH_MAX);
+#endif
+    }
+    else if (!strcasecmp (name, "vertex_shader"))
+    {
+#ifdef USE_OPENGL
+        strncpy (vertex_shader, value, PATH_MAX);
+#endif
+    }    
     else if (!strcasecmp (name, "joystick_threshold"))
     {
 #ifdef USE_JOYSTICK

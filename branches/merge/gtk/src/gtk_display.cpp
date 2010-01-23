@@ -70,6 +70,62 @@ S9xGetAspect (void)
 }
 
 void
+S9xApplyAspect (int &s_width,  /* Output: x */
+                int &s_height, /* Output: y */ 
+                int &d_width,  /* Output: width */
+                int &d_height) /* Output: height */
+{
+    double screen_aspect = (double) d_width / (double) d_height;
+    double snes_aspect = S9xGetAspect ();
+    double granularity = 1.0 / (double) MAX (d_width, d_height);
+    int x, y, w, h;
+
+    if (!gui_config->scale_to_fit)
+    {
+        x = (d_width - s_width) / 2;
+        y = (d_height - s_height) / 2;
+        w = s_width;
+        h = s_height;
+    }
+
+    else if (gui_config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
+    {
+        if (screen_aspect > snes_aspect)
+        {
+            x = (d_width - (int) (d_height * snes_aspect)) / 2;
+            y = 0;
+            w = (int) (d_height * snes_aspect);
+            h = d_height;
+        }
+
+        else
+        {
+            x = 0;
+            y = (d_height - (int) (d_width / snes_aspect)) / 2;
+            w = d_width;
+            h = (int) (d_width / snes_aspect);
+        }
+    }
+
+    else
+    {
+        x = 0;
+        y = 0;
+        w = d_width;
+        h = d_height;
+    }
+    
+    s_width = x;
+    s_height = y;
+    d_width = w;
+    d_height = h;
+    
+    return;
+}
+
+void
 S9xRegisterYUVTables (uint8 *y, uint8 *u, uint8 *v)
 {
     y_table = y;

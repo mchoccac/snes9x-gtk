@@ -2611,9 +2611,6 @@ void CMemory::InitROM (void)
 	Timings.NMIDMADelay  = 24;
 	Timings.IRQPendCount = 0;
 
-	CPU.FastROMSpeed = 0;
-	ResetSpeedMap();
-
 	IPPU.TotalEmulatedFrames = 0;
 
 	//// Hack games
@@ -2653,36 +2650,6 @@ void CMemory::InitROM (void)
 		PostRomInitFunc();
 
     S9xVerifyControllers();
-}
-
-void CMemory::FixROMSpeed (void)
-{
-	if (CPU.FastROMSpeed == 0)
-		CPU.FastROMSpeed = SLOW_ONE_CYCLE;
-
-	// [80-bf]:[8000-ffff], [c0-ff]:[0000-ffff]
-	for (int c = 0x800; c < 0x1000; c++)
-	{
-		if (c & 0x8 || c & 0x400)
-			MemorySpeed[c] = (uint8) CPU.FastROMSpeed;
-	}
-}
-
-void CMemory::ResetSpeedMap (void)
-{
-	memset(MemorySpeed, SLOW_ONE_CYCLE, 0x1000);
-
-	// Fast  - [00-3f|80-bf]:[2000-3fff|4200-5fff]
-	// XSlow - [00-3f|80-bf]:[4000-41ff] see also S9xGet/SetCPU()
-	for (int i = 0; i < 0x400; i += 0x10)
-	{
-		MemorySpeed[i + 2] = MemorySpeed[0x800 + i + 2] = ONE_CYCLE;
-		MemorySpeed[i + 3] = MemorySpeed[0x800 + i + 3] = ONE_CYCLE;
-		MemorySpeed[i + 4] = MemorySpeed[0x800 + i + 4] = ONE_CYCLE;
-		MemorySpeed[i + 5] = MemorySpeed[0x800 + i + 5] = ONE_CYCLE;
-	}
-
-	FixROMSpeed();
 }
 
 // memory map
@@ -3625,6 +3592,14 @@ void CMemory::ApplyROMFixes (void)
 			Timings.HBlankStart += 20;
 			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
 		}
+
+		if (match_na("SeikenDensetsu 2") ||
+			match_na("Secret of MANA"))
+		{
+			Timings.HDMAStart   -= 18;
+			Timings.HBlankStart -= 18;
+			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
+		}
 	}
 
 	if (!Settings.DisableGameSpecificHacks)
@@ -3655,6 +3630,12 @@ void CMemory::ApplyROMFixes (void)
 		if (match_na("Aero the AcroBat 2"))
 		{
 			Timings.IRQPendCount = 2;
+			printf("IRQ count hack: %d\n", Timings.IRQPendCount);
+		}
+
+		if (match_na("BATTLE BLAZE"))
+		{
+			Timings.IRQPendCount = 1;
 			printf("IRQ count hack: %d\n", Timings.IRQPendCount);
 		}
 	}

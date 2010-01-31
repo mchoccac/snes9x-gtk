@@ -10,6 +10,8 @@
 #include "gtk_display.h"
 #include "gtk_binding.h"
 
+#define SAME_GAME _("Same location as current game")
+
 gboolean
 snes9x_preferences_open (GtkWidget *widget,
                          gpointer  data)
@@ -272,6 +274,69 @@ event_shader_select (GtkButton *widget, gpointer data)
 #endif
 }
 
+static void
+event_game_data_clear (GtkButton *widget, gpointer data)
+{
+    Snes9xPreferences *window = (Snes9xPreferences *) data;
+    GtkEntry      *entry;
+    char          entry_name[256];    
+    
+    strcpy (entry_name, gtk_widget_get_name (GTK_WIDGET (widget)));
+    sprintf (strstr (entry_name, "_clear"), "_directory");
+    entry = GTK_ENTRY (window->get_widget (entry_name));
+    gtk_entry_set_text (entry, SAME_GAME);
+    
+    return;
+}
+
+static void
+event_game_data_browse (GtkButton *widget, gpointer data)
+{
+    Snes9xPreferences *window = (Snes9xPreferences *) data;
+    GtkWidget     *dialog;
+    char          *filename = NULL;
+    gint          result;
+    GtkEntry      *entry;
+    char          entry_name[256];
+    
+    strcpy (entry_name, gtk_widget_get_name (GTK_WIDGET (widget)));
+    sprintf (strstr (entry_name, "_browse"), "_directory");
+    entry = GTK_ENTRY (window->get_widget (entry_name));
+    
+    dialog = gtk_file_chooser_dialog_new ("Select directory",
+                                          window->get_window (),
+                                          GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
+                                          GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                                          GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+                                          NULL);
+    
+    if (strcmp (gui_config->last_directory, ""))
+    {
+        gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (dialog),
+                                             gui_config->last_directory);
+    }
+
+    if (strcmp (gtk_entry_get_text (entry), SAME_GAME))
+        gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (dialog),
+                                       gtk_entry_get_text (entry));
+    
+    result = gtk_dialog_run (GTK_DIALOG (dialog));
+    gtk_widget_hide_all (dialog);
+    
+    if (result == GTK_RESPONSE_ACCEPT)
+    {
+        filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
+        if (filename != NULL)
+        {
+            gtk_entry_set_text (entry, filename);
+            g_free (filename);
+        }
+    }
+    
+    gtk_widget_destroy (dialog);
+    
+    return;
+}
 
 static void
 event_hw_accel_changed (GtkComboBox *widget, gpointer data)
@@ -427,6 +492,8 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
         { "ntsc_rgb_preset", G_CALLBACK (event_ntsc_rgb_preset) },
         { "ntsc_monochrome_preset", G_CALLBACK (event_ntsc_monochrome_preset) },
         { "shader_select", G_CALLBACK (event_shader_select) },
+        { "game_data_browse", G_CALLBACK (event_game_data_browse) },
+        { "game_data_clear", G_CALLBACK (event_game_data_clear) },
 #ifdef USE_JOYSTICK
         { "calibrate", G_CALLBACK (event_calibrate) },
 #endif
@@ -560,10 +627,27 @@ Snes9xPreferences::move_settings_to_dialog (void)
     set_check ("force_hires",               config->force_hires);
     set_check ("maintain_aspect_ratio",     config->maintain_aspect_ratio);
     set_combo ("aspect_ratio",              config->aspect_ratio);
-    set_check ("rom_folder_radio",          config->data_location==DIR_ROM);
-    set_check ("config_folder_radio",       config->data_location==DIR_CONFIG);
-    set_check ("custom_folder_radio",       config->data_location==DIR_CUSTOM);
-    set_entry_text ("custom_folder_entry",  config->custom_sram_directory);
+    if (config->sram_directory[0] == '\0')
+        set_entry_text ("sram_directory", SAME_GAME);
+    else
+        set_entry_text ("sram_directory", config->sram_directory);
+    if (config->savestate_directory[0] == '\0')
+        set_entry_text ("savestate_directory", SAME_GAME);
+    else
+        set_entry_text ("savestate_directory", config->savestate_directory);
+    if (config->patch_directory[0] == '\0')
+        set_entry_text ("patch_directory", SAME_GAME);
+    else
+        set_entry_text ("patch_directory", config->patch_directory);
+    if (config->cheat_directory[0] == '\0')
+        set_entry_text ("cheat_directory", SAME_GAME);
+    else
+        set_entry_text ("cheat_directory", config->cheat_directory);
+    if (config->export_directory[0] == '\0')
+        set_entry_text ("export_directory", SAME_GAME);
+    else
+        set_entry_text ("export_directory", config->export_directory);
+    
     set_combo ("resolution_combo",          config->xrr_index);
     set_combo ("scale_method_combo",        config->scale_method);
     set_entry_value ("save_sram_after_sec", Settings.AutoSaveDelay);
@@ -722,12 +806,6 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->force_inverted_byte_order = get_check ("force_inverted_byte_order");
     Settings.AutoSaveDelay            = get_entry_value ("save_sram_after_sec");
     config->multithreading            = get_check ("multithreading");
-    config->data_location             = get_check ("rom_folder_radio") ?
-                                            DIR_ROM : config->data_location;
-    config->data_location             = get_check ("config_folder_radio") ?
-                                            DIR_CONFIG : config->data_location;
-    config->data_location             = get_check ("custom_folder_radio") ?
-                                            DIR_CUSTOM : config->data_location;
     config->pause_emulation_on_switch = get_check ("pause_emulation_on_switch");
     Settings.SkipFrames               = get_combo ("frameskip_combo");
     Settings.DisableHDMA              = !(get_check ("hdma_check"));
@@ -774,13 +852,59 @@ Snes9xPreferences::get_settings_from_dialog (void)
     strncpy (config->vertex_shader, get_entry_text ("vertex_shader"), PATH_MAX);    
     
     config->pbo_format = get_combo ("pixel_format");
-
 #endif
+    char safety_sram_directory [PATH_MAX];
+    
+    strncpy (safety_sram_directory, get_entry_text ("sram_directory"), PATH_MAX);
+    strncpy (config->savestate_directory, get_entry_text ("savestate_directory"), PATH_MAX);
+    strncpy (config->patch_directory, get_entry_text ("patch_directory"), PATH_MAX);
+    strncpy (config->cheat_directory, get_entry_text ("cheat_directory"), PATH_MAX);
+    strncpy (config->export_directory, get_entry_text ("export_directory"), PATH_MAX);
+    
+    if (!strcmp (safety_sram_directory, SAME_GAME))
+        safety_sram_directory[0] = '\0';
+    if (!strcmp (config->savestate_directory, SAME_GAME))
+        config->savestate_directory[0] = '\0';
+    if (!strcmp (config->patch_directory, SAME_GAME))
+        config->patch_directory[0] = '\0';
+    if (!strcmp (config->cheat_directory, SAME_GAME))
+        config->cheat_directory[0] = '\0';
+    if (!strcmp (config->export_directory, SAME_GAME))
+        config->export_directory[0] = '\0';
+    
+    if (strcmp (safety_sram_directory, config->sram_directory) && config->rom_loaded)
+    {
+        GtkWidget *msg;
+        int responseid;
 
-    strncpy (config->custom_sram_directory,
-             get_entry_text ("custom_folder_entry"),
-             PATH_MAX);
-
+        msg = gtk_message_dialog_new (GTK_WINDOW (this->window),
+                                      GTK_DIALOG_DESTROY_WITH_PARENT,
+                                      GTK_MESSAGE_WARNING,
+                                      GTK_BUTTONS_OK_CANCEL,
+                                      _("Changing the SRAM directory with a game loaded will replace the .srm file in the selected directory with the SRAM from the running game. If this is not what you want, click 'cancel'."));
+        gtk_window_set_title (GTK_WINDOW (msg), "Warning: Possible File Overwrite");
+                                      
+        responseid = gtk_dialog_run (GTK_DIALOG (msg));
+        
+        if (responseid == GTK_RESPONSE_OK)
+        {
+            strncpy (config->sram_directory, safety_sram_directory, PATH_MAX);
+        }
+        else
+        {
+            if (config->sram_directory[0] == '\0')
+                set_entry_text ("sram_directory", SAME_GAME);
+            else
+                set_entry_text ("sram_directory", config->sram_directory);
+        }
+        
+        gtk_widget_destroy (msg);
+    }
+    else
+    {
+        strncpy (config->sram_directory, safety_sram_directory, PATH_MAX);
+    }
+    
     if (Settings.SkipFrames == 0)
         Settings.SkipFrames = AUTO_FRAMERATE;
     else

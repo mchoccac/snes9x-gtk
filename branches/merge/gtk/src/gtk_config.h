@@ -10,10 +10,6 @@
 #include "gtk_control.h"
 #include "snes_ntsc.h"
 
-#define DIR_ROM                 0
-#define DIR_CONFIG              1
-#define DIR_CUSTOM              2
-
 #define HWA_NONE                0
 #define HWA_OPENGL              1
 #define HWA_XV                  2
@@ -90,9 +86,12 @@ class Snes9xConfig
         unsigned char allow_xrandr;
 
         /* Data options */
-        unsigned char data_location;
         unsigned char save_sram_after_secs;
-        char          custom_sram_directory [PATH_MAX];
+        char          sram_directory [PATH_MAX];
+        char          savestate_directory [PATH_MAX];
+        char          cheat_directory [PATH_MAX];
+        char          patch_directory [PATH_MAX];
+        char          export_directory [PATH_MAX];
         char          last_directory [PATH_MAX];
 
         /* Controls */

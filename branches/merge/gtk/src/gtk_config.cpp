@@ -128,7 +128,6 @@ Snes9xConfig::load_defaults (void)
     aspect_ratio = 0;
     scale_method = 0;
     overscan = 0;
-    data_location = DIR_ROM;
     save_sram_after_secs = 0;
     rom_loaded = 0;
     multithreading = 0;
@@ -155,7 +154,11 @@ Snes9xConfig::load_defaults (void)
     window_height = -1;
     preferences_width = -1;
     preferences_height = -1;
-    custom_sram_directory[0] = '\0';
+    sram_directory[0] = '\0';
+    export_directory[0] = '\0';
+    savestate_directory[0] = '\0';
+    cheat_directory[0] = '\0';
+    patch_directory[0] = '\0';
     screensaver_needs_reset = FALSE;
     ntsc_setup = snes_ntsc_composite;
     ntsc_scanline_intensity = 1;
@@ -283,10 +286,13 @@ Snes9xConfig::save_config_file (void)
     xml_out_int (xml, "overscan", overscan);
     xml_out_int (xml, "force_hires", force_hires);
     xml_out_int (xml, "force_inverted_byte_order", force_inverted_byte_order);
-    xml_out_int (xml, "data_location", data_location);
     xml_out_int (xml, "multithreading", multithreading);
     xml_out_string (xml, "last_directory", last_directory);
-    xml_out_string (xml, "custom_sram_directory", custom_sram_directory);
+    xml_out_string (xml, "sram_directory", sram_directory);
+    xml_out_string (xml, "savestate_directory", savestate_directory);
+    xml_out_string (xml, "cheat_directory", cheat_directory);
+    xml_out_string (xml, "patch_directory", patch_directory);
+    xml_out_string (xml, "export_directory", export_directory);
     xml_out_int (xml, "window_width", window_width);
     xml_out_int (xml, "window_height", window_height);
     xml_out_int (xml, "preferences_width", preferences_width);
@@ -548,7 +554,7 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "data_location"))
     {
-        data_location = atoi (value);
+        /* Deprecated */
     }
     else if (!strcasecmp (name, "save_sram_after_secs"))
     {
@@ -627,8 +633,28 @@ Snes9xConfig::set_option (const char *name, const char *value)
     }
     else if (!strcasecmp (name, "custom_sram_directory"))
     {
-        strncpy (custom_sram_directory, value, PATH_MAX);
+        strncpy (sram_directory, value, PATH_MAX);
     }
+    else if (!strcasecmp (name, "sram_directory"))
+    {
+        strncpy (sram_directory, value, PATH_MAX);
+    }
+    else if (!strcasecmp (name, "savestate_directory"))
+    {
+        strncpy (savestate_directory, value, PATH_MAX);
+    }
+    else if (!strcasecmp (name, "cheat_directory"))
+    {
+        strncpy (cheat_directory, value, PATH_MAX);
+    }
+    else if (!strcasecmp (name, "patch_directory"))
+    {
+        strncpy (patch_directory, value, PATH_MAX);
+    }
+    else if (!strcasecmp (name, "export_directory"))
+    {
+        strncpy (export_directory, value, PATH_MAX);
+    }    
     else if (!strcasecmp (name, "window_width"))
     {
         window_width = atoi (value);

@@ -178,6 +178,7 @@
 #ifdef HAVE_LIBPNG
 #include <png.h>
 #endif
+#include <unistd.h>
 #include "snes9x.h"
 #include "memmap.h"
 #include "display.h"

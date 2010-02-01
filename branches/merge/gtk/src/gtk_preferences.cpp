@@ -882,7 +882,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
                                       GTK_MESSAGE_WARNING,
                                       GTK_BUTTONS_OK_CANCEL,
                                       _("Changing the SRAM directory with a game loaded will replace the .srm file in the selected directory with the SRAM from the running game. If this is not what you want, click 'cancel'."));
-        gtk_window_set_title (GTK_WINDOW (msg), "Warning: Possible File Overwrite");
+        gtk_window_set_title (GTK_WINDOW (msg), _("Warning: Possible File Overwrite"));
                                       
         responseid = gtk_dialog_run (GTK_DIALOG (msg));
         

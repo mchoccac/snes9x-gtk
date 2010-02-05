@@ -111,7 +111,7 @@ AC_ARG_WITH(sdd1-decomp,
 
 AC_ARG_WITH(hq2x, 
   [AS_HELP_STRING([--with(out)-hq2x],
-    [Enable OSS sound driver support (default: with)])],
+    [Enable support for the HQ2x family of filters (default: with)])],
   [],
   [with_hq2x=yes])
 

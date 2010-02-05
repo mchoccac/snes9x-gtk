@@ -1098,7 +1098,7 @@ Snes9xConfig::load_config_file (void)
 
     if (stat (pathname, &file_info))
     {
-        if (mkdir (pathname, 0))
+        if (mkdir (pathname, 0777))
         {
             fprintf (stderr,
                      _("Couldn't create config directory: %s\n"),

@@ -84,12 +84,6 @@ S9xXVDisplayDriver::update (int width, int height)
         final_pitch = image_width * image_bpp;
     }
 
-    if (!config->scale_to_fit && (width > current_width || height > current_height))
-    {
-        clear ();
-        return;
-    }
-
     update_image_size (width, height);
 
     if (format == FOURCC_YUY2)

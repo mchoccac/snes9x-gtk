@@ -74,6 +74,15 @@ S9xGTKDisplayDriver::output (void *src,
 {
     GdkGC *gc = drawing_area->style->bg_gc[GTK_WIDGET_STATE (drawing_area)];
 
+    if (dst_width > gdk_buffer_width || dst_height > gdk_buffer_height)
+    {
+        gdk_buffer_width = dst_width;
+        gdk_buffer_height = dst_height;
+
+        padded_buffer[2] = realloc (padded_buffer[2],
+                                    gdk_buffer_width * gdk_buffer_height * 3);
+    }
+
     if (width != dst_width || height != dst_height)
     {
         S9xConvertScale (src,
@@ -87,16 +96,6 @@ S9xGTKDisplayDriver::output (void *src,
     }
     else
     {
-        if (x < 0)
-            x = 0;
-        if (y < 0)
-            y = 0;
-
-        if (width > drawing_area->allocation.width)
-            width = dst_width = drawing_area->allocation.width;
-        if (height > drawing_area->allocation.height)
-            height = dst_height = drawing_area->allocation.height;
-
         S9xConvert (src,
                     padded_buffer[2],
                     src_pitch,
@@ -219,15 +218,6 @@ S9xGTKDisplayDriver::refresh (int width, int height)
     c_width = drawing_area->allocation.width;
     c_height = drawing_area->allocation.height;
 
-    if (c_width != gdk_buffer_width || c_height != gdk_buffer_height)
-    {
-        free (padded_buffer[2]);
-
-        gdk_buffer_width = c_width;
-        gdk_buffer_height = c_height;
-
-        padded_buffer[2] = malloc (gdk_buffer_width * gdk_buffer_height * 3);
-    }
 
     if (!config->rom_loaded)
         return;

@@ -82,10 +82,20 @@ S9xApplyAspect (int &s_width,  /* Output: x */
 
     if (!gui_config->scale_to_fit)
     {
-        x = (d_width - s_width) / 2;
-        y = (d_height - s_height) / 2;
-        w = s_width;
-        h = s_height;
+        if (gui_config->maintain_aspect_ratio)
+        {
+            w = s_height * snes_aspect;
+            h = s_height;
+            x = (d_width - w) / 2;
+            y = (d_height - s_height) / 2;
+        }
+        else
+        {
+            x = (d_width - s_width) / 2;
+            y = (d_height - s_height) / 2;
+            w = s_width;
+            h = s_height;
+        }
     }
 
     else if (gui_config->maintain_aspect_ratio &&

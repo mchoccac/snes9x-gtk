@@ -55,14 +55,6 @@ S9xGTKDisplayDriver::update (int width, int height)
         final_pitch = image_width * image_bpp;
     }
 
-    if (!config->scale_to_fit &&
-            (width > gdk_buffer_width || height > gdk_buffer_height))
-    {
-        this->clear ();
-
-        return;
-    }
-    
     x = width; y = height; w = c_width; h = c_height;
     S9xApplyAspect (x, y, w, h);
     output (final_buffer, final_pitch, x, y, width, height, w, h);
@@ -95,6 +87,16 @@ S9xGTKDisplayDriver::output (void *src,
     }
     else
     {
+        if (x < 0)
+            x = 0;
+        if (y < 0)
+            y = 0;
+
+        if (width > drawing_area->allocation.width)
+            width = dst_width = drawing_area->allocation.width;
+        if (height > drawing_area->allocation.height)
+            height = dst_height = drawing_area->allocation.height;
+
         S9xConvert (src,
                     padded_buffer[2],
                     src_pitch,

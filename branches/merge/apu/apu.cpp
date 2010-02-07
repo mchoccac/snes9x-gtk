@@ -226,8 +226,12 @@ namespace spc
 	static int32		reference_time;
 	static uint32		remainder;
 
-	static const int32	timing_hack_numerator   = SNES_SPC::tempo_unit;
-	static int32		timing_hack_denominator = SNES_SPC::tempo_unit;
+	static const int	timing_hack_numerator   = SNES_SPC::tempo_unit;
+	static int			timing_hack_denominator = SNES_SPC::tempo_unit;
+	/* Set these to NTSC for now. Will change to PAL in S9xAPUTimingSetSpeedup
+	   if necessary on game load. */
+	static uint32		ratio_numerator = APU_NUMERATOR_NTSC;
+	static uint32		ratio_denominator = APU_DENOMINATOR_NTSC;
 }
 
 static void EightBitize (uint8 *, int);
@@ -536,22 +540,14 @@ void S9xDeinitAPU (void)
 
 static inline int S9xAPUGetClock (int32 cpucycles)
 {
-	if (Settings.PAL)
-		return ((int) floor(((double) APU_NUMERATOR_PAL   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder) /
-							((double) APU_DENOMINATOR_PAL * spc::timing_hack_denominator)));
-	else
-		return (APU_NUMERATOR_NTSC   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder) /
-			   (APU_DENOMINATOR_NTSC * spc::timing_hack_denominator);
+	return (spc::ratio_numerator * (cpucycles - spc::reference_time) + spc::remainder) /
+			spc::ratio_denominator;
 }
 
 static inline int S9xAPUGetClockRemainder (int32 cpucycles)
 {
-	if (Settings.PAL)
-		return ((int) fmod (((double) APU_NUMERATOR_PAL   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder),
-							((double) APU_DENOMINATOR_PAL * spc::timing_hack_denominator)));
-	else
-		return (APU_NUMERATOR_NTSC   * spc::timing_hack_numerator * (cpucycles - spc::reference_time) + spc::remainder) %
-			   (APU_DENOMINATOR_NTSC * spc::timing_hack_denominator);
+	return (spc::ratio_numerator * (cpucycles - spc::reference_time) + spc::remainder) %
+			spc::ratio_denominator;
 }
 
 uint8 S9xAPUReadPort (int port)
@@ -592,9 +588,12 @@ void S9xAPUTimingSetSpeedup (int ticks)
 	if (ticks != 0)
 		printf("APU speedup hack: %d\n", ticks);
 
-	spc_core->set_tempo(SNES_SPC::tempo_unit - ticks);
-
 	spc::timing_hack_denominator = SNES_SPC::tempo_unit - ticks;
+	spc_core->set_tempo(spc::timing_hack_denominator);
+
+	spc::ratio_numerator = Settings.PAL ? APU_NUMERATOR_PAL : APU_NUMERATOR_NTSC;
+	spc::ratio_denominator = Settings.PAL ? APU_DENOMINATOR_PAL : APU_DENOMINATOR_NTSC;
+	spc::ratio_denominator = spc::ratio_denominator * spc::timing_hack_denominator / spc::timing_hack_numerator;
 
 	UpdatePlaybackRate();
 }

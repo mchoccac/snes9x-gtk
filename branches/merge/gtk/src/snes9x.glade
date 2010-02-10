@@ -5,12 +5,12 @@
   <widget class="GtkWindow" id="main_window">
     <property name="events">GDK_EXPOSURE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_FOCUS_CHANGE_MASK | GDK_STRUCTURE_MASK | GDK_SUBSTRUCTURE_MASK</property>
     <property name="title" translatable="yes">Snes9x</property>
-    <signal name="delete_event" handler="main_window_delete_event"/>
+    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <signal name="key_press_event" handler="main_window_key_press_event"/>
     <signal name="focus_out_event" handler="focus_out_event"/>
     <signal name="focus_in_event" handler="focus_in_event"/>
+    <signal name="delete_event" handler="main_window_delete_event"/>
     <signal name="window_state_event" handler="main_window_state_event"/>
-    <signal name="key_release_event" handler="main_window_key_release_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
@@ -2809,6 +2809,7 @@ Quit Snes9x</property>
                                         <property name="left_attach">2</property>
                                         <property name="right_attach">3</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2825,6 +2826,7 @@ Quit Snes9x</property>
                                         <property name="top_attach">1</property>
                                         <property name="bottom_attach">2</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2841,6 +2843,7 @@ Quit Snes9x</property>
                                         <property name="top_attach">2</property>
                                         <property name="bottom_attach">3</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2857,6 +2860,7 @@ Quit Snes9x</property>
                                         <property name="top_attach">3</property>
                                         <property name="bottom_attach">4</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2873,6 +2877,7 @@ Quit Snes9x</property>
                                         <property name="top_attach">4</property>
                                         <property name="bottom_attach">5</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2885,6 +2890,7 @@ Quit Snes9x</property>
                                           <widget class="GtkImage" id="image27">
                                             <property name="visible">True</property>
                                             <property name="stock">gtk-clear</property>
+                                            <property name="icon-size">1</property>
                                           </widget>
                                         </child>
                                       </widget>
@@ -2892,6 +2898,7 @@ Quit Snes9x</property>
                                         <property name="left_attach">3</property>
                                         <property name="right_attach">4</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2904,6 +2911,7 @@ Quit Snes9x</property>
                                           <widget class="GtkImage" id="image28">
                                             <property name="visible">True</property>
                                             <property name="stock">gtk-clear</property>
+                                            <property name="icon-size">1</property>
                                           </widget>
                                         </child>
                                       </widget>
@@ -2913,6 +2921,7 @@ Quit Snes9x</property>
                                         <property name="top_attach">1</property>
                                         <property name="bottom_attach">2</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2925,6 +2934,7 @@ Quit Snes9x</property>
                                           <widget class="GtkImage" id="image29">
                                             <property name="visible">True</property>
                                             <property name="stock">gtk-clear</property>
+                                            <property name="icon-size">1</property>
                                           </widget>
                                         </child>
                                       </widget>
@@ -2934,6 +2944,7 @@ Quit Snes9x</property>
                                         <property name="top_attach">2</property>
                                         <property name="bottom_attach">3</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2946,6 +2957,7 @@ Quit Snes9x</property>
                                           <widget class="GtkImage" id="image30">
                                             <property name="visible">True</property>
                                             <property name="stock">gtk-clear</property>
+                                            <property name="icon-size">1</property>
                                           </widget>
                                         </child>
                                       </widget>
@@ -2955,6 +2967,7 @@ Quit Snes9x</property>
                                         <property name="top_attach">3</property>
                                         <property name="bottom_attach">4</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>
@@ -2967,6 +2980,7 @@ Quit Snes9x</property>
                                           <widget class="GtkImage" id="image31">
                                             <property name="visible">True</property>
                                             <property name="stock">gtk-clear</property>
+                                            <property name="icon-size">1</property>
                                           </widget>
                                         </child>
                                       </widget>
@@ -2976,6 +2990,7 @@ Quit Snes9x</property>
                                         <property name="top_attach">4</property>
                                         <property name="bottom_attach">5</property>
                                         <property name="x_options">GTK_FILL</property>
+                                        <property name="y_options"></property>
                                       </packing>
                                     </child>
                                     <child>

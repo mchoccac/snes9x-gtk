@@ -1523,8 +1523,6 @@ Snes9xWindow::enter_fullscreen_mode (void)
     if (config->fullscreen)
         return;
 
-    S9xSoundStop ();
-
     config->rom_loaded = 0;
 
     nfs_width = config->window_width;
@@ -1572,9 +1570,7 @@ Snes9xWindow::enter_fullscreen_mode (void)
 #endif
 
     gdk_display_sync (gdk_display_get_default ());
-    gdk_window_raise (GTK_WIDGET (window)->window);
-
-    S9xSoundStart ();
+    gtk_window_present (GTK_WINDOW (window));
 
     config->fullscreen = 1;
     config->rom_loaded = rom_loaded;
@@ -1595,8 +1591,6 @@ Snes9xWindow::leave_fullscreen_mode (void)
 
     if (!config->fullscreen)
         return;
-
-    S9xSoundStop ();
 
     config->rom_loaded = 0;
 
@@ -1629,8 +1623,6 @@ Snes9xWindow::leave_fullscreen_mode (void)
 
     resize (nfs_width, nfs_height);
     gtk_window_move (GTK_WINDOW (window), nfs_x, nfs_y);
-
-    S9xSoundStart ();
 
     config->rom_loaded = rom_loaded;
 

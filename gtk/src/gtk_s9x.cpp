@@ -73,11 +73,6 @@ main (int argc, char *argv[])
     g_set_application_name ("Snes9x");
 
     top_level = new Snes9xWindow (gui_config);
-
-    /* If we're going to fullscreen, do it before showing window to avoid flicker. */
-    if ((gui_config->full_screen_on_open && rom_filename) || (gui_config->fullscreen))
-        gtk_window_fullscreen (top_level->get_window ());
-
     top_level->show ();
 
     S9xInitDisplay (argc, argv);
@@ -102,8 +97,7 @@ main (int argc, char *argv[])
 
     if (rom_filename)
     {
-        if (S9xOpenROM (rom_filename) && gui_config->full_screen_on_open)
-            gtk_window_unfullscreen (top_level->get_window());
+        top_level->try_open_rom (rom_filename);
     }
 
     memset (&sig_callback, 0, sizeof (struct sigaction));
@@ -403,7 +397,6 @@ S9xParseArg (char **argv, int &i, int argc)
             {
                 gui_config->scale_method = FILTER_SUPER2XSAI;
             }
-#ifdef USE_HQ2X
             else if (!strcasecmp (argv[i], "hq2x"))
             {
                 gui_config->scale_method = FILTER_HQ2X;
@@ -416,7 +409,6 @@ S9xParseArg (char **argv, int &i, int argc)
             {
                 gui_config->scale_method = FILTER_HQ4X;
             }
-#endif /* USE_HQ2X */
             else if (!strcasecmp (argv[i], "epx"))
             {
                 gui_config->scale_method = FILTER_EPX;

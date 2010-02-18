@@ -190,11 +190,7 @@
 #ifdef SA1_OPCODES
 #define AddCycles(n)	{ }
 #else
-#if (S9X_ACCURACY_LEVEL >= 3)
-#define AddCycles(n)	{ CPU.Cycles += (n); while (CPU.Cycles >= CPU.NextEvent) S9xDoHEventProcessing(); }
-#else
-#define AddCycles(n)	{ CPU.Cycles += (n); }
-#endif
+#define AddCycles(n)	CPU.Cycles += n
 #endif
 
 #include "cpuaddr.h"

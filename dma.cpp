@@ -185,8 +185,6 @@
 #include "missing.h"
 #endif
 
-#define ADD_CYCLES(n)	CPU.Cycles += (n)
-
 extern uint8	*HDMAMemPointers[8];
 extern int		HDMA_ModeByteCounts[8];
 extern SPC7110	s7emu;
@@ -201,7 +199,7 @@ static inline bool8 addCyclesInDMA (uint8 dma_channel)
 {
 	// Add 8 cycles per byte, sync APU, and do HC related events.
 	// If HDMA was done in S9xDoHEventProcessing(), check if it used the same channel as DMA.
-	ADD_CYCLES(SLOW_ONE_CYCLE);
+	CPU.Cycles += SLOW_ONE_CYCLE;
 	while (CPU.Cycles >= CPU.NextEvent)
 		S9xDoHEventProcessing();
 
@@ -247,7 +245,7 @@ bool8 S9xDoDMA (uint8 Channel)
 			c = 0x10000;
 
 		// 8 cycles per channel
-		ADD_CYCLES(SLOW_ONE_CYCLE);
+		CPU.Cycles += SLOW_ONE_CYCLE;
 		// 8 cycles per byte
 		while (c)
 		{
@@ -512,7 +510,7 @@ bool8 S9xDoDMA (uint8 Channel)
 	uint8	Work;
 
 	// 8 cycles per channel
-	ADD_CYCLES(SLOW_ONE_CYCLE);
+	CPU.Cycles += SLOW_ONE_CYCLE;
 
 	if (!d->ReverseTransfer)
     {
@@ -1317,7 +1315,7 @@ static inline bool8 HDMAReadLineCount (int d)
 	uint8	line;
 
 	line = S9xGetByte((DMA[d].ABank << 16) + DMA[d].Address);
-	ADD_CYCLES(SLOW_ONE_CYCLE);
+	CPU.Cycles += SLOW_ONE_CYCLE;
 
 	if (!line)
 	{
@@ -1329,10 +1327,10 @@ static inline bool8 HDMAReadLineCount (int d)
 			if (PPU.HDMA & (0xfe << d))
 			{
 				DMA[d].Address++;
-				ADD_CYCLES(SLOW_ONE_CYCLE << 1);
+				CPU.Cycles += SLOW_ONE_CYCLE * 2;
 			}
 			else
-				ADD_CYCLES(SLOW_ONE_CYCLE);
+				CPU.Cycles += SLOW_ONE_CYCLE;
 
 			DMA[d].IndirectAddress = S9xGetWord((DMA[d].ABank << 16) + DMA[d].Address);
 			DMA[d].Address++;
@@ -1360,7 +1358,7 @@ static inline bool8 HDMAReadLineCount (int d)
 
 	if (DMA[d].HDMAIndirectAddressing)
 	{
-		ADD_CYCLES(SLOW_ONE_CYCLE << 1);
+		CPU.Cycles += SLOW_ONE_CYCLE << 1;
 		DMA[d].IndirectAddress = S9xGetWord((DMA[d].ABank << 16) + DMA[d].Address);
 		DMA[d].Address += 2;
 		HDMAMemPointers[d] = S9xGetMemPointer((DMA[d].IndirectBank << 16) + DMA[d].IndirectAddress);
@@ -1392,7 +1390,7 @@ void S9xStartHDMA (void)
 
 	// XXX: Not quite right...
 	if (PPU.HDMA != 0)
-		ADD_CYCLES(Timings.DMACPUSync);
+		CPU.Cycles += Timings.DMACPUSync;
 
 	for (uint8 i = 0; i < 8; i++)
 	{
@@ -1435,7 +1433,7 @@ uint8 S9xDoHDMA (uint8 byte)
 	tmpch = CPU.CurrentDMAorHDMAChannel;
 
 	// XXX: Not quite right...
-	ADD_CYCLES(Timings.DMACPUSync);
+	CPU.Cycles += Timings.DMACPUSync;
 
 	for (uint8 mask = 1; mask; mask <<= 1, p++, d++)
 	{
@@ -1500,57 +1498,46 @@ uint8 S9xDoHDMA (uint8 byte)
 						switch (p->TransferMode)
 						{
 							case 0:
+								CPU.Cycles += SLOW_ONE_CYCLE;
 								DOBYTE(IAddr, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								break;
 
 							case 5:
+								CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 								DOBYTE(IAddr + 0, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 1, 1);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 2, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 3, 1);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								break;
 
 							case 1:
+								CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 								DOBYTE(IAddr + 0, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 1, 1);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								break;
 
 							case 2:
 							case 6:
+								CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 								DOBYTE(IAddr + 0, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 1, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								break;
 
 							case 3:
 							case 7:
+								CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 								DOBYTE(IAddr + 0, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 1, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 2, 1);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 3, 1);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								break;
 
 							case 4:
+								CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 								DOBYTE(IAddr + 0, 0);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 1, 1);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 2, 2);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								DOBYTE(IAddr + 3, 3);
-								ADD_CYCLES(SLOW_ONE_CYCLE);
 								break;
 						}
 
@@ -1569,53 +1556,44 @@ uint8 S9xDoHDMA (uint8 byte)
 							switch (p->TransferMode)
 							{
 								case 0:
+									CPU.Cycles += SLOW_ONE_CYCLE;
 									S9xSetPPU(S9xGetByte(Addr), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									break;
 
 								case 5:
+									CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 									S9xSetPPU(S9xGetByte(Addr + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 1), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									Addr += 2;
 									/* fall through */
 								case 1:
+									CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 									S9xSetPPU(S9xGetByte(Addr + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 1), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									break;
 
 								case 2:
 								case 6:
+									CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 									S9xSetPPU(S9xGetByte(Addr + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 1), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									break;
 
 								case 3:
 								case 7:
+									CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 									S9xSetPPU(S9xGetByte(Addr + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 1), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 2), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 3), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									break;
 
 								case 4:
+									CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 									S9xSetPPU(S9xGetByte(Addr + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 1), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 2), 0x2102 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(S9xGetByte(Addr + 3), 0x2103 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									break;
 							}
 						}
@@ -1625,56 +1603,47 @@ uint8 S9xDoHDMA (uint8 byte)
 							switch (p->TransferMode)
 							{
 								case 0:
+									CPU.Cycles += SLOW_ONE_CYCLE;
 									S9xSetPPU(*HDMAMemPointers[d]++, 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									break;
 
 								case 5:
+									CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 									S9xSetPPU(*(HDMAMemPointers[d] + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 1), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									HDMAMemPointers[d] += 2;
 									/* fall through */
 								case 1:
+									CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 									S9xSetPPU(*(HDMAMemPointers[d] + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 1), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									HDMAMemPointers[d] += 2;
 									break;
 
 								case 2:
 								case 6:
+									CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 									S9xSetPPU(*(HDMAMemPointers[d] + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 1), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									HDMAMemPointers[d] += 2;
 									break;
 
 								case 3:
 								case 7:
+									CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 									S9xSetPPU(*(HDMAMemPointers[d] + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 1), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 2), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 3), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									HDMAMemPointers[d] += 4;
 									break;
 
 								case 4:
+									CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 									S9xSetPPU(*(HDMAMemPointers[d] + 0), 0x2100 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 1), 0x2101 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 2), 0x2102 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									S9xSetPPU(*(HDMAMemPointers[d] + 3), 0x2103 + p->BAddress);
-									ADD_CYCLES(SLOW_ONE_CYCLE);
 									HDMAMemPointers[d] += 4;
 									break;
 							}
@@ -1696,57 +1665,46 @@ uint8 S9xDoHDMA (uint8 byte)
 					switch (p->TransferMode)
 					{
 						case 0:
+							CPU.Cycles += SLOW_ONE_CYCLE;
 							DOBYTE(IAddr, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							break;
 
 						case 5:
+							CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 							DOBYTE(IAddr + 0, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 1, 1);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 2, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 3, 1);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							break;
 
 						case 1:
+							CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 							DOBYTE(IAddr + 0, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 1, 1);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							break;
 
 						case 2:
 						case 6:
+							CPU.Cycles += 2 * SLOW_ONE_CYCLE;
 							DOBYTE(IAddr + 0, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 1, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							break;
 
 						case 3:
 						case 7:
+							CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 							DOBYTE(IAddr + 0, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 1, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 2, 1);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 3, 1);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							break;
 
 						case 4:
+							CPU.Cycles += 4 * SLOW_ONE_CYCLE;
 							DOBYTE(IAddr + 0, 0);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 1, 1);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 2, 2);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							DOBYTE(IAddr + 3, 3);
-							ADD_CYCLES(SLOW_ONE_CYCLE);
 							break;
 					}
 
@@ -1772,7 +1730,7 @@ uint8 S9xDoHDMA (uint8 byte)
 				}
 			}
 			else
-				ADD_CYCLES(SLOW_ONE_CYCLE);
+				CPU.Cycles += SLOW_ONE_CYCLE;
 		}
 	}
 

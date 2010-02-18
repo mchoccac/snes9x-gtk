@@ -130,61 +130,70 @@ const char *
 S9xGetDirectory (enum s9x_getdirtype dirtype)
 {
     static char path[PATH_MAX + 1];
+    char        *config_dir = get_config_dir ();
 
     switch (dirtype)
     {
+        default:
+        case DEFAULT_DIR:
+            strcpy (path, config_dir);
+            break;
+
         case HOME_DIR:
             strcpy (path, getenv ("HOME"));
             break;
 
+        case ROM_DIR:
+            sprintf (path, "%s/roms", config_dir);
+            break;
+
         case SNAPSHOT_DIR:
-            sprintf (path, "%s", gui_config->savestate_directory);
+            sprintf (path, "%s/snapshots", config_dir);
             break;
 
         case IPS_DIR:
-            sprintf (path, "%s", gui_config->patch_directory);
-            break;
-            
         case CHEAT_DIR:
-            sprintf (path, "%s", gui_config->cheat_directory);
-            break;
-            
         case SRAM_DIR:
-            sprintf (path, "%s", gui_config->sram_directory);
-            break;
-            
-        case SCREENSHOT_DIR:
-        case SPC_DIR:
-            sprintf (path, "%s", gui_config->export_directory);
+        case ROMFILENAME_DIR:
+        case BIOS_DIR:
+            char *loc;
 
-        default:
-            path[0] = '\0';
-    }
+            strcpy (path, Memory.ROMFilename);
 
-    /* Anything else, use ROM filename path */    
-    if (path[0] == '\0')
-    {
-        char *loc;
+            loc = strrchr (path, SLASH_CHAR);
 
-        strcpy (path, Memory.ROMFilename);
-
-        loc = strrchr (path, SLASH_CHAR);
-
-        if (loc == NULL)
-        {
-            if (getcwd (path, PATH_MAX + 1) == NULL)
+            if (loc == NULL)
             {
-                strcpy (path, getenv ("HOME"));
+                if (getcwd (path, PATH_MAX + 1) == NULL)
+                {
+                    strcpy (path, getenv ("HOME"));
+                }
             }
-        }
-        else
-        {
-            path[loc - path] = '\0';
-        }
+            else
+            {
+                path[loc - path] = '\0';
+            }
+
+            if (gui_config->data_location == DIR_ROM ||
+                dirtype == ROMFILENAME_DIR)
+            {
+                /* printf ("Got %s\n", path); */
+
+                break;
+            }
+
+            if (gui_config->data_location == DIR_CONFIG)
+                sprintf (path, "%s/sram", config_dir);
+            else if (gui_config->data_location == DIR_CUSTOM)
+                sprintf (path, "%s", gui_config->custom_sram_directory);
+
+            break;
     }
 
     /* Try and mkdir, whether it exists or not */
     mkdir (path, 0777);
+
+    free (config_dir);
 
     /* printf ("path: %s\n", path); */
 
@@ -204,7 +213,7 @@ S9xGetFilename (const char *ex, enum s9x_getdirtype dirtype)
 
     snprintf (filename, sizeof (filename), "%s" SLASH_STR "%s%s",
               S9xGetDirectory (dirtype), fname, ex);
-    
+
     return (filename);
 }
 
@@ -399,7 +408,7 @@ S9xOpenROMDialog (void)
     {
             "*.smc", "*.SMC", "*.fig", "*.FIG", "*.sfc", "*.SFC",
             "*.jma", "*.JMA", "*.zip", "*.ZIP", "*.gd3", "*.GD3",
-            "*.swc", "*.SWC", "*.gz" , "*.GZ",
+            "*.swc", "*.SWC",
             NULL
     };
 

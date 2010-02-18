@@ -16,7 +16,6 @@ S9xGTKDisplayDriver::S9xGTKDisplayDriver (Snes9xWindow *window,
 void
 S9xGTKDisplayDriver::update (int width, int height)
 {
-    int   x, y, w, h;
     int   c_width, c_height, final_pitch;
     uint8 *final_buffer;
 
@@ -55,9 +54,70 @@ S9xGTKDisplayDriver::update (int width, int height)
         final_pitch = image_width * image_bpp;
     }
 
-    x = width; y = height; w = c_width; h = c_height;
-    S9xApplyAspect (x, y, w, h);
-    output (final_buffer, final_pitch, x, y, width, height, w, h);
+    if (!config->scale_to_fit &&
+            (width > gdk_buffer_width || height > gdk_buffer_height))
+    {
+        this->clear ();
+
+        return;
+    }
+
+    if (config->scale_to_fit)
+    {
+        double screen_aspect = (double) c_width / (double) c_height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (c_width, c_height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
+        {
+            if (screen_aspect > snes_aspect)
+            {
+                output (final_buffer,
+                        final_pitch,
+                        (c_width - (int) (c_height * snes_aspect)) / 2,
+                        0,
+                        width,
+                        height,
+                        (int) (c_height * snes_aspect),
+                        c_height);
+            }
+            else
+            {
+                output (final_buffer,
+                        final_pitch,
+                        0,
+                        (c_height - c_width / snes_aspect) / 2,
+                        width,
+                        height,
+                        c_width,
+                        (c_width / snes_aspect));
+            }
+        }
+        else
+        {
+            output (final_buffer,
+                    final_pitch,
+                    0,
+                    0,
+                    width,
+                    height,
+                    c_width,
+                    c_height);
+        }
+    }
+    else
+    {
+        output (final_buffer,
+                final_pitch,
+                (c_width - width) / 2,
+                (c_height - height) / 2,
+                width,
+                height,
+                width,
+                height);
+    }
 
     return;
 }
@@ -74,35 +134,26 @@ S9xGTKDisplayDriver::output (void *src,
 {
     GdkGC *gc = drawing_area->style->bg_gc[GTK_WIDGET_STATE (drawing_area)];
 
-    if (dst_width > gdk_buffer_width || dst_height > gdk_buffer_height)
-    {
-        gdk_buffer_width = dst_width;
-        gdk_buffer_height = dst_height;
-
-        padded_buffer[2] = realloc (padded_buffer[2],
-                                    gdk_buffer_width * gdk_buffer_height * 3);
-    }
-
     if (width != dst_width || height != dst_height)
     {
         S9xConvertScale (src,
-                         padded_buffer[2],
-                         src_pitch,
-                         gdk_buffer_width * 3,
-                         width,
-                         height,
-                         dst_width, dst_height,
-                         24);
+                padded_buffer[2],
+                src_pitch,
+                gdk_buffer_width * 3,
+                width,
+                height,
+                dst_width, dst_height,
+                24);
     }
     else
     {
         S9xConvert (src,
-                    padded_buffer[2],
-                    src_pitch,
-                    gdk_buffer_width * 3,
-                    width,
-                    height,
-                    24);
+                padded_buffer[2],
+                src_pitch,
+                gdk_buffer_width * 3,
+                width,
+                height,
+                24);
     }
 
     gdk_draw_rgb_image (drawing_area->window,
@@ -163,9 +214,9 @@ S9xGTKDisplayDriver::deinit (void)
 void
 S9xGTKDisplayDriver::clear (void)
 {
-    int      x, y, w, h;
-    int      width = drawing_area->allocation.width;
-    int      height = drawing_area->allocation.height;
+    int      w, h;
+    int      c_width = drawing_area->allocation.width;
+    int      c_height = drawing_area->allocation.height;
     GdkColor black = { 0, 0, 0, 0 };
     GdkGC    *gc = NULL;
 
@@ -178,33 +229,96 @@ S9xGTKDisplayDriver::clear (void)
                             gc,
                             TRUE,
                             0, 0,
-                            width, height);
+                            c_width, c_height);
         return;
     }
 
     /* Get width of modified display */
-    x = window->last_width;
-    y = window->last_height;
-    get_filter_scale (x, y);
-    w = width;
-    h = height;
-    S9xApplyAspect (x, y, w, h);
-    
-    if (x > 0)
+    w = window->last_width;
+    h = window->last_height;
+    get_filter_scale (w, h);
+
+    if (config->scale_to_fit)
     {
-        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, y, x, h);
+        double screen_aspect = (double) c_width / (double) c_height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (c_width, c_height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
+        {
+            int    bar_size;
+            if (screen_aspect > snes_aspect)
+            {
+                /* Black bars on left and right */
+                w = (int) (c_height * snes_aspect);
+                bar_size = (c_width - w) / 2;
+
+                gdk_draw_rectangle (drawing_area->window,
+                                    gc,
+                                    TRUE,
+                                    0, 0,
+                                    bar_size, c_height);
+                gdk_draw_rectangle (drawing_area->window,
+                                    gc,
+                                    TRUE,
+                                    bar_size + w, 0,
+                                    c_width - bar_size - w,
+                                    c_height);
+            }
+            else
+            {
+                /* Black bars on top and bottom */
+                h = (int) (c_width / snes_aspect);
+                bar_size = (c_height - h) / 2;
+                gdk_draw_rectangle (drawing_area->window,
+                                    gc,
+                                    TRUE,
+                                    0, 0,
+                                    c_width, bar_size);
+                gdk_draw_rectangle (drawing_area->window,
+                                    gc,
+                                    TRUE,
+                                    0, bar_size + h,
+                                    c_width,
+                                    c_height - bar_size - h);
+            }
+        }
+        else
+            return;
     }
-    if (x + w < width)
+    else
     {
-        gdk_draw_rectangle (drawing_area->window, gc, TRUE, x + w, y, width - (x + w), h);
-    }
-    if (y > 0)
-    {
-        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, 0, width, y);
-    }
-    if (y + h < height)
-    {
-        gdk_draw_rectangle (drawing_area->window, gc, TRUE, 0, y + h, width, height - (y + h));
+        /* Black bars on top, bottom, left, and right :-) */
+        int bar_width, bar_height;
+
+        bar_height = (c_height - h) / 2;
+        bar_width = (c_width - w) / 2;
+
+        gdk_draw_rectangle (drawing_area->window,
+                            gc,
+                            TRUE,
+                            0, 0,
+                            c_width, bar_height);
+        gdk_draw_rectangle (drawing_area->window,
+                            gc,
+                            TRUE,
+                            0,
+                            bar_height + h,
+                            c_width,
+                            c_height - (bar_height + h));
+        gdk_draw_rectangle (drawing_area->window,
+                            gc,
+                            TRUE,
+                            0, bar_height,
+                            bar_width, h);
+        gdk_draw_rectangle (drawing_area->window,
+                            gc,
+                            TRUE,
+                            bar_width + w, bar_height,
+                            c_width - (bar_width + w),
+                            h);
     }
 
     return;
@@ -218,6 +332,15 @@ S9xGTKDisplayDriver::refresh (int width, int height)
     c_width = drawing_area->allocation.width;
     c_height = drawing_area->allocation.height;
 
+    if (c_width != gdk_buffer_width || c_height != gdk_buffer_height)
+    {
+        free (padded_buffer[2]);
+
+        gdk_buffer_width = c_width;
+        gdk_buffer_height = c_height;
+
+        padded_buffer[2] = malloc (gdk_buffer_width * gdk_buffer_height * 3);
+    }
 
     if (!config->rom_loaded)
         return;

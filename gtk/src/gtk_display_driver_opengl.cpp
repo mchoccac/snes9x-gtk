@@ -4,8 +4,6 @@
 #include <GL/glx.h>
 #include <GL/glxext.h>
 #include <dlfcn.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/time.h>
 
 #include "gtk_display.h"
@@ -39,44 +37,6 @@ static const char *glUnmapBufferNames[] = { "glUnmapBuffer",
                                             "glUnmapBufferARB",
                                             "glUnmapBufferEXT",
                                             NULL };
-
-static char *
-get_file_contents (const char *filename)
-{
-    struct stat fs;
-    int         fd;
-    
-    if (!filename || !strlen (filename) || stat (filename, &fs))
-    {
-        return NULL;
-    }
-    
-    fd = open (filename, O_RDONLY);
-    if (fd == -1)
-        return NULL;
-    
-    char *contents = new char[fs.st_size + 1];
-    
-    int bytes_read = 0;
-    while (bytes_read < fs.st_size)
-    {
-        int retval;
-        retval = read (fd, contents + bytes_read, fs.st_size - bytes_read);
-        if (retval == -1)
-        {
-            delete[] contents;
-            close (fd);
-            return NULL;
-        }
-        bytes_read += retval;
-    }
-    
-    contents[fs.st_size] = '\0';
-    
-    close (fd);
-    
-    return contents;
-}
 
 gl_proc
 get_null_address_proc (const GLubyte *name)
@@ -150,8 +110,11 @@ S9xOpenGLDisplayDriver::update (int width, int height)
     GLint filter;
     uint8 *final_buffer = NULL;
     int   final_pitch;
+    int   c_width, c_height;
     void  *pboMemory = NULL;
-    int   x, y, w, h;
+
+    c_width = drawing_area->allocation.width;
+    c_height = drawing_area->allocation.height;
 
     if (width <= 0)
         return;
@@ -197,37 +160,173 @@ S9xOpenGLDisplayDriver::update (int width, int height)
         final_pitch = image_width * image_bpp;
     }
 
-    x = width; y = height; 
-    w = drawing_area->allocation.width; h = drawing_area->allocation.height;
-    S9xApplyAspect (x, y, w, h);
-    
-    glViewport (x, y, w, h);
-    window->set_mouseable_area (x, y, w, h);
+    double screen_aspect = (double) c_width / (double) c_height;
+    double snes_aspect = S9xGetAspect ();
+    double granularity = 1.0 / (double) MAX (c_width, c_height);
 
-    update_texture_size (width, height);
-    
-    if (using_pbos)
+    if (!config->scale_to_fit)
     {
-        if (config->pbo_format == PBO_FMT_16)
+        glViewport ((c_width - width) / 2, (c_height - height) / 2,
+                    width, height);
+
+        window->set_mouseable_area ((c_width - width) / 2,
+                                       (c_height - height) / 2,
+                                       width,
+                                       height);
+    }
+
+    else if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
+    {
+        if (screen_aspect > snes_aspect)
         {
-            
-            glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
-            glBufferData (GL_PIXEL_UNPACK_BUFFER,
-                          width * height * 2,
-                          NULL,
-                          GL_STREAM_DRAW);
-            pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            
-            for (int y = 0; y < height; y++)
+            glViewport ((c_width - (int)(c_height * snes_aspect)) / 2, 0,
+                        (int)(c_height * snes_aspect), c_height);
+
+            window->set_mouseable_area ((c_width -
+                    (int) (c_height * snes_aspect)) / 2,
+                    0,
+                    (int) (c_height * snes_aspect),
+                    c_height);
+        }
+
+        else
+        {
+            glViewport (0, (c_height - (int) (c_width / snes_aspect)) / 2,
+                        c_width, (int) (c_width / snes_aspect));
+            window->set_mouseable_area (0,
+                                           (c_height -
+                                             (int) (c_width / snes_aspect)) / 2,
+                                           c_width,
+                                           (int) (c_width / snes_aspect));
+        }
+    }
+
+    else
+    {
+        glViewport (0, 0, c_width, c_height);
+        window->set_mouseable_area (0, 0, c_width, c_height);
+    }
+
+    if (width > 0 && height > 0)
+    {
+        update_texture_size (width, height);
+
+        if (using_pbos)
+        {
+            if (config->pbo_format == PBO_FMT_16)
             {
-                memcpy ((uint8 *) pboMemory + (width * y * 2),
-                        final_buffer + (y * final_pitch),
-                        width * image_bpp);
+
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
+                glBufferData (GL_PIXEL_UNPACK_BUFFER,
+                              width * height * 2,
+                              NULL,
+                              GL_STREAM_DRAW);
+                pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+
+                for (int y = 0; y < height; y++)
+                {
+                    memcpy ((uint8 *) pboMemory + (width * y * 2),
+                            final_buffer + (y * final_pitch),
+                            width * image_bpp);
+                }
+
+                glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
+
+                glPixelStorei (GL_UNPACK_ROW_LENGTH, width);
+                glTexSubImage2D (tex_target,
+                                 0,
+                                 0,
+                                 0,
+                                 width,
+                                 height,
+                                 GL_BGRA,
+                                 GL_UNSIGNED_SHORT_1_5_5_5_REV,
+                                 BUFFER_OFFSET (0));
+
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
             }
-            
-            glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
-            
-            glPixelStorei (GL_UNPACK_ROW_LENGTH, width);
+            else if (config->pbo_format == PBO_FMT_24)
+            {
+                /* Complement width to next multiple of 4 to force line size to
+                 * be a multiple of 4 bytes. Otherwise, packing fails. */
+                int width_mul_4 = width + ((4 - (width % 4)) % 4);
+
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
+                glBufferData (GL_PIXEL_UNPACK_BUFFER,
+                              width_mul_4 * height * 3,
+                              NULL,
+                              GL_STREAM_DRAW);
+                pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+
+                /* Pixel swizzling in software */
+                S9xSetEndianess (ENDIAN_MSB);
+                S9xConvert (final_buffer,
+                            pboMemory,
+                            final_pitch,
+                            width_mul_4 * 3,
+                            width,
+                            height,
+                            24);
+
+                glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
+
+                glPixelStorei (GL_UNPACK_ROW_LENGTH, width_mul_4);
+                glTexSubImage2D (tex_target,
+                                 0,
+                                 0,
+                                 0,
+                                 width,
+                                 height,
+                                 GL_RGB,
+                                 GL_UNSIGNED_BYTE,
+                                 BUFFER_OFFSET (0));
+
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+            }
+            else /* PBO_FMT_32 */
+            {
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
+                glBufferData (GL_PIXEL_UNPACK_BUFFER,
+                              width * height * 4,
+                              NULL,
+                              GL_STREAM_DRAW);
+                pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+
+                /* Pixel swizzling in software */
+#ifdef __BIG_ENDIAN__
+                S9xSetEndianess (ENDIAN_MSB);
+#else
+                S9xSetEndianess (ENDIAN_LSB);
+#endif
+                S9xConvert (final_buffer,
+                            pboMemory,
+                            final_pitch,
+                            width * 4,
+                            width,
+                            height,
+                            32);
+
+                glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
+
+                glPixelStorei (GL_UNPACK_ROW_LENGTH, width);
+                glTexSubImage2D (tex_target,
+                                 0,
+                                 0,
+                                 0,
+                                 width,
+                                 height,
+                                 GL_BGRA,
+                                 PBO_BGRA_NATIVE_ORDER,
+                                 BUFFER_OFFSET (0));
+
+                glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+            }
+        }
+        else
+        {
+            glPixelStorei (GL_UNPACK_ROW_LENGTH, final_pitch / image_bpp);
             glTexSubImage2D (tex_target,
                              0,
                              0,
@@ -236,134 +335,26 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                              height,
                              GL_BGRA,
                              GL_UNSIGNED_SHORT_1_5_5_5_REV,
-                             BUFFER_OFFSET (0));
-            
-            glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+                             final_buffer);
         }
-        else if (config->pbo_format == PBO_FMT_24)
+
+        if (tex_target == GL_TEXTURE_2D)
         {
-            /* Complement width to next multiple of 4 to force line size to
-                 * be a multiple of 4 bytes. Otherwise, packing fails. */
-            int width_mul_4 = width + ((4 - (width % 4)) % 4);
-            
-            glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
-            glBufferData (GL_PIXEL_UNPACK_BUFFER,
-                          width_mul_4 * height * 3,
-                          NULL,
-                          GL_STREAM_DRAW);
-            pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            
-            /* Pixel swizzling in software */
-            S9xSetEndianess (ENDIAN_MSB);
-            S9xConvert (final_buffer,
-                        pboMemory,
-                        final_pitch,
-                        width_mul_4 * 3,
-                        width,
-                        height,
-                        24);
-            
-            glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
-            
-            glPixelStorei (GL_UNPACK_ROW_LENGTH, width_mul_4);
-            glTexSubImage2D (tex_target,
-                             0,
-                             0,
-                             0,
-                             width,
-                             height,
-                             GL_RGB,
-                             GL_UNSIGNED_BYTE,
-                             BUFFER_OFFSET (0));
-            
-            glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+            texcoords[1] = (float) (height) / texture_height;
+            texcoords[2] = (float) (width) / texture_width;
+            texcoords[3] = texcoords[1];
+            texcoords[4] = texcoords[2];
         }
-        else /* PBO_FMT_32 */
+        else if (tex_target == GL_TEXTURE_RECTANGLE)
         {
-            glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
-            glBufferData (GL_PIXEL_UNPACK_BUFFER,
-                          width * height * 4,
-                          NULL,
-                          GL_STREAM_DRAW);
-            pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            
-            /* Pixel swizzling in software */
-#ifdef __BIG_ENDIAN__
-            S9xSetEndianess (ENDIAN_MSB);
-#else
-            S9xSetEndianess (ENDIAN_LSB);
-#endif
-            S9xConvert (final_buffer,
-                        pboMemory,
-                        final_pitch,
-                        width * 4,
-                        width,
-                        height,
-                        32);
-            
-            glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
-            
-            glPixelStorei (GL_UNPACK_ROW_LENGTH, width);
-            glTexSubImage2D (tex_target,
-                             0,
-                             0,
-                             0,
-                             width,
-                             height,
-                             GL_BGRA,
-                             PBO_BGRA_NATIVE_ORDER,
-                             BUFFER_OFFSET (0));
-            
-            glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
+            texcoords[1] = (float) (height);
+            texcoords[2] = (float) (width);
+            texcoords[3] = texcoords[1];
+            texcoords[4] = texcoords[2];
         }
+
+        glDrawArrays (GL_QUADS, 0, 4);
     }
-    else
-    {
-        glPixelStorei (GL_UNPACK_ROW_LENGTH, final_pitch / image_bpp);
-        glTexSubImage2D (tex_target,
-                         0,
-                         0,
-                         0,
-                         width,
-                         height,
-                         GL_BGRA,
-                         GL_UNSIGNED_SHORT_1_5_5_5_REV,
-                         final_buffer);
-    }
-    
-    if (tex_target == GL_TEXTURE_2D)
-    {
-        texcoords[1] = (float) (height) / texture_height;
-        texcoords[2] = (float) (width) / texture_width;
-        texcoords[3] = texcoords[1];
-        texcoords[4] = texcoords[2];
-    }
-    else if (tex_target == GL_TEXTURE_RECTANGLE)
-    {
-        texcoords[1] = (float) (height);
-        texcoords[2] = (float) (width);
-        texcoords[3] = texcoords[1];
-        texcoords[4] = texcoords[2];
-    }
-    
-    if (using_shaders)
-    {
-        GLint location;
-        
-        float inputSize[2] = { width, height };
-        location = glGetUniformLocation (program, "rubyInputSize");
-        glUniform2fv (location, 1, inputSize);
-        
-        float outputSize[2] = {w , h };
-        location = glGetUniformLocation (program, "rubyOutputSize");
-        glUniform2fv (location, 1, outputSize);
-        
-        float textureSize[2] = { texture_width, texture_height };
-        location = glGetUniformLocation (program, "rubyTextureSize");
-        glUniform2fv (location, 1, textureSize);
-    }
-        
-    glDrawArrays (GL_QUADS, 0, 4);
 
     gl_unlock ();
     gl_swap ();
@@ -491,84 +482,6 @@ S9xOpenGLDisplayDriver::load_pixel_buffer_functions (void)
     return 1;
 }
 
-int
-S9xOpenGLDisplayDriver::load_shader_functions (void)
-{
-    glCreateProgram = (glCreateProgramProc) glGetProcAddress ((GLubyte *) "glCreateProgram");
-    glCreateShader = (glCreateShaderProc) glGetProcAddress ((GLubyte *) "glCreateShader");
-    glCompileShader = (glCompileShaderProc) glGetProcAddress ((GLubyte *) "glCompileShader");
-    glDeleteShader = (glDeleteShaderProc) glGetProcAddress ((GLubyte *) "glDeleteShader");
-    glDeleteProgram = (glDeleteProgramProc) glGetProcAddress ((GLubyte *) "glDeleteProgram");
-    glAttachShader = (glAttachShaderProc) glGetProcAddress ((GLubyte *) "glAttachShader");
-    glDetachShader = (glDetachShaderProc) glGetProcAddress ((GLubyte *) "glDetachShader");
-    glLinkProgram = (glLinkProgramProc) glGetProcAddress ((GLubyte *) "glLinkProgram");
-    glUseProgram = (glUseProgramProc) glGetProcAddress ((GLubyte *) "glUseProgram");
-    glShaderSource = (glShaderSourceProc) glGetProcAddress ((GLubyte *) "glShaderSource");
-    glGetUniformLocation = (glGetUniformLocationProc) glGetProcAddress ((GLubyte *) "glGetUniformLocation");
-    glUniform2fv = (glUniform2fvProc) glGetProcAddress ((GLubyte *) "glUniform2fv");
-    
-    if (!glCreateProgram || 
-        !glCreateShader || 
-        !glCompileShader || 
-        !glDeleteShader ||
-        !glDeleteProgram ||
-        !glAttachShader ||
-        !glDetachShader ||
-        !glLinkProgram ||
-        !glUseProgram ||
-        !glShaderSource ||
-        !glGetUniformLocation ||
-        !glUniform2fv)
-    {
-        return 0;
-    }
-    
-    return 1;
-}
-
-int
-S9xOpenGLDisplayDriver::load_shaders (const char *vertex_file,
-                                      const char *fragment_file)
-{
-    char *fragment, *vertex;
-    
-    if (!load_shader_functions ())
-    {
-        fprintf (stderr, _("Cannot load GLSL shader functions.\n"));
-        return 0;
-    }
-    
-    fragment = get_file_contents (fragment_file);
-    if (!fragment)
-    {
-        fprintf (stderr, _("Cannot load fragment program.\n"));
-        return 0;
-    }
-    
-    vertex   = get_file_contents (vertex_file);
-    if (!vertex)
-    {
-        fprintf (stderr, _("Cannot load vertex program.\n"));
-        delete[] fragment;
-        return 0;
-    }
-    
-    program = glCreateProgram ();
-    vertex_shader = glCreateShader (GL_VERTEX_SHADER);
-    fragment_shader = glCreateShader (GL_FRAGMENT_SHADER);
-    glShaderSource (vertex_shader, 1, (const GLchar **) &vertex, NULL);    
-    glShaderSource (fragment_shader, 1, (const GLchar **) &fragment, NULL);
-    glCompileShader (vertex_shader);
-    glCompileShader (fragment_shader);
-    glAttachShader (program, vertex_shader);
-    glAttachShader (program, fragment_shader);
-    glLinkProgram (program);
-    
-    glUseProgram (program);
-
-    return 1;
-}
-
 void
 S9xOpenGLDisplayDriver::opengl_defaults (void)
 {
@@ -578,7 +491,10 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
 
     vi = glXChooseVisual (display, DefaultScreen (display), glx_attribs);
 
-    glx_context = glXCreateContext (display, vi, 0, 1);
+    glx_context = glXCreateContext (display,
+                                    vi,
+                                    0,
+                                    1);
     glXMakeCurrent (display, GDK_WINDOW_XWINDOW (drawing_area->window), glx_context);
 
     gl_lock ();
@@ -599,20 +515,7 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
             using_pbos = 1;
         }
     }
-    
-    using_shaders = 0;
-    if (config->use_shaders)
-    {
-        if (!load_shaders (config->vertex_shader, config->fragment_shader))
-        {
-            config->use_shaders = 0;
-        }
-        else
-        {
-            using_shaders = 1;
-        }   
-    }
-     
+
     tex_target = GL_TEXTURE_2D;
     texture_width = 1024;
     texture_height = 1024;
@@ -620,7 +523,7 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
 
     if (config->npot_textures)
     {
-        if (!using_shaders && strstr (extensions, "_texture_rectangle"))
+        if (strstr (extensions, "_texture_rectangle"))
         {
             tex_target = GL_TEXTURE_RECTANGLE;
             texture_width = scaled_max_width;
@@ -751,7 +654,7 @@ S9xOpenGLDisplayDriver::init (void)
 
     filtering = -1;
 
-    swap_control (config->sync_to_vblank);
+    this->swap_control (config->sync_to_vblank);
 
     return 0;
 }
@@ -836,17 +739,6 @@ S9xOpenGLDisplayDriver::gl_swap (void)
 void
 S9xOpenGLDisplayDriver::deinit (void)
 {
-    if (using_shaders)
-    {
-        glUseProgram (0);
-        glDetachShader (program, vertex_shader);
-        glDetachShader (program, fragment_shader);
-        glDeleteShader (vertex_shader);
-        glDeleteShader (fragment_shader);
-        glDeleteProgram (program);
-        using_shaders = 0;
-    }
-
     glXDestroyContext (GDK_DISPLAY (), glx_context);
 
     GFX.Screen = NULL;

@@ -31,7 +31,7 @@
 #endif /* ENABLE_NLS */
 
 #define SNES9X_GTK_AUTHORS "(c) Copyright 2007 - 2010  Brandon Wright (bearoso@gmail.com)"
-#define SNES9X_GTK_VERSION "80"
+#define SNES9X_GTK_VERSION "79"
 
 extern Snes9xWindow *top_level;
 extern Snes9xConfig *gui_config;

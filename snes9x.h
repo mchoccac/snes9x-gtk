@@ -179,14 +179,12 @@
 #define _SNES9X_H_
 
 #ifndef VERSION
-#define VERSION	"1.53"
+#define VERSION	"1.52"
 #endif
 
 #include "port.h"
 #include "65c816.h"
 #include "messages.h"
-
-#define S9X_ACCURACY_LEVEL		3
 
 #ifdef ZLIB
 #include <zlib.h>

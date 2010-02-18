@@ -20,6 +20,8 @@ snes9x_gtk_SOURCES = \
     ../filter/2xsai.h \
     ../filter/epx.cpp \
     ../filter/epx.h \
+    ../filter/hq2x.cpp \
+    ../filter/hq2x.h \
     src/filter_epx_unsafe.h \
     src/filter_epx_unsafe.cpp \
     src/gtk_binding.cpp \
@@ -54,12 +56,6 @@ snes9x_gtk_SOURCES = \
     src/snes_ntsc.h \
     src/snes_ntsc_impl.h \
     src/snes_ntsc.c
-
-if HQ2X
-snes9x_gtk_SOURCES += \
-    ../filter/hq2x.cpp \
-    ../filter/hq2x.h
-endif
 
 if PORTAUDIO
 snes9x_gtk_SOURCES += \

@@ -84,6 +84,12 @@ S9xXVDisplayDriver::update (int width, int height)
         final_pitch = image_width * image_bpp;
     }
 
+    if (!config->scale_to_fit && (width > current_width || height > current_height))
+    {
+        clear ();
+        return;
+    }
+
     update_image_size (width, height);
 
     if (format == FOURCC_YUY2)
@@ -109,10 +115,48 @@ S9xXVDisplayDriver::update (int width, int height)
                         bpp);
     }
 
-    dst_x = width; dst_y = height; 
-    dst_width = current_width; dst_height = current_height;
-    S9xApplyAspect (dst_x, dst_y, dst_width, dst_height);
-    
+    if (config->scale_to_fit)
+    {
+        double screen_aspect = (double) current_width / (double) current_height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (current_width, current_height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
+        {
+            if (screen_aspect > snes_aspect)
+            {
+                dst_x = (current_width - (int) (current_height * snes_aspect)) / 2;
+                dst_y = 0;
+                dst_width = (int) (current_height * snes_aspect);
+                dst_height = current_height;
+            }
+            else
+            {
+                dst_x = 0;
+                dst_y = (current_height - current_width / snes_aspect) / 2;
+                dst_width = current_width;
+                dst_height = (current_width / snes_aspect);
+            }
+        }
+        else
+        {
+            dst_x = 0;
+            dst_y = 0;
+            dst_width = current_width;
+            dst_height = current_height;
+        }
+    }
+    else
+    {
+        dst_x = (current_width - width) / 2;
+        dst_y = (current_height - height) / 2;
+        dst_width = width;
+        dst_height = height;
+    }
+
+
     if (last_known_width != dst_width || last_known_height != dst_height)
     {
         last_known_width = dst_width;
@@ -498,9 +542,9 @@ S9xXVDisplayDriver::deinit (void)
 void
 S9xXVDisplayDriver::clear (void)
 {
-    int  x, y, w, h;
-    int  width = drawing_area->allocation.width;
-    int  height = drawing_area->allocation.height;
+    int          x, y, w, h;
+    int          width = drawing_area->allocation.width;
+    int          height = drawing_area->allocation.height;
 
     if (window->last_width <= 0 || window->last_height <= 0)
     {
@@ -509,12 +553,45 @@ S9xXVDisplayDriver::clear (void)
     }
 
     /* Get width of modified display */
-    x = window->last_width;
-    y = window->last_height;
-    get_filter_scale (x, y);
-    w = width;
-    h = height;
-    S9xApplyAspect (x, y, w, h);
+    w = window->last_width;
+    h = window->last_height;
+    get_filter_scale (w, h);
+
+    if (config->scale_to_fit)
+    {
+        double screen_aspect = (double) width / (double) height;
+        double snes_aspect = S9xGetAspect ();
+        double granularity = 1.0 / (double) MAX (width, height);
+
+        if (config->maintain_aspect_ratio &&
+            !(screen_aspect <= snes_aspect * (1.0 + granularity) &&
+              screen_aspect >= snes_aspect * (1.0 - granularity)))
+        {
+            if (screen_aspect > snes_aspect)
+            {
+                x = (width - (int) (height * snes_aspect)) / 2;
+                y = 0;
+                w = (int) (height * snes_aspect);
+                h = height;
+            }
+            else
+            {
+                x = 0;
+                y = (height - width / snes_aspect) / 2;
+                w = width;
+                h = (width / snes_aspect);
+            }
+        }
+        else
+        {
+            return;
+        }
+    }
+    else
+    {
+        x = (width - w) / 2;
+        y = (height - h) / 2;
+    }
 
     if (x > 0)
     {

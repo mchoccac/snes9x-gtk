@@ -765,6 +765,7 @@ Snes9xWindow::open_multicart_dialog (void)
                                           GTK_MESSAGE_ERROR,
                                           GTK_BUTTONS_CLOSE,
                                           _("Couldn't load files."));
+            gtk_window_set_title (GTK_WINDOW (msg), _("Error"));
             gtk_dialog_run (GTK_DIALOG (msg));
             gtk_widget_destroy (msg);
         }
@@ -902,6 +903,7 @@ Snes9xWindow::try_open_rom (const char *filename)
                                       GTK_BUTTONS_CLOSE,
                                       _("Couldn't load file '%s'"),
                                       filename);
+        gtk_window_set_title (GTK_WINDOW (msg), _("Error"));
         gtk_dialog_run (GTK_DIALOG (msg));
         gtk_widget_destroy (msg);
 
@@ -1222,6 +1224,7 @@ Snes9xWindow::save_spc_dialog ()
                                           GTK_BUTTONS_CLOSE,
                                           _("Couldn't save SPC file '%s'"),
                                           filename);
+            gtk_window_set_title (GTK_WINDOW (msg), _("Error"));
             gtk_dialog_run (GTK_DIALOG (msg));
             gtk_widget_destroy (msg);
         }
@@ -1342,7 +1345,7 @@ Snes9xWindow::show_rom_info (void)
 
     msg = gtk_message_dialog_new_with_markup (GTK_WINDOW (window),
                                               GTK_DIALOG_DESTROY_WITH_PARENT,
-                                              GTK_MESSAGE_INFO,
+                                              GTK_MESSAGE_OTHER,
                                               GTK_BUTTONS_CLOSE,
                                               _("<b>Information for %s</b>\n\n"
                                               "<i>Name:</i> %s\n"
@@ -1384,7 +1387,8 @@ Snes9xWindow::show_rom_info (void)
                                                   Memory.CalculatedChecksum) ?
                                                _("\n\nThis ROM has been modified or damaged")
                                                : "");
-
+    gtk_window_set_title (GTK_WINDOW (msg), _("File Information"));
+    
     gtk_dialog_run (GTK_DIALOG (msg));
 
     unpause_from_focus_change ();

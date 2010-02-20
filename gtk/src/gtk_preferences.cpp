@@ -462,6 +462,7 @@ Snes9xPreferences::calibration_dialog (void)
                                      GTK_MESSAGE_INFO,
                                      GTK_BUTTONS_OK,
                                      _("Current joystick centers have been saved."));
+    gtk_window_set_title (GTK_WINDOW (dialog), _("Calibration Complete"));
 
     gtk_dialog_run (GTK_DIALOG (dialog));
 

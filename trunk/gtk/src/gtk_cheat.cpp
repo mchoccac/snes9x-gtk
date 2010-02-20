@@ -22,6 +22,7 @@ display_errorbox (const char *error)
                                                 GTK_BUTTONS_OK,
                                                 "%s",
                                                 error);
+    gtk_window_set_title (GTK_WINDOW (dialog), _("Error"));
     gtk_dialog_run (GTK_DIALOG (dialog));
     gtk_widget_destroy (dialog);
 

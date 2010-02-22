@@ -45,18 +45,18 @@ get_file_contents (const char *filename)
 {
     struct stat fs;
     int         fd;
-    
+
     if (!filename || !strlen (filename) || stat (filename, &fs))
     {
         return NULL;
     }
-    
+
     fd = open (filename, O_RDONLY);
     if (fd == -1)
         return NULL;
-    
+
     char *contents = new char[fs.st_size + 1];
-    
+
     int bytes_read = 0;
     while (bytes_read < fs.st_size)
     {
@@ -70,11 +70,11 @@ get_file_contents (const char *filename)
         }
         bytes_read += retval;
     }
-    
+
     contents[fs.st_size] = '\0';
-    
+
     close (fd);
-    
+
     return contents;
 }
 
@@ -156,8 +156,6 @@ S9xOpenGLDisplayDriver::update (int width, int height)
     if (width <= 0)
         return;
 
-    gl_lock ();
-
     /* This avoids messing with the texture parameters every time */
     if (config->bilinear_filter != filtering)
     {
@@ -197,36 +195,36 @@ S9xOpenGLDisplayDriver::update (int width, int height)
         final_pitch = image_width * image_bpp;
     }
 
-    x = width; y = height; 
+    x = width; y = height;
     w = drawing_area->allocation.width; h = drawing_area->allocation.height;
     S9xApplyAspect (x, y, w, h);
-    
+
     glViewport (x, y, w, h);
     window->set_mouseable_area (x, y, w, h);
 
     update_texture_size (width, height);
-    
+
     if (using_pbos)
     {
         if (config->pbo_format == PBO_FMT_16)
         {
-            
+
             glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
             glBufferData (GL_PIXEL_UNPACK_BUFFER,
                           width * height * 2,
                           NULL,
                           GL_STREAM_DRAW);
             pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            
+
             for (int y = 0; y < height; y++)
             {
                 memcpy ((uint8 *) pboMemory + (width * y * 2),
                         final_buffer + (y * final_pitch),
                         width * image_bpp);
             }
-            
+
             glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
-            
+
             glPixelStorei (GL_UNPACK_ROW_LENGTH, width);
             glTexSubImage2D (tex_target,
                              0,
@@ -237,7 +235,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                              GL_BGRA,
                              GL_UNSIGNED_SHORT_1_5_5_5_REV,
                              BUFFER_OFFSET (0));
-            
+
             glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
         }
         else if (config->pbo_format == PBO_FMT_24)
@@ -245,14 +243,14 @@ S9xOpenGLDisplayDriver::update (int width, int height)
             /* Complement width to next multiple of 4 to force line size to
                  * be a multiple of 4 bytes. Otherwise, packing fails. */
             int width_mul_4 = width + ((4 - (width % 4)) % 4);
-            
+
             glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);
             glBufferData (GL_PIXEL_UNPACK_BUFFER,
                           width_mul_4 * height * 3,
                           NULL,
                           GL_STREAM_DRAW);
             pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            
+
             /* Pixel swizzling in software */
             S9xSetEndianess (ENDIAN_MSB);
             S9xConvert (final_buffer,
@@ -262,9 +260,9 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                         width,
                         height,
                         24);
-            
+
             glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
-            
+
             glPixelStorei (GL_UNPACK_ROW_LENGTH, width_mul_4);
             glTexSubImage2D (tex_target,
                              0,
@@ -275,7 +273,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                              GL_RGB,
                              GL_UNSIGNED_BYTE,
                              BUFFER_OFFSET (0));
-            
+
             glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
         }
         else /* PBO_FMT_32 */
@@ -286,7 +284,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                           NULL,
                           GL_STREAM_DRAW);
             pboMemory = glMapBuffer (GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-            
+
             /* Pixel swizzling in software */
 #ifdef __BIG_ENDIAN__
             S9xSetEndianess (ENDIAN_MSB);
@@ -300,9 +298,9 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                         width,
                         height,
                         32);
-            
+
             glUnmapBuffer (GL_PIXEL_UNPACK_BUFFER);
-            
+
             glPixelStorei (GL_UNPACK_ROW_LENGTH, width);
             glTexSubImage2D (tex_target,
                              0,
@@ -313,7 +311,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                              GL_BGRA,
                              PBO_BGRA_NATIVE_ORDER,
                              BUFFER_OFFSET (0));
-            
+
             glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
         }
     }
@@ -330,7 +328,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
                          GL_UNSIGNED_SHORT_1_5_5_5_REV,
                          final_buffer);
     }
-    
+
     if (tex_target == GL_TEXTURE_2D)
     {
         texcoords[1] = (float) (height) / texture_height;
@@ -345,27 +343,26 @@ S9xOpenGLDisplayDriver::update (int width, int height)
         texcoords[3] = texcoords[1];
         texcoords[4] = texcoords[2];
     }
-    
+
     if (using_shaders)
     {
         GLint location;
-        
+
         float inputSize[2] = { width, height };
         location = glGetUniformLocation (program, "rubyInputSize");
         glUniform2fv (location, 1, inputSize);
-        
+
         float outputSize[2] = {w , h };
         location = glGetUniformLocation (program, "rubyOutputSize");
         glUniform2fv (location, 1, outputSize);
-        
+
         float textureSize[2] = { texture_width, texture_height };
         location = glGetUniformLocation (program, "rubyTextureSize");
         glUniform2fv (location, 1, textureSize);
     }
-        
+
     glDrawArrays (GL_QUADS, 0, 4);
 
-    gl_unlock ();
     gl_swap ();
 
     return;
@@ -377,8 +374,6 @@ S9xOpenGLDisplayDriver::clear_buffers (void)
     memset (buffer[0], 0, image_padded_size);
     memset (buffer[1], 0, scaled_padded_size);
 
-    gl_lock ();
-
     glPixelStorei (GL_UNPACK_ROW_LENGTH, scaled_max_width);
     glTexSubImage2D (tex_target,
                      0,
@@ -389,7 +384,6 @@ S9xOpenGLDisplayDriver::clear_buffers (void)
                      GL_BGRA,
                      GL_UNSIGNED_SHORT_1_5_5_5_REV,
                      buffer[1]);
-    gl_unlock ();
 
     return;
 }
@@ -441,6 +435,9 @@ S9xOpenGLDisplayDriver::load_pixel_buffer_functions (void)
 {
     const char *extensions = (const char *) glGetString (GL_EXTENSIONS);
 
+    if (!extensions)
+        return 0;
+
     if (strstr (extensions, "pixel_buffer_object"))
     {
         glGenBuffers =
@@ -471,59 +468,62 @@ S9xOpenGLDisplayDriver::load_pixel_buffer_functions (void)
             (glUnmapBufferProc)
             get_aliased_extension (glUnmapBufferNames);
 
-        if (!glGenBuffers    ||
-            !glBindBuffer    ||
-            !glBufferData    ||
-            !glBufferSubData ||
-            !glMapBuffer     ||
-            !glUnmapBuffer   ||
-            !glDeleteBuffers)
+        if (glGenBuffers    &&
+            glBindBuffer    &&
+            glBufferData    &&
+            glBufferSubData &&
+            glMapBuffer     &&
+            glUnmapBuffer   &&
+            glDeleteBuffers)
         {
-            return 0;
+            return 1;
         }
     }
 
-    else
-    {
-        return 0;
-    }
-
-    return 1;
+    return 0;
 }
 
 int
 S9xOpenGLDisplayDriver::load_shader_functions (void)
 {
-    glCreateProgram = (glCreateProgramProc) glGetProcAddress ((GLubyte *) "glCreateProgram");
-    glCreateShader = (glCreateShaderProc) glGetProcAddress ((GLubyte *) "glCreateShader");
-    glCompileShader = (glCompileShaderProc) glGetProcAddress ((GLubyte *) "glCompileShader");
-    glDeleteShader = (glDeleteShaderProc) glGetProcAddress ((GLubyte *) "glDeleteShader");
-    glDeleteProgram = (glDeleteProgramProc) glGetProcAddress ((GLubyte *) "glDeleteProgram");
-    glAttachShader = (glAttachShaderProc) glGetProcAddress ((GLubyte *) "glAttachShader");
-    glDetachShader = (glDetachShaderProc) glGetProcAddress ((GLubyte *) "glDetachShader");
-    glLinkProgram = (glLinkProgramProc) glGetProcAddress ((GLubyte *) "glLinkProgram");
-    glUseProgram = (glUseProgramProc) glGetProcAddress ((GLubyte *) "glUseProgram");
-    glShaderSource = (glShaderSourceProc) glGetProcAddress ((GLubyte *) "glShaderSource");
-    glGetUniformLocation = (glGetUniformLocationProc) glGetProcAddress ((GLubyte *) "glGetUniformLocation");
-    glUniform2fv = (glUniform2fvProc) glGetProcAddress ((GLubyte *) "glUniform2fv");
-    
-    if (!glCreateProgram || 
-        !glCreateShader || 
-        !glCompileShader || 
-        !glDeleteShader ||
-        !glDeleteProgram ||
-        !glAttachShader ||
-        !glDetachShader ||
-        !glLinkProgram ||
-        !glUseProgram ||
-        !glShaderSource ||
-        !glGetUniformLocation ||
-        !glUniform2fv)
-    {
+    const char *extensions = (const char *) glGetString (GL_EXTENSIONS);
+
+    if (!extensions)
         return 0;
+
+    if (strstr (extensions, "pixel_buffer_object"))
+    {
+        glCreateProgram = (glCreateProgramProc) glGetProcAddress ((GLubyte *) "glCreateProgram");
+        glCreateShader = (glCreateShaderProc) glGetProcAddress ((GLubyte *) "glCreateShader");
+        glCompileShader = (glCompileShaderProc) glGetProcAddress ((GLubyte *) "glCompileShader");
+        glDeleteShader = (glDeleteShaderProc) glGetProcAddress ((GLubyte *) "glDeleteShader");
+        glDeleteProgram = (glDeleteProgramProc) glGetProcAddress ((GLubyte *) "glDeleteProgram");
+        glAttachShader = (glAttachShaderProc) glGetProcAddress ((GLubyte *) "glAttachShader");
+        glDetachShader = (glDetachShaderProc) glGetProcAddress ((GLubyte *) "glDetachShader");
+        glLinkProgram = (glLinkProgramProc) glGetProcAddress ((GLubyte *) "glLinkProgram");
+        glUseProgram = (glUseProgramProc) glGetProcAddress ((GLubyte *) "glUseProgram");
+        glShaderSource = (glShaderSourceProc) glGetProcAddress ((GLubyte *) "glShaderSource");
+        glGetUniformLocation = (glGetUniformLocationProc) glGetProcAddress ((GLubyte *) "glGetUniformLocation");
+        glUniform2fv = (glUniform2fvProc) glGetProcAddress ((GLubyte *) "glUniform2fv");
+
+        if (glCreateProgram      &&
+            glCreateShader       &&
+            glCompileShader      &&
+            glDeleteShader       &&
+            glDeleteProgram      &&
+            glAttachShader       &&
+            glDetachShader       &&
+            glLinkProgram        &&
+            glUseProgram         &&
+            glShaderSource       &&
+            glGetUniformLocation &&
+            glUniform2fv)
+        {
+            return 1;
+        }
     }
-    
-    return 1;
+
+    return 0;
 }
 
 int
@@ -531,20 +531,20 @@ S9xOpenGLDisplayDriver::load_shaders (const char *vertex_file,
                                       const char *fragment_file)
 {
     char *fragment, *vertex;
-    
+
     if (!load_shader_functions ())
     {
         fprintf (stderr, _("Cannot load GLSL shader functions.\n"));
         return 0;
     }
-    
+
     fragment = get_file_contents (fragment_file);
     if (!fragment)
     {
         fprintf (stderr, _("Cannot load fragment program.\n"));
         return 0;
     }
-    
+
     vertex   = get_file_contents (vertex_file);
     if (!vertex)
     {
@@ -552,24 +552,24 @@ S9xOpenGLDisplayDriver::load_shaders (const char *vertex_file,
         delete[] fragment;
         return 0;
     }
-    
+
     program = glCreateProgram ();
     vertex_shader = glCreateShader (GL_VERTEX_SHADER);
     fragment_shader = glCreateShader (GL_FRAGMENT_SHADER);
-    glShaderSource (vertex_shader, 1, (const GLchar **) &vertex, NULL);    
+    glShaderSource (vertex_shader, 1, (const GLchar **) &vertex, NULL);
     glShaderSource (fragment_shader, 1, (const GLchar **) &fragment, NULL);
     glCompileShader (vertex_shader);
     glCompileShader (fragment_shader);
     glAttachShader (program, vertex_shader);
     glAttachShader (program, fragment_shader);
     glLinkProgram (program);
-    
+
     glUseProgram (program);
 
     return 1;
 }
 
-void
+int
 S9xOpenGLDisplayDriver::opengl_defaults (void)
 {
     XVisualInfo *vi;
@@ -578,12 +578,27 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
 
     vi = glXChooseVisual (display, DefaultScreen (display), glx_attribs);
 
+    if (!vi)
+    {
+        fprintf (stderr, _("Couldn't find an adequate OpenGL visual.\n"));
+        return 0;
+    }
+
     glx_context = glXCreateContext (display, vi, 0, 1);
-    glXMakeCurrent (display, GDK_WINDOW_XWINDOW (drawing_area->window), glx_context);
+    XFree (vi);
 
-    gl_lock ();
+    if (!glx_context)
+    {
+        fprintf (stderr, _("Couldn't create an OpenGL context.\n"));
+        return 0;
+    }
 
-    const char *extensions = (const char *) glGetString (GL_EXTENSIONS);
+    if (!glXMakeCurrent (display, GDK_WINDOW_XWINDOW (drawing_area->window), glx_context))
+    {
+        glXDestroyContext (GDK_DISPLAY (), glx_context);
+        fprintf (stderr, "glXMakeCurrent failed.\n");
+        return 0;
+    }
 
     using_pbos = 0;
     if (config->use_pbos)
@@ -599,7 +614,7 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
             using_pbos = 1;
         }
     }
-    
+
     using_shaders = 0;
     if (config->use_shaders)
     {
@@ -610,15 +625,17 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
         else
         {
             using_shaders = 1;
-        }   
+        }
     }
-     
+
     tex_target = GL_TEXTURE_2D;
     texture_width = 1024;
     texture_height = 1024;
     dyn_resizing = FALSE;
 
-    if (config->npot_textures)
+    const char *extensions = (const char *) glGetString (GL_EXTENSIONS);
+
+    if (extensions && config->npot_textures)
     {
         if (!using_shaders && strstr (extensions, "_texture_rectangle"))
         {
@@ -715,9 +732,7 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
     glLoadIdentity ();
     glOrtho (0.0, 1.0, 0.0, 1.0, -1, 1);
 
-    gl_unlock ();
-
-    return;
+    return 1;
 }
 
 void
@@ -731,7 +746,10 @@ S9xOpenGLDisplayDriver::init (void)
 {
     int padding;
 
-    opengl_defaults ();
+    if (!opengl_defaults ())
+    {
+        return -1;
+    }
 
     /* Create two system buffers to avoid DMA contention */
 
@@ -812,20 +830,6 @@ S9xOpenGLDisplayDriver::get_current_buffer (void)
 }
 
 void
-S9xOpenGLDisplayDriver::gl_lock (void)
-{
-
-    return;
-}
-
-void
-S9xOpenGLDisplayDriver::gl_unlock (void)
-{
-
-    return;
-}
-
-void
 S9xOpenGLDisplayDriver::gl_swap (void)
 {
     glXSwapBuffers (GDK_DISPLAY (), GDK_WINDOW_XWINDOW (drawing_area->window));
@@ -857,8 +861,6 @@ S9xOpenGLDisplayDriver::deinit (void)
     free (buffer[0]);
     free (buffer[1]);
 
-    gl_lock ();
-
     if (using_pbos)
     {
         glBindBuffer (GL_PIXEL_UNPACK_BUFFER, 0);
@@ -866,8 +868,6 @@ S9xOpenGLDisplayDriver::deinit (void)
     }
 
     glDeleteTextures (1, &texmap);
-
-    gl_unlock ();
 
     return;
 }
@@ -891,5 +891,4 @@ S9xOpenGLDisplayDriver::query_availability (void)
     }
 
     return 1;
-
 }

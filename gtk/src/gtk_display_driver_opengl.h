@@ -91,6 +91,7 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
         int load_shaders (const char *, const char *);
         gl_proc get_aliased_extension (const char **name);
         void update_texture_size (int width, int height);
+        int create_window (void);
 
         getProcAddressProc       glGetProcAddress;
         glGenBuffersProc         glGenBuffers;
@@ -128,7 +129,15 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
         int                      filtering;
         int                      using_pbos;
         int                      using_shaders;
+        int                      initialized;
+
+        Display                  *display;
+        Window                   xwindow;
+        Colormap                 xcolormap;
+        GdkWindow                *gdk_window;
         GLXContext               glx_context;
+        int                      output_window_width;
+        int                      output_window_height;
 };
 
 #endif /* __GTK_DISPLAY_DRIVER_OPENGL_H */

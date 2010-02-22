@@ -154,7 +154,19 @@ S9xOpenGLDisplayDriver::update (int width, int height)
     int   x, y, w, h;
 
     if (width <= 0)
+    {
+        gdk_window_hide (gdk_window);
         return;
+    }
+
+    if (output_window_width  != drawing_area->allocation.width ||
+        output_window_height != drawing_area->allocation.height)
+    {
+        output_window_width = drawing_area->allocation.width;
+        output_window_height = drawing_area->allocation.height;
+        gdk_window_move_resize (gdk_window, 0, 0, output_window_width, output_window_height);
+        gdk_window_show (gdk_window);
+    }
 
     /* This avoids messing with the texture parameters every time */
     if (config->bilinear_filter != filtering)
@@ -572,34 +584,6 @@ S9xOpenGLDisplayDriver::load_shaders (const char *vertex_file,
 int
 S9xOpenGLDisplayDriver::opengl_defaults (void)
 {
-    XVisualInfo *vi;
-    int         glx_attribs[] = { GLX_RGBA, GLX_DOUBLEBUFFER, None };
-    Display     *display = GDK_DISPLAY ();
-
-    vi = glXChooseVisual (display, DefaultScreen (display), glx_attribs);
-
-    if (!vi)
-    {
-        fprintf (stderr, _("Couldn't find an adequate OpenGL visual.\n"));
-        return 0;
-    }
-
-    glx_context = glXCreateContext (display, vi, 0, 1);
-    XFree (vi);
-
-    if (!glx_context)
-    {
-        fprintf (stderr, _("Couldn't create an OpenGL context.\n"));
-        return 0;
-    }
-
-    if (!glXMakeCurrent (display, GDK_WINDOW_XWINDOW (drawing_area->window), glx_context))
-    {
-        glXDestroyContext (GDK_DISPLAY (), glx_context);
-        fprintf (stderr, "glXMakeCurrent failed.\n");
-        return 0;
-    }
-
     using_pbos = 0;
     if (config->use_pbos)
     {
@@ -738,13 +722,110 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
 void
 S9xOpenGLDisplayDriver::refresh (int width, int height)
 {
+    if (!config->rom_loaded)
+    {
+        gdk_window_hide (gdk_window);
+    }
+
     return;
+}
+
+int
+S9xOpenGLDisplayDriver::create_window (void)
+{
+    XVisualInfo          *vi;
+    XSetWindowAttributes window_attr;
+    int                  glx_attribs[] = { GLX_RGBA, GLX_DOUBLEBUFFER, None };
+
+    display = GDK_DISPLAY ();
+
+    vi = glXChooseVisual (display, DefaultScreen (display), glx_attribs);
+
+    if (!vi)
+    {
+        fprintf (stderr, _("Couldn't find an adequate OpenGL visual.\n"));
+        return 0;
+    }
+
+    xcolormap = XCreateColormap (display,
+                                GDK_WINDOW_XWINDOW (drawing_area->window),
+                                vi->visual,
+                                AllocNone);
+
+    window_attr.colormap = xcolormap;
+    window_attr.border_pixel = 0;
+    window_attr.event_mask = StructureNotifyMask | ExposureMask;
+    window_attr.background_pixmap = None;
+
+    xwindow = XCreateWindow (display,
+                             GDK_WINDOW_XWINDOW (drawing_area->window),
+                             0,
+                             0,
+                             256,
+                             224,
+                             0,
+                             vi->depth,
+                             InputOutput,
+                             vi->visual,
+                             CWColormap | CWBorderPixel | CWBackPixmap | CWEventMask,
+                             &window_attr);
+    XSync (display, False);
+
+    output_window_width = 256;
+    output_window_height = 224;
+
+    XMapWindow (display, xwindow);
+    XSync (display, False);
+
+    gdk_window = gdk_window_foreign_new (xwindow);
+    XSync (display, False);
+
+    if (gdk_window == NULL)
+    {
+        fprintf (stderr, "Failed to wrap native window.\n");
+        return 0;
+    }
+
+    gdk_window_set_user_data (gdk_window, drawing_area);
+    gdk_window_hide (gdk_window);
+
+    glx_context = glXCreateContext (display, vi, 0, 1);
+    XFree (vi);
+
+    if (!glx_context)
+    {
+        XFreeColormap (display, xcolormap);
+        gdk_window_unref (gdk_window);
+        XDestroyWindow (display, xwindow);
+
+        fprintf (stderr, _("Couldn't create an OpenGL context.\n"));
+        return 0;
+    }
+
+    if (!glXMakeCurrent (display, xwindow, glx_context))
+    {
+        XFreeColormap (display, xcolormap);
+        gdk_window_unref (gdk_window);
+        XDestroyWindow (display, xwindow);
+        glXDestroyContext (display, glx_context);
+
+        fprintf (stderr, "glXMakeCurrent failed.\n");
+        return 0;
+    }
+
+    return 1;
 }
 
 int
 S9xOpenGLDisplayDriver::init (void)
 {
     int padding;
+    initialized = 0;
+
+    if (!create_window ())
+    {
+        return -1;
+    }
 
     if (!opengl_defaults ())
     {
@@ -771,6 +852,8 @@ S9xOpenGLDisplayDriver::init (void)
 
     swap_control (config->sync_to_vblank);
 
+    initialized = 1;
+
     return 0;
 }
 
@@ -780,9 +863,7 @@ S9xOpenGLDisplayDriver::swap_control (int enable)
     glSwapIntervalProc glSwapInterval = NULL;
     const char         *ext_str;
 
-    ext_str = glXQueryExtensionsString (GDK_DISPLAY (),
-                                        GDK_SCREEN_XNUMBER (
-                                            gdk_screen_get_default ()));
+    ext_str = glXQueryExtensionsString (display, DefaultScreen (display));
 
     /* We try to set this with both extensions since some cards pretend
      * to support both, but ignore one. */
@@ -832,7 +913,7 @@ S9xOpenGLDisplayDriver::get_current_buffer (void)
 void
 S9xOpenGLDisplayDriver::gl_swap (void)
 {
-    glXSwapBuffers (GDK_DISPLAY (), GDK_WINDOW_XWINDOW (drawing_area->window));
+    glXSwapBuffers (display, xwindow);
 
     return;
 }
@@ -840,6 +921,9 @@ S9xOpenGLDisplayDriver::gl_swap (void)
 void
 S9xOpenGLDisplayDriver::deinit (void)
 {
+    if (!initialized)
+        return;
+
     if (using_shaders)
     {
         glUseProgram (0);
@@ -850,8 +934,6 @@ S9xOpenGLDisplayDriver::deinit (void)
         glDeleteProgram (program);
         using_shaders = 0;
     }
-
-    glXDestroyContext (GDK_DISPLAY (), glx_context);
 
     GFX.Screen = NULL;
 
@@ -868,6 +950,11 @@ S9xOpenGLDisplayDriver::deinit (void)
     }
 
     glDeleteTextures (1, &texmap);
+
+    glXDestroyContext (display, glx_context);
+    XFreeColormap (display, xcolormap);
+    gdk_window_unref (gdk_window);
+    XDestroyWindow (display, xwindow);
 
     return;
 }

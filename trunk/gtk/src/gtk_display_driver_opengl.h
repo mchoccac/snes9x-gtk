@@ -57,11 +57,11 @@ typedef void      (*glAttachShaderProc)       (GLuint program, GLuint shader);
 typedef void      (*glDetachShaderProc)       (GLuint program, GLuint shader);
 typedef void      (*glLinkProgramProc)        (GLuint program);
 typedef void      (*glUseProgramProc)         (GLuint program);
-typedef void      (*glShaderSourceProc)       (GLuint shader, 
-                                               GLsizei count, 
-                                               const GLchar* *string, 
+typedef void      (*glShaderSourceProc)       (GLuint shader,
+                                               GLsizei count,
+                                               const GLchar* *string,
                                                const GLint *length);
-typedef GLint     (*glGetUniformLocationProc) (GLuint program, 
+typedef GLint     (*glGetUniformLocationProc) (GLuint program,
                                                const GLchar *name);
 typedef void      (*glUniform2fvProc)         (GLint location,
                                                GLsizei count,
@@ -83,10 +83,8 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
         static int query_availability (void);
 
     private:
-        void opengl_defaults (void);
+        int opengl_defaults (void);
         void swap_control (int enable);
-        void gl_lock (void);
-        void gl_unlock (void);
         void gl_swap (void);
         int load_pixel_buffer_functions (void);
         int load_shader_functions (void);

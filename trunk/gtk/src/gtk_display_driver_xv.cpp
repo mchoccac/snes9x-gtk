@@ -52,8 +52,8 @@ S9xXVDisplayDriver::update (int width, int height)
         return;
     }
 
-    if (output_window_width != current_width ||
-        output_window_height!= current_height)
+    if (output_window_width  != current_width ||
+        output_window_height != current_height)
     {
         gdk_window_move_resize (gdk_window, 0, 0, current_width, current_height);
         gdk_window_show (gdk_window);
@@ -109,10 +109,10 @@ S9xXVDisplayDriver::update (int width, int height)
                         bpp);
     }
 
-    dst_x = width; dst_y = height; 
+    dst_x = width; dst_y = height;
     dst_width = current_width; dst_height = current_height;
     S9xApplyAspect (dst_x, dst_y, dst_width, dst_height);
-    
+
     if (last_known_width != dst_width || last_known_height != dst_height)
     {
         last_known_width = dst_width;

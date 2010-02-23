@@ -67,6 +67,7 @@ class Snes9xWindow : public GladeWindow
         void update_accels (void);
         void toggle_ui (void);
         void resize_viewport (int width, int height);
+        void expose (GdkEventExpose *event);
 
         Snes9xConfig   *config;
         unsigned char  user_pause;

@@ -139,42 +139,7 @@ event_drawingarea_expose (GtkWidget       *widget,
                           GdkEventExpose  *event,
                           gpointer        data)
 {
-    Snes9xWindow *window = (Snes9xWindow *) data;
-
-    if ((!window->config->rom_loaded || window->last_width < 0)
-        && window->last_width != SIZE_FLAG_DIRTY)
-    {
-        if (!(window->config->fullscreen) && !(window->maximized_state))
-        {
-            window->config->window_width = window->get_width ();
-            window->config->window_height = window->get_height ();
-        }
-
-        window->draw_background (event->area.x,
-                                 event->area.y,
-                                 event->area.width,
-                                 event->area.height);
-    }
-    else
-    {
-        if (window->last_width > 0 || !window->is_paused ())
-            S9xDisplayRefresh (window->last_width, window->last_height);
-
-        if (!(window->config->fullscreen))
-        {
-            window->config->window_width = window->get_width ();
-            window->config->window_height = window->get_height ();
-        }
-
-        if (window->is_paused ()
-#ifdef NETPLAY_SUPPORT
-                || NetPlay.Paused
-#endif
-        )
-        {
-            S9xDeinitUpdate (window->last_width, window->last_height);
-        }
-    }
+    ((Snes9xWindow *) data)->expose (event);
 
     return FALSE;
 }
@@ -691,6 +656,46 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
     }
 
     resize (config->window_width, config->window_height);
+
+    return;
+}
+
+void
+Snes9xWindow::expose (GdkEventExpose *event)
+{
+    if (event && (!config->rom_loaded || last_width < 0) && last_width != SIZE_FLAG_DIRTY)
+    {
+        if (!(config->fullscreen) && !(maximized_state))
+        {
+            config->window_width = get_width ();
+            config->window_height = get_height ();
+        }
+
+        draw_background (event->area.x,
+                         event->area.y,
+                         event->area.width,
+                         event->area.height);
+    }
+    else
+    {
+        if (last_width > 0 || !is_paused ())
+            S9xDisplayRefresh (last_width, last_height);
+
+        if (!(config->fullscreen))
+        {
+            config->window_width = get_width ();
+            config->window_height = get_height ();
+        }
+
+        if (is_paused ()
+#ifdef NETPLAY_SUPPORT
+                || NetPlay.Paused
+#endif
+        )
+        {
+            S9xDeinitUpdate (last_width, last_height);
+        }
+    }
 
     return;
 }
@@ -1388,7 +1393,7 @@ Snes9xWindow::show_rom_info (void)
                                                _("\n\nThis ROM has been modified or damaged")
                                                : "");
     gtk_window_set_title (GTK_WINDOW (msg), _("File Information"));
-    
+
     gtk_dialog_run (GTK_DIALOG (msg));
 
     unpause_from_focus_change ();

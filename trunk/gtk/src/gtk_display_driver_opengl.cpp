@@ -503,7 +503,7 @@ S9xOpenGLDisplayDriver::load_shader_functions (void)
     if (!extensions)
         return 0;
 
-    if (strstr (extensions, "pixel_buffer_object"))
+    if (strstr (extensions, "fragment_program"))
     {
         glCreateProgram = (glCreateProgramProc) glGetProcAddress ((GLubyte *) "glCreateProgram");
         glCreateShader = (glCreateShaderProc) glGetProcAddress ((GLubyte *) "glCreateShader");

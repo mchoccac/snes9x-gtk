@@ -418,8 +418,8 @@ S9xOpenGLDisplayDriver::update_texture_size (int width, int height)
                               width,
                               height,
                               0,
-                              GL_RGB,
-                              GL_UNSIGNED_BYTE,
+                              PBO_GET_FORMAT (config->pbo_format),
+                              PBO_GET_PACKING (config->pbo_format),
                               NULL);
             }
             else
@@ -668,8 +668,8 @@ S9xOpenGLDisplayDriver::opengl_defaults (void)
                       texture_width,
                       texture_height,
                       0,
-                      GL_RGB,
-                      GL_UNSIGNED_BYTE,
+                      PBO_GET_FORMAT (config->pbo_format),
+                      PBO_GET_PACKING (config->pbo_format),
                       NULL);
 
         glBindBuffer (GL_PIXEL_UNPACK_BUFFER, pbo);

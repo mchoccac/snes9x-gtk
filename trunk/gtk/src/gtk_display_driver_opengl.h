@@ -133,6 +133,9 @@ class S9xOpenGLDisplayDriver : public S9xDisplayDriver
         int                      using_shaders;
         int                      initialized;
 
+        Display                  *display;
+        Window                   xwindow;
+        Colormap                 xcolormap;
         GdkWindow                *gdk_window;
         GLXContext               glx_context;
         int                      output_window_width;

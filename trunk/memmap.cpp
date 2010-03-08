@@ -3565,45 +3565,6 @@ void CMemory::ApplyROMFixes (void)
 
 	if (!Settings.DisableGameSpecificHacks)
 	{
-		// The HC counter (CPU.Cycles for snes9x) passes over the WRAM refresh point (HC~536)
-		// while preparing to jump to the IRQ vector address.
-		// That is to say, the WRAM refresh point is passed over in S9xOpcode_IRQ().
-		// Then, HDMA starts just after $210e is half updated, and it causes the flicker of the ground.
-		// IRQ timing is bad? HDMA timing is bad? else?
-		if (match_na("GUNDAMW ENDLESSDUEL")) // Shin Kidou Senki Gundam W - Endless Duel
-		{
-			Timings.HDMAStart   -= 10;
-			Timings.HBlankStart -= 10;
-			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
-		}
-
-		// Due to Snes9x's very inaccurate timings,
-		// HDMA transfer to $210D-$2114 between the first and second writings to the same addresses.
-		if (match_na("POWER RANGERS FIGHT")) // Mighty Morphin Power Rangers - The Fighting Edition
-		{
-			Timings.HDMAStart   -= 10;
-			Timings.HBlankStart -= 10;
-			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
-		}
-
-		if (match_na("SFX SUPERBUTOUDEN2")) // Dragon Ball Z - Super Butouden 2
-		{
-			Timings.HDMAStart   += 20;
-			Timings.HBlankStart += 20;
-			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
-		}
-
-		if (match_na("SeikenDensetsu 2") ||
-			match_na("Secret of MANA"))
-		{
-			Timings.HDMAStart   -= 18;
-			Timings.HBlankStart -= 18;
-			printf("HDMA timing hack: %d\n", Timings.HDMAStart);
-		}
-	}
-
-	if (!Settings.DisableGameSpecificHacks)
-	{
 		// The delay to sync CPU and DMA which Snes9x cannot emulate.
 		// Some games need really severe delay timing...
 		if (match_na("BATTLE GRANDPRIX")) // Battle Grandprix

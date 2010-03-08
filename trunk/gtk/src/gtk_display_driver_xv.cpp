@@ -123,7 +123,7 @@ S9xXVDisplayDriver::update (int width, int height)
     XvShmPutImage (display,
                    xv_portid,
                    xwindow,
-                   xgc,
+                   XDefaultGC (display, XDefaultScreen (display)),
                    xv_image,
                    0,
                    0,
@@ -397,15 +397,15 @@ S9xXVDisplayDriver::init (void)
 
     window_attr.colormap = xcolormap;
     window_attr.border_pixel = 0;
-    window_attr.event_mask = StructureNotifyMask | ExposureMask;
+    window_attr.event_mask = StructureNotifyMask | ExposureMask | PropertyChangeMask;
     window_attr.background_pixmap = None;
 
     xwindow = XCreateWindow (display,
                              GDK_WINDOW_XWINDOW (drawing_area->window),
                              0,
                              0,
-                             256,
-                             224,
+                             1,
+                             1,
                              0,
                              vi->depth,
                              InputOutput,
@@ -414,13 +414,12 @@ S9xXVDisplayDriver::init (void)
                              &window_attr);
     XSync (display, False);
 
-    output_window_width = 256;
-    output_window_height = 224;
+    output_window_width = 1;
+    output_window_height = 1;
 
     XMapWindow (display, xwindow);
     XSync (display, False);
 
-    xgc = XCreateGC (display, xwindow, 0, NULL);
     XFree (vi);
 
     gdk_display_sync (gtk_widget_get_display (drawing_area));
@@ -481,7 +480,6 @@ S9xXVDisplayDriver::deinit (void)
     XFreeColormap (display, xcolormap);
     gdk_window_unref (gdk_window);
     XDestroyWindow (display, xwindow);
-    XFreeGC (display, xgc);
 
     free (buffer[0]);
     free (buffer[1]);
@@ -501,6 +499,7 @@ S9xXVDisplayDriver::clear (void)
     int  x, y, w, h;
     int  width = drawing_area->allocation.width;
     int  height = drawing_area->allocation.height;
+    GC   xgc = XDefaultGC (display, XDefaultScreen (display));
 
     if (window->last_width <= 0 || window->last_height <= 0)
     {

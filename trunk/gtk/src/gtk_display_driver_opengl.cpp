@@ -162,10 +162,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
     if (output_window_width  != drawing_area->allocation.width ||
         output_window_height != drawing_area->allocation.height)
     {
-        output_window_width = drawing_area->allocation.width;
-        output_window_height = drawing_area->allocation.height;
-        gdk_window_move_resize (gdk_window, 0, 0, output_window_width, output_window_height);
-        gdk_window_show (gdk_window);
+        resize_window (drawing_area->allocation.width, drawing_area->allocation.height);
     }
 
     /* This avoids messing with the texture parameters every time */
@@ -730,12 +727,61 @@ S9xOpenGLDisplayDriver::refresh (int width, int height)
     return;
 }
 
-int
-S9xOpenGLDisplayDriver::create_window (void)
+void
+S9xOpenGLDisplayDriver::resize_window (int width, int height)
 {
-    XVisualInfo          *vi;
+    gdk_window_unref (gdk_window);
+    XDestroyWindow (display, xwindow);
+    XSync (display, False);
+
+    create_window (width, height);
+    gdk_window_show (gdk_window);
+
+    glXMakeCurrent (display, xwindow, glx_context);
+
+    return;
+}
+
+void
+S9xOpenGLDisplayDriver::create_window (int width, int height)
+{
     XSetWindowAttributes window_attr;
-    int                  glx_attribs[] = { GLX_RGBA, GLX_DOUBLEBUFFER, None };
+
+    window_attr.colormap = xcolormap;
+    window_attr.border_pixel = 0;
+    window_attr.event_mask = StructureNotifyMask | ExposureMask;
+    window_attr.background_pixmap = None;
+
+    xwindow = XCreateWindow (display,
+                             GDK_WINDOW_XWINDOW (drawing_area->window),
+                             0,
+                             0,
+                             width,
+                             height,
+                             0,
+                             vi->depth,
+                             InputOutput,
+                             vi->visual,
+                             CWColormap | CWBorderPixel | CWBackPixmap | CWEventMask,
+                             &window_attr);
+    XSync (display, False);
+
+    output_window_width = width;
+    output_window_height = height;
+
+    XMapWindow (display, xwindow);
+    XSync (display, False);
+
+    gdk_window = gdk_window_foreign_new (xwindow);
+    XSync (display, False);
+
+    gdk_window_set_user_data (gdk_window, drawing_area);
+}
+
+int
+S9xOpenGLDisplayDriver::init_glx (void)
+{
+    int glx_attribs[] = { GLX_RGBA, GLX_DOUBLEBUFFER, None };
 
     display = GDK_DISPLAY ();
 
@@ -752,45 +798,10 @@ S9xOpenGLDisplayDriver::create_window (void)
                                 vi->visual,
                                 AllocNone);
 
-    window_attr.colormap = xcolormap;
-    window_attr.border_pixel = 0;
-    window_attr.event_mask = StructureNotifyMask | ExposureMask;
-    window_attr.background_pixmap = None;
-
-    xwindow = XCreateWindow (display,
-                             GDK_WINDOW_XWINDOW (drawing_area->window),
-                             0,
-                             0,
-                             256,
-                             224,
-                             0,
-                             vi->depth,
-                             InputOutput,
-                             vi->visual,
-                             CWColormap | CWBorderPixel | CWBackPixmap | CWEventMask,
-                             &window_attr);
-    XSync (display, False);
-
-    output_window_width = 256;
-    output_window_height = 224;
-
-    XMapWindow (display, xwindow);
-    XSync (display, False);
-
-    gdk_window = gdk_window_foreign_new (xwindow);
-    XSync (display, False);
-
-    if (gdk_window == NULL)
-    {
-        fprintf (stderr, "Failed to wrap native window.\n");
-        return 0;
-    }
-
-    gdk_window_set_user_data (gdk_window, drawing_area);
+    create_window (1, 1);
     gdk_window_hide (gdk_window);
 
     glx_context = glXCreateContext (display, vi, 0, 1);
-    XFree (vi);
 
     if (!glx_context)
     {
@@ -822,7 +833,7 @@ S9xOpenGLDisplayDriver::init (void)
     int padding;
     initialized = 0;
 
-    if (!create_window ())
+    if (!init_glx ())
     {
         return -1;
     }
@@ -950,9 +961,11 @@ S9xOpenGLDisplayDriver::deinit (void)
     }
 
     glDeleteTextures (1, &texmap);
-
     glXDestroyContext (display, glx_context);
+
+    XFree (vi);
     XFreeColormap (display, xcolormap);
+
     gdk_window_unref (gdk_window);
     XDestroyWindow (display, xwindow);
 

@@ -37,6 +37,55 @@ S9xXVDisplayDriver::S9xXVDisplayDriver (Snes9xWindow *window,
 }
 
 void
+S9xXVDisplayDriver::resize_window (int width, int height)
+{
+    gdk_window_unref (gdk_window);
+    XDestroyWindow (display, xwindow);
+    XSync (display, False);
+
+    create_window (width, height);
+    gdk_window_show (gdk_window);
+
+    return;
+}
+
+void
+S9xXVDisplayDriver::create_window (int width, int height)
+{
+    XSetWindowAttributes window_attr;
+
+    window_attr.colormap = xcolormap;
+    window_attr.border_pixel = 0;
+    window_attr.event_mask = StructureNotifyMask | ExposureMask;
+    window_attr.background_pixmap = None;
+
+    xwindow = XCreateWindow (display,
+                             GDK_WINDOW_XWINDOW (drawing_area->window),
+                             0,
+                             0,
+                             width,
+                             height,
+                             0,
+                             vi->depth,
+                             InputOutput,
+                             vi->visual,
+                             CWColormap | CWBorderPixel | CWBackPixmap | CWEventMask,
+                             &window_attr);
+    XSync (display, False);
+
+    output_window_width = width;
+    output_window_height = height;
+
+    XMapWindow (display, xwindow);
+    XSync (display, False);
+
+    gdk_window = gdk_window_foreign_new (xwindow);
+    XSync (display, False);
+
+    gdk_window_set_user_data (gdk_window, drawing_area);
+}
+
+void
 S9xXVDisplayDriver::update (int width, int height)
 {
     int   current_width, current_height, final_pitch;
@@ -55,10 +104,7 @@ S9xXVDisplayDriver::update (int width, int height)
     if (output_window_width  != current_width ||
         output_window_height != current_height)
     {
-        gdk_window_move_resize (gdk_window, 0, 0, current_width, current_height);
-        gdk_window_show (gdk_window);
-        output_window_width = current_width;
-        output_window_height = current_height;
+        resize_window (current_width, current_height);
     }
 
     if (config->scale_method > 0)
@@ -369,7 +415,7 @@ S9xXVDisplayDriver::init (void)
     }
 
     /* Create a sub-window */
-    XVisualInfo vi_template, *vi;
+    XVisualInfo vi_template;
     int vi_num_items;
 
     vi_template.visualid = visualid;
@@ -400,40 +446,7 @@ S9xXVDisplayDriver::init (void)
     window_attr.event_mask = StructureNotifyMask | ExposureMask | PropertyChangeMask;
     window_attr.background_pixmap = None;
 
-    xwindow = XCreateWindow (display,
-                             GDK_WINDOW_XWINDOW (drawing_area->window),
-                             0,
-                             0,
-                             1,
-                             1,
-                             0,
-                             vi->depth,
-                             InputOutput,
-                             vi->visual,
-                             CWColormap | CWBorderPixel | CWBackPixmap | CWEventMask,
-                             &window_attr);
-    XSync (display, False);
-
-    output_window_width = 1;
-    output_window_height = 1;
-
-    XMapWindow (display, xwindow);
-    XSync (display, False);
-
-    XFree (vi);
-
-    gdk_display_sync (gtk_widget_get_display (drawing_area));
-    gdk_window = gdk_window_foreign_new (xwindow);
-    XSync (display, False);
-    gdk_display_sync (gtk_widget_get_display (drawing_area));
-
-    if (gdk_window == NULL)
-    {
-        fprintf (stderr, "Failed to wrap native window.\n");
-        return -1;
-    }
-
-    gdk_window_set_user_data (gdk_window, drawing_area);
+    create_window (1, 1);
     gdk_window_hide (gdk_window);
 
     /* Allocate a shared memory image. */
@@ -478,6 +491,8 @@ S9xXVDisplayDriver::deinit (void)
     XSync (display, 0);
 
     XFreeColormap (display, xcolormap);
+    XFree (vi);
+
     gdk_window_unref (gdk_window);
     XDestroyWindow (display, xwindow);
 

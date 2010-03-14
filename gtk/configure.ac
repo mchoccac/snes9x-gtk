@@ -139,7 +139,7 @@ AC_ARG_WITH(zlib,
   [],
   [with_zlib=yes])
 
-AC_ARG_WITH(png,
+AC_ARG_WITH(screenshot,
   [AS_HELP_STRING([--with(out)-screenshot],
     [Screenshot support through libpng if available (default: with)])],
   [],
@@ -286,7 +286,17 @@ if test yes = "$with_xrandr" ; then
         echo "--> Disabling Xrandr support."
     ])
 fi
-PKG_CHECK_MODULES([LIBPNG],libpng)
+
+LIBPNG_CFLAGS=""
+LIBPNG_LIBS=""
+if test yes = "$with_screenshot"; then
+    PKG_CHECK_MODULES([LIBPNG],[libpng],[
+        CFLAGS="$CFLAGS -DHAVE_LIBPNG"
+    ],[
+        echo "Cannot find libpng."
+        echo "--> Disabling screenshot support."
+    ])
+fi
 
 if test yes = "$with_hq2x" ; then
     HQ2X=yes
@@ -382,13 +392,6 @@ if test yes = "$with_zlib"; then
         CFLAGS="$CFLAGS -DZLIB"
         LIBS="$LIBS -lz"
       ], ,)
-fi
-
-if test yes = "$with_screenshot"; then
-  AC_CHECK_LIB(png, png_init_io, [
-    CFLAGS="$CFLAGS -DHAVE_LIBPNG"
-    LIBS="$LIBS -lpng"
-  ], , -lz -lm)
 fi
 
 dnl Check for functions

@@ -11,7 +11,7 @@ noinst_LIBRARIES =
 INCLUDES = -I$(top_srcdir) -I.. -DSNES9XLOCALEDIR=\""$(snes9xlocaledir)"\"
 
 CLEANFILES = \
-    src/gtk_glade.cpp \
+    src/gtk_snes9x_ui.cpp \
     src/sourcify
 
 snes9x_gtk_SOURCES = \
@@ -37,9 +37,9 @@ snes9x_gtk_SOURCES = \
     src/gtk_display.h \
     src/gtk_file.cpp \
     src/gtk_file.h \
-    src/gtk_glade.cpp \
-    src/gtk_glade_window.cpp \
-    src/gtk_glade_window.h \
+    src/gtk_snes9x_ui.cpp \
+    src/gtk_builder_window.cpp \
+    src/gtk_builder_window.h \
     src/gtk_preferences.cpp \
     src/gtk_preferences.h \
     src/gtk_s9xcore.h \
@@ -234,8 +234,8 @@ SUFFIXES = .asm .ASM
 src/sourcify: src/sourcify.c
 	$(CC) src/sourcify.c -o src/sourcify
 
-src/gtk_glade.cpp: src/sourcify src/snes9x.glade
-	src/sourcify src/snes9x.glade src/gtk_glade.cpp snes9x_glade
+src/gtk_snes9x_ui.cpp: src/sourcify src/snes9x.ui
+	src/sourcify src/snes9x.ui src/gtk_snes9x_ui.cpp snes9x_ui
 
 .asm.o:
 	$(NASM) -f elf -DELF $(NASM_FLAGS) -i ./ -i ../ -i ../i386/ -i i386/ -o $@ $*.asm

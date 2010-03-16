@@ -36,9 +36,6 @@
 extern Snes9xWindow *top_level;
 extern Snes9xConfig *gui_config;
 
-extern const char snes9x_glade[];
-extern const int  snes9x_glade_size;
-
 int S9xOpenROM (const char *filename);
 void S9xNoROMLoaded (void);
 void S9xROMLoaded (void);

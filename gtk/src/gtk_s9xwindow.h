@@ -7,15 +7,13 @@
 #include <GL/gl.h>
 #endif
 
-#include <glade/glade.h>
-
 #include "gtk_s9x.h"
-#include "gtk_glade_window.h"
+#include "gtk_builder_window.h"
 
 #define SIZE_FLAG_NO_DRAWING     -1
 #define SIZE_FLAG_DIRTY          -2
 
-class Snes9xWindow : public GladeWindow
+class Snes9xWindow : public GtkBuilderWindow
 {
     public:
         Snes9xWindow (Snes9xConfig *config);

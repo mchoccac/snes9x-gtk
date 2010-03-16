@@ -227,7 +227,7 @@ event_shader_select (GtkButton *widget, gpointer data)
     char          *filename = NULL;
     gint          result;
     GtkEntry      *entry;
-    
+
     if (!strcmp (gtk_widget_get_name (GTK_WIDGET (widget)), "fragment_shader_button"))
     {
         entry = GTK_ENTRY (window->get_widget ("fragment_shader"));
@@ -236,14 +236,14 @@ event_shader_select (GtkButton *widget, gpointer data)
     {
         entry = GTK_ENTRY (window->get_widget ("vertex_shader"));
     }
-    
+
     dialog = gtk_file_chooser_dialog_new ("Select Shader File",
                                           window->get_window (),
                                           GTK_FILE_CHOOSER_ACTION_OPEN,
                                           GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
                                           GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
                                           NULL);
-    
+
     if (strcmp (gui_config->last_directory, ""))
     {
         gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (dialog),
@@ -253,11 +253,11 @@ event_shader_select (GtkButton *widget, gpointer data)
     if (strlen (gtk_entry_get_text (entry)))
         gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (dialog),
                                        gtk_entry_get_text (entry));
-        
-    
+
+
     result = gtk_dialog_run (GTK_DIALOG (dialog));
     gtk_widget_hide_all (dialog);
-    
+
     if (result == GTK_RESPONSE_ACCEPT)
     {
         filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
@@ -267,9 +267,9 @@ event_shader_select (GtkButton *widget, gpointer data)
             g_free (filename);
         }
     }
-    
+
     gtk_widget_destroy (dialog);
-    
+
     return;
 #endif
 }
@@ -279,13 +279,13 @@ event_game_data_clear (GtkButton *widget, gpointer data)
 {
     Snes9xPreferences *window = (Snes9xPreferences *) data;
     GtkEntry      *entry;
-    char          entry_name[256];    
-    
+    char          entry_name[256];
+
     strcpy (entry_name, gtk_widget_get_name (GTK_WIDGET (widget)));
     sprintf (strstr (entry_name, "_clear"), "_directory");
     entry = GTK_ENTRY (window->get_widget (entry_name));
     gtk_entry_set_text (entry, SAME_GAME);
-    
+
     return;
 }
 
@@ -298,18 +298,18 @@ event_game_data_browse (GtkButton *widget, gpointer data)
     gint          result;
     GtkEntry      *entry;
     char          entry_name[256];
-    
+
     strcpy (entry_name, gtk_widget_get_name (GTK_WIDGET (widget)));
     sprintf (strstr (entry_name, "_browse"), "_directory");
     entry = GTK_ENTRY (window->get_widget (entry_name));
-    
+
     dialog = gtk_file_chooser_dialog_new ("Select directory",
                                           window->get_window (),
                                           GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
                                           GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
                                           GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
                                           NULL);
-    
+
     if (strcmp (gui_config->last_directory, ""))
     {
         gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (dialog),
@@ -319,10 +319,10 @@ event_game_data_browse (GtkButton *widget, gpointer data)
     if (strcmp (gtk_entry_get_text (entry), SAME_GAME))
         gtk_file_chooser_set_filename (GTK_FILE_CHOOSER (dialog),
                                        gtk_entry_get_text (entry));
-    
+
     result = gtk_dialog_run (GTK_DIALOG (dialog));
     gtk_widget_hide_all (dialog);
-    
+
     if (result == GTK_RESPONSE_ACCEPT)
     {
         filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
@@ -332,9 +332,9 @@ event_game_data_browse (GtkButton *widget, gpointer data)
             g_free (filename);
         }
     }
-    
+
     gtk_widget_destroy (dialog);
-    
+
     return;
 }
 
@@ -474,9 +474,9 @@ Snes9xPreferences::calibration_dialog (void)
 #endif
 
 Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
-    GladeWindow (snes9x_glade, snes9x_glade_size, "preferences_window")
+    GtkBuilderWindow ("preferences_window")
 {
-    GladeWindowCallbacks callbacks[] =
+    GtkBuilderWindowCallbacks callbacks[] =
     {
         { "control_toggle", G_CALLBACK (event_control_toggle) },
         { "on_key_press", G_CALLBACK (event_key_press) },
@@ -557,7 +557,6 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
 
 Snes9xPreferences::~Snes9xPreferences (void)
 {
-    g_object_unref (glade);
     g_object_unref (size_group[0]);
     g_object_unref (size_group[1]);
 
@@ -648,7 +647,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
         set_entry_text ("export_directory", SAME_GAME);
     else
         set_entry_text ("export_directory", config->export_directory);
-    
+
     set_combo ("resolution_combo",          config->xrr_index);
     set_combo ("scale_method_combo",        config->scale_method);
     set_entry_value ("save_sram_after_sec", Settings.AutoSaveDelay);
@@ -756,7 +755,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
                      (7 - (get_combo ("playback_combo"))))                  ||
         (config->sound_input_rate   != get_slider ("sound_input_rate"))     ||
         (Settings.SoundSync         != get_check ("sync_sound"))
-        )         
+        )
     {
         sound_needs_restart = 1;
     }
@@ -848,20 +847,20 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->use_pbos                  = get_check ("use_pbos");
     config->npot_textures             = get_check ("npot_textures");
     config->use_shaders               = get_check ("use_shaders");
-    
+
     strncpy (config->fragment_shader, get_entry_text ("fragment_shader"), PATH_MAX);
-    strncpy (config->vertex_shader, get_entry_text ("vertex_shader"), PATH_MAX);    
-    
+    strncpy (config->vertex_shader, get_entry_text ("vertex_shader"), PATH_MAX);
+
     config->pbo_format = get_combo ("pixel_format");
 #endif
     char safety_sram_directory [PATH_MAX];
-    
+
     strncpy (safety_sram_directory, get_entry_text ("sram_directory"), PATH_MAX);
     strncpy (config->savestate_directory, get_entry_text ("savestate_directory"), PATH_MAX);
     strncpy (config->patch_directory, get_entry_text ("patch_directory"), PATH_MAX);
     strncpy (config->cheat_directory, get_entry_text ("cheat_directory"), PATH_MAX);
     strncpy (config->export_directory, get_entry_text ("export_directory"), PATH_MAX);
-    
+
     if (!strcmp (safety_sram_directory, SAME_GAME))
         safety_sram_directory[0] = '\0';
     if (!strcmp (config->savestate_directory, SAME_GAME))
@@ -872,7 +871,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
         config->cheat_directory[0] = '\0';
     if (!strcmp (config->export_directory, SAME_GAME))
         config->export_directory[0] = '\0';
-    
+
     if (strcmp (safety_sram_directory, config->sram_directory) && config->rom_loaded)
     {
         GtkWidget *msg;
@@ -884,9 +883,9 @@ Snes9xPreferences::get_settings_from_dialog (void)
                                       GTK_BUTTONS_OK_CANCEL,
                                       _("Changing the SRAM directory with a game loaded will replace the .srm file in the selected directory with the SRAM from the running game. If this is not what you want, click 'cancel'."));
         gtk_window_set_title (GTK_WINDOW (msg), _("Warning: Possible File Overwrite"));
-                                      
+
         responseid = gtk_dialog_run (GTK_DIALOG (msg));
-        
+
         if (responseid == GTK_RESPONSE_OK)
         {
             strncpy (config->sram_directory, safety_sram_directory, PATH_MAX);
@@ -898,14 +897,14 @@ Snes9xPreferences::get_settings_from_dialog (void)
             else
                 set_entry_text ("sram_directory", config->sram_directory);
         }
-        
+
         gtk_widget_destroy (msg);
     }
     else
     {
         strncpy (config->sram_directory, safety_sram_directory, PATH_MAX);
     }
-    
+
     if (Settings.SkipFrames == 0)
         Settings.SkipFrames = AUTO_FRAMERATE;
     else
@@ -1045,7 +1044,7 @@ Snes9xPreferences::show (void)
     {
         gtk_widget_hide (get_widget ("resolution_box"));
     }
-    
+
 #ifdef USE_HQ2X
     combo = get_widget ("scale_method_combo");
     gtk_combo_box_append_text (GTK_COMBO_BOX (combo),

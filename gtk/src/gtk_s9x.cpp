@@ -45,7 +45,6 @@ main (int argc, char *argv[])
     gdk_threads_init ();
 
     gtk_init (&argc, &argv);
-    glade_init ();
 
     bindtextdomain (GETTEXT_PACKAGE, SNES9XLOCALEDIR);
     bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");

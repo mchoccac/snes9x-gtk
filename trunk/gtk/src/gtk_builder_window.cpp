@@ -102,7 +102,8 @@ GtkBuilderWindow::enable_widget (const char *name, unsigned char state)
 void
 GtkBuilderWindow::resize (int width, int height)
 {
-    gtk_window_resize (GTK_WINDOW (window), width, height);
+    if (width > 0 && height > 0)
+        gtk_window_resize (GTK_WINDOW (window), width, height);
 
     return;
 }

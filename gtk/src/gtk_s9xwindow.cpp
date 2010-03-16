@@ -1496,17 +1496,8 @@ Snes9xWindow::set_mouseable_area (int x, int y, int width, int height)
 void
 Snes9xWindow::reset_screensaver (void)
 {
-    static int xdg_screen_saver_works = TRUE;
-
     if (!focused)
         return;
-
-    /* XTest method breaks in new X.org */
-    if (!xdg_screen_saver_works ||
-        !g_spawn_command_line_async ("/usr/bin/xdg-screensaver reset", NULL))
-    {
-        xdg_screen_saver_works = FALSE;
-    }
 
     XResetScreenSaver (GDK_DISPLAY ());
 

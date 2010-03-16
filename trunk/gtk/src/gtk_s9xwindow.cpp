@@ -1,7 +1,6 @@
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
-#include <glade/glade-build.h>
 
 #ifdef USE_XV
 #include <X11/extensions/XShm.h>
@@ -551,9 +550,9 @@ event_port (GtkWidget *widget, gpointer data)
 }
 
 Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
-    GladeWindow (snes9x_glade, snes9x_glade_size, "main_window")
+    GtkBuilderWindow ("main_window")
 {
-    GladeWindowCallbacks callbacks[] =
+    GtkBuilderWindowCallbacks callbacks[] =
     {
         { "main_window_delete_event", G_CALLBACK (event_main_window_delete) },
         { "main_window_state_event", G_CALLBACK (event_main_window_state_event) },
@@ -725,7 +724,7 @@ void
 Snes9xWindow::open_multicart_dialog (void)
 {
     int result;
-    GladeWindow *dialog = new GladeWindow (snes9x_glade, snes9x_glade_size, "multicart_dialog");
+    GtkBuilderWindow *dialog = new GtkBuilderWindow ("multicart_dialog");
     GtkFileChooser *slota, *slotb;
     GtkWidget *multicart_dialog = GTK_WIDGET (dialog->get_window ());
 
@@ -776,11 +775,9 @@ Snes9xWindow::open_multicart_dialog (void)
         }
     }
 
-    gtk_widget_destroy (multicart_dialog);
+    delete dialog;
 
     unpause_from_focus_change ();
-
-    delete dialog;
 
     return;
 }
@@ -1021,50 +1018,28 @@ Snes9xWindow::load_state_dialog ()
 void
 Snes9xWindow::movie_seek_dialog (void)
 {
-    GladeXML  *seek_dialog_xml;
-    GtkWidget *seek_dialog;
     char      str[1024];
     gint      result;
 
     if (!S9xMovieActive ())
         return;
 
+    GtkBuilderWindow *seek_dialog = new GtkBuilderWindow ("frame_advance_dialog");
+    GtkWindow *seek_window = seek_dialog->get_window ();
+
     pause_from_focus_change ();
 
-    seek_dialog_xml = glade_xml_new_from_buffer (snes9x_glade,
-                                                 snes9x_glade_size,
-                                                 "frame_advance_dialog",
-                                                 NULL);
+    snprintf (str, 1024, _("The current frame in the movie is <b>%d</b>."), S9xMovieGetFrameCounter ());
+    gtk_label_set_label (GTK_LABEL (seek_dialog->get_widget ("current_frame_label")), str);
 
-    seek_dialog = glade_xml_get_widget (seek_dialog_xml,
-                                        "frame_advance_dialog");
+    snprintf (str, 1024, "%d", S9xMovieGetFrameCounter ());
+    seek_dialog->set_entry_text ("frame_entry", str);
 
-    snprintf (str, 1024,
-              _("The current frame in the movie is <b>%d</b>."),
-              S9xMovieGetFrameCounter ());
-    gtk_label_set_label (GTK_LABEL (
-                             glade_xml_get_widget (seek_dialog_xml,
-                                                   "current_frame_label")),
-                         str);
+    gtk_window_set_transient_for (seek_window, get_window ());
 
-    snprintf (str, 1024,
-              "%d",
-              S9xMovieGetFrameCounter ());
-    gtk_entry_set_text (GTK_ENTRY (glade_xml_get_widget (seek_dialog_xml,
-                                                         "frame_entry")),
-                        str);
+    result = gtk_dialog_run (GTK_DIALOG (seek_window));
 
-    gtk_window_set_transient_for (GTK_WINDOW (seek_dialog),
-                                  get_window ());
-
-    result = gtk_dialog_run (GTK_DIALOG (seek_dialog));
-
-    int entry_value =
-            atoi (
-                gtk_entry_get_text (
-                    GTK_ENTRY (
-                        glade_xml_get_widget (
-                            seek_dialog_xml, "frame_entry"))));
+    int entry_value = seek_dialog->get_entry_value ("frame_entry");
 
     switch (result)
     {
@@ -1080,7 +1055,7 @@ Snes9xWindow::movie_seek_dialog (void)
             break;
     }
 
-    gtk_widget_destroy (seek_dialog);
+    delete seek_dialog;
 
     unpause_from_focus_change ();
 
@@ -1798,6 +1773,8 @@ Snes9xWindow::show (void)
                           "item-activated",
                           G_CALLBACK (event_recent_open),
                           (gpointer) this);
+
+        gtk_widget_show (recent_menu);
     }
 
     return;
@@ -1899,6 +1876,7 @@ Snes9xWindow::set_menu_item_accel_to_binding (const char *name,
 {
     Binding bin;
     char str[255];
+    GtkAccelGroup *accel_group = NULL;
 
     if (!strcmp (binding, "Escape Key"))
     {
@@ -1919,10 +1897,19 @@ Snes9xWindow::set_menu_item_accel_to_binding (const char *name,
         return;
     }
 
-    gtk_widget_set_accel_path (get_widget (name),
-                               str,
-                               glade_xml_ensure_accel (glade));
+    GSList *accel_group_list = gtk_accel_groups_from_object (G_OBJECT (window));
 
+    if (accel_group_list)
+    {
+        accel_group = GTK_ACCEL_GROUP (accel_group_list->data);
+    }
+    else
+    {
+        accel_group = gtk_accel_group_new ();
+        gtk_window_add_accel_group (GTK_WINDOW (window), accel_group);
+    }
+
+    gtk_widget_set_accel_path (get_widget (name), str, accel_group);
 
     if (!gtk_accel_map_lookup_entry (str, NULL))
     {

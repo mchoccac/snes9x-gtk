@@ -9,7 +9,6 @@
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
-#include <glade/glade-build.h>
 
 #include "gtk_config.h"
 #include "gtk_s9x.h"
@@ -545,7 +544,7 @@ Snes9xConfig::set_option (const char *name, const char *value)
 #ifdef USE_OPENGL
         strncpy (vertex_shader, value, PATH_MAX);
 #endif
-    }    
+    }
     else if (!strcasecmp (name, "joystick_threshold"))
     {
 #ifdef USE_JOYSTICK
@@ -654,7 +653,7 @@ Snes9xConfig::set_option (const char *name, const char *value)
     else if (!strcasecmp (name, "export_directory"))
     {
         strncpy (export_directory, value, PATH_MAX);
-    }    
+    }
     else if (!strcasecmp (name, "window_width"))
     {
         window_width = atoi (value);

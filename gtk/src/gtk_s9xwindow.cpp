@@ -177,9 +177,16 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
     /* If no mapping for modifier version exists, try non-modifier */
     cmd = S9xGetMapping (b.hex ());
     if (cmd.type == S9xNoMapping)
+    {
         b = Binding (event->keyval, false, false, false);
+        cmd = S9xGetMapping (b.hex ());
+    }
 
-    S9xReportButton (b.hex (), (event->type == GDK_KEY_PRESS));
+    if (cmd.type != S9xNoMapping)
+    {
+        S9xReportButton (b.hex (), (event->type == GDK_KEY_PRESS));
+        return TRUE;
+    }
 
     return FALSE; /* Pass the key to GTK */
 }

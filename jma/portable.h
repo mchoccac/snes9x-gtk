@@ -43,7 +43,7 @@ typedef int                INT32;
 typedef unsigned int       UINT32;
 #ifdef _MSC_VER
 typedef __int64            INT64;
-typedef unsigned __int64   INT64;
+typedef unsigned __int64   UINT64;
 #else
 typedef long long          INT64;
 typedef unsigned long long UINT64;

@@ -1105,6 +1105,10 @@ Snes9xConfig::load_config_file (void)
             return -1;
         }
     }
+    else
+    {
+        chmod (pathname, 0777);
+    }
 
     free (pathname);
 

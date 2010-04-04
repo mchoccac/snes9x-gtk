@@ -79,8 +79,8 @@ template <class T> inline T MyMax(T a, T b) {
 #define RETURN_IF_NOT_S_OK(x) { HRESULT __aResult_ = (x); if(__aResult_ != S_OK) return __aResult_; }
 
 
-#define UINT_SIZE   (sizeof(unsigned int))
-#define USHORT_SIZE (sizeof(unsigned short))
+#define UINT_SIZE   ((int)sizeof(unsigned int))
+#define USHORT_SIZE ((int)sizeof(unsigned short))
 
 //Convert an array of 4 bytes back into an integer
 inline UINT32 charp_to_uint(const UINT8 buffer[UINT_SIZE])

@@ -144,15 +144,15 @@ S9xGetDirectory (enum s9x_getdirtype dirtype)
         case IPS_DIR:
             sprintf (path, "%s", gui_config->patch_directory);
             break;
-            
+
         case CHEAT_DIR:
             sprintf (path, "%s", gui_config->cheat_directory);
             break;
-            
+
         case SRAM_DIR:
             sprintf (path, "%s", gui_config->sram_directory);
             break;
-            
+
         case SCREENSHOT_DIR:
         case SPC_DIR:
             sprintf (path, "%s", gui_config->export_directory);
@@ -161,7 +161,7 @@ S9xGetDirectory (enum s9x_getdirtype dirtype)
             path[0] = '\0';
     }
 
-    /* Anything else, use ROM filename path */    
+    /* Anything else, use ROM filename path */
     if (path[0] == '\0')
     {
         char *loc;
@@ -185,6 +185,7 @@ S9xGetDirectory (enum s9x_getdirtype dirtype)
 
     /* Try and mkdir, whether it exists or not */
     mkdir (path, 0777);
+    chmod (path, 0777);
 
     /* printf ("path: %s\n", path); */
 
@@ -204,7 +205,7 @@ S9xGetFilename (const char *ex, enum s9x_getdirtype dirtype)
 
     snprintf (filename, sizeof (filename), "%s" SLASH_STR "%s%s",
               S9xGetDirectory (dirtype), fname, ex);
-    
+
     return (filename);
 }
 
@@ -325,6 +326,8 @@ S9xOpenSnapshotFile (const char *fname, bool8 read_only, STREAM *file)
             return (TRUE);
     }
 #endif
+    fprintf (stderr, "Couldn't open snapshot file.\n");
+
     return (FALSE);
 }
 

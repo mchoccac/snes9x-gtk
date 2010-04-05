@@ -1,5 +1,6 @@
 #include <sys/stat.h>
 #include <gtk/gtk.h>
+#include <errno.h>
 
 #include "gtk_s9x.h"
 
@@ -299,17 +300,33 @@ S9xOpenSnapshotFile (const char *fname, bool8 read_only, STREAM *file)
     {
         if ((*file = OPEN_STREAM (filename, "rb")))
             return (TRUE);
+        else
+            fprintf (stderr,
+                     "Failed to open file stream for reading. (%s)\n",
+                     zError (errno));
     }
     else
     {
         if ((*file = OPEN_STREAM (filename, "wb")))
         {
             if (chown (filename, getuid (), getgid ()) < 0)
+            {
+                fprintf (stderr, "Couldn't set ownership of file.\n");
                 return (FALSE);
+            }
             else
                 return (TRUE);
         }
+        else
+        {
+            fprintf (stderr,
+                     "Couldn't open stream with zlib. (%s)\n",
+                     zError (errno));
+        }
     }
+
+    fprintf (stderr, "zlib: Couldn't open snapshot file:\n%s\n", filename);
+
 #else
     char command [PATH_MAX];
 
@@ -325,8 +342,10 @@ S9xOpenSnapshotFile (const char *fname, bool8 read_only, STREAM *file)
         if (*file = popen (command, "wb"))
             return (TRUE);
     }
+
+    fprintf (stderr, "gzip: Couldn't open snapshot file:\n%s\n", filename);
+
 #endif
-    fprintf (stderr, "Couldn't open snapshot file.\n");
 
     return (FALSE);
 }
@@ -374,7 +393,7 @@ S9xLoadState (const char *filename)
     }
     else
     {
-        fprintf (stderr, "Failed to load state file %s\n", filename);
+        fprintf (stderr, "Failed to load state file: %s\n", filename);
     }
 
     return;
@@ -383,10 +402,15 @@ S9xLoadState (const char *filename)
 void
 S9xSaveState (const char *filename)
 {
-    S9xFreezeGame (filename);
-
-    sprintf (buf, "%s saved", filename);
-    S9xSetInfoString (buf);
+    if (S9xFreezeGame (filename))
+    {
+        sprintf (buf, "%s saved", filename);
+        S9xSetInfoString (buf);
+    }
+    else
+    {
+        fprintf (stderr, "Couldn't save state file: %s\n", filename);
+    }
 
     return;
 }

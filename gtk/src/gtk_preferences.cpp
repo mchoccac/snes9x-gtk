@@ -85,7 +85,7 @@ event_control_toggle (GtkToggleButton *widget, gpointer data)
     }
 
     window->last_toggled = widget;
-    name = gtk_widget_get_name (GTK_WIDGET (widget));
+    name = gtk_buildable_get_name (GTK_BUILDABLE (widget));
     state = gtk_toggle_button_get_active (widget);
 
     toggle_lock = 1;
@@ -228,7 +228,7 @@ event_shader_select (GtkButton *widget, gpointer data)
     gint          result;
     GtkEntry      *entry;
 
-    if (!strcmp (gtk_widget_get_name (GTK_WIDGET (widget)), "fragment_shader_button"))
+    if (!strcmp (gtk_buildable_get_name (GTK_BUILDABLE (widget)), "fragment_shader_button"))
     {
         entry = GTK_ENTRY (window->get_widget ("fragment_shader"));
     }
@@ -275,15 +275,11 @@ event_shader_select (GtkButton *widget, gpointer data)
 }
 
 static void
-event_game_data_clear (GtkButton *widget, gpointer data)
+event_game_data_clear (GtkEntry *entry,
+                       GtkEntryIconPosition icon_pos,
+                       GdkEvent *event,
+                       gpointer  user_data)
 {
-    Snes9xPreferences *window = (Snes9xPreferences *) data;
-    GtkEntry      *entry;
-    char          entry_name[256];
-
-    strcpy (entry_name, gtk_widget_get_name (GTK_WIDGET (widget)));
-    sprintf (strstr (entry_name, "_clear"), "_directory");
-    entry = GTK_ENTRY (window->get_widget (entry_name));
     gtk_entry_set_text (entry, SAME_GAME);
 
     return;
@@ -299,7 +295,8 @@ event_game_data_browse (GtkButton *widget, gpointer data)
     GtkEntry      *entry;
     char          entry_name[256];
 
-    strcpy (entry_name, gtk_widget_get_name (GTK_WIDGET (widget)));
+    strcpy (entry_name, gtk_buildable_get_name (GTK_BUILDABLE (widget)));
+
     sprintf (strstr (entry_name, "_browse"), "_directory");
     entry = GTK_ENTRY (window->get_widget (entry_name));
 
@@ -473,36 +470,14 @@ Snes9xPreferences::calibration_dialog (void)
 
 #endif
 
-Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
-    GtkBuilderWindow ("preferences_window")
+static void
+event_about_clicked (GtkButton *widget, gpointer data)
 {
-    GtkBuilderWindowCallbacks callbacks[] =
-    {
-        { "control_toggle", G_CALLBACK (event_control_toggle) },
-        { "on_key_press", G_CALLBACK (event_key_press) },
-        { "control_combo_changed", G_CALLBACK (event_control_combo_changed) },
-        { "change_current_page", G_CALLBACK (event_switch_page) },
-        { "sram_folder_browse", G_CALLBACK (event_sram_folder_browse) },
-        { "scale_method_changed", G_CALLBACK (event_scale_method_changed) },
-        { "hw_accel_changed", G_CALLBACK (event_hw_accel_changed) },
-        { "reset_current_joypad", G_CALLBACK (event_reset_current_joypad) },
-        { "swap_with", G_CALLBACK (event_swap_with) },
-        { "style_set", G_CALLBACK (event_style_set) },
-        { "ntsc_composite_preset", G_CALLBACK (event_ntsc_composite_preset) },
-        { "ntsc_svideo_preset", G_CALLBACK (event_ntsc_svideo_preset) },
-        { "ntsc_rgb_preset", G_CALLBACK (event_ntsc_rgb_preset) },
-        { "ntsc_monochrome_preset", G_CALLBACK (event_ntsc_monochrome_preset) },
-        { "shader_select", G_CALLBACK (event_shader_select) },
-        { "game_data_browse", G_CALLBACK (event_game_data_browse) },
-        { "game_data_clear", G_CALLBACK (event_game_data_clear) },
-#ifdef USE_JOYSTICK
-        { "calibrate", G_CALLBACK (event_calibrate) },
-#endif
-        { NULL, NULL }
-    };
-
     std::string version_string;
+    GtkBuilderWindow *about_dialog = new GtkBuilderWindow ("about_dialog");
+    Snes9xPreferences *preferences = (Snes9xPreferences *) data;
 
+    ((version_string += _("Snes9x version: ")) += VERSION) += ", ";
     ((version_string += _("GTK port version: ")) += SNES9X_GTK_VERSION) += "\n";
     (version_string += SNES9X_GTK_AUTHORS) += "\n";
     (version_string += _("English localization by Brandon Wright")) += "\n";
@@ -528,10 +503,52 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
 #ifdef NETPLAY_SUPPORT
     version_string += _(" NetPlay");
 #endif
-    (version_string += _("</i>\n\nSnes9x version: ")) += VERSION;
+    version_string += "</i>";
 
-    gtk_label_set_label (GTK_LABEL (get_widget ("version_string_label")),
+    gtk_label_set_label (GTK_LABEL (about_dialog->get_widget ("version_string_label")),
                          version_string.c_str ());
+
+    gtk_image_set_from_pixbuf (GTK_IMAGE (about_dialog->get_widget ("preferences_splash")),
+                               top_level->splash);
+
+    gtk_window_set_transient_for (about_dialog->get_window (),
+                                  preferences->get_window ());
+
+    gtk_dialog_run (GTK_DIALOG (about_dialog->get_window ()));
+
+    delete about_dialog;
+
+    return;
+}
+
+Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
+    GtkBuilderWindow ("preferences_window")
+{
+    GtkBuilderWindowCallbacks callbacks[] =
+    {
+        { "control_toggle", G_CALLBACK (event_control_toggle) },
+        { "on_key_press", G_CALLBACK (event_key_press) },
+        { "control_combo_changed", G_CALLBACK (event_control_combo_changed) },
+        { "change_current_page", G_CALLBACK (event_switch_page) },
+        { "sram_folder_browse", G_CALLBACK (event_sram_folder_browse) },
+        { "scale_method_changed", G_CALLBACK (event_scale_method_changed) },
+        { "hw_accel_changed", G_CALLBACK (event_hw_accel_changed) },
+        { "reset_current_joypad", G_CALLBACK (event_reset_current_joypad) },
+        { "swap_with", G_CALLBACK (event_swap_with) },
+        { "style_set", G_CALLBACK (event_style_set) },
+        { "ntsc_composite_preset", G_CALLBACK (event_ntsc_composite_preset) },
+        { "ntsc_svideo_preset", G_CALLBACK (event_ntsc_svideo_preset) },
+        { "ntsc_rgb_preset", G_CALLBACK (event_ntsc_rgb_preset) },
+        { "ntsc_monochrome_preset", G_CALLBACK (event_ntsc_monochrome_preset) },
+        { "shader_select", G_CALLBACK (event_shader_select) },
+        { "game_data_browse", G_CALLBACK (event_game_data_browse) },
+        { "game_data_clear", G_CALLBACK (event_game_data_clear) },
+        { "about_clicked", G_CALLBACK (event_about_clicked) },
+#ifdef USE_JOYSTICK
+        { "calibrate", G_CALLBACK (event_calibrate) },
+#endif
+        { NULL, NULL }
+    };
 
     last_toggled = NULL;
     this->config = config;
@@ -542,9 +559,6 @@ Snes9xPreferences::Snes9xPreferences (Snes9xConfig *config) :
     size_group[1] = gtk_size_group_new (GTK_SIZE_GROUP_HORIZONTAL);
     gtk_size_group_add_widget (size_group[1], get_widget ("change_display_resolution"));
     gtk_size_group_add_widget (size_group[1], get_widget ("scale_method_label"));
-
-    gtk_image_set_from_pixbuf (GTK_IMAGE (get_widget ("preferences_splash")),
-                               top_level->splash);
 
     fix_style ();
 
@@ -1122,9 +1136,14 @@ Snes9xPreferences::show (void)
                 config->save_config_file ();
                 break;
 
-            default:
+            case GTK_RESPONSE_CANCEL:
+            case GTK_RESPONSE_CLOSE:
+            case GTK_RESPONSE_DELETE_EVENT:
                 gtk_widget_hide (window);
                 close_dialog = 1;
+                break;
+
+            default:
                 break;
         }
     }

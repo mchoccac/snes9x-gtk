@@ -420,7 +420,7 @@ static void
 event_save_state (GtkWidget *widget, gpointer data)
 {
     int  slot;
-    char *name = (char *) gtk_widget_get_name (widget);
+    char *name = (char *) gtk_buildable_get_name (GTK_BUILDABLE (widget));
 
     slot = atoi (&(name[11]));
 
@@ -441,7 +441,7 @@ static void
 event_load_state (GtkWidget *widget, gpointer data)
 {
     int  slot;
-    char *name = (char *) gtk_widget_get_name (widget);
+    char *name = (char *) gtk_buildable_get_name (GTK_BUILDABLE (widget));
 
     slot = atoi (&(name[11]));
 
@@ -508,7 +508,7 @@ event_focus_out (GtkWidget *widget, GdkEventFocus *event, gpointer data)
 static void
 event_port (GtkWidget *widget, gpointer data)
 {
-    const gchar *name = gtk_widget_get_name (widget);
+    const gchar *name = gtk_buildable_get_name (GTK_BUILDABLE (widget));
 
     if (!(gtk_check_menu_item_get_active (GTK_CHECK_MENU_ITEM (widget))))
         return;

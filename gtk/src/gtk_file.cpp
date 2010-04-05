@@ -501,11 +501,12 @@ S9xQuickSaveSlot (int slot)
              S9xGetDirectory (SNAPSHOT_DIR), SLASH_STR, def,
              slot);
 
-    sprintf (buf, "%s.%03d saved", def, slot);
+    if (S9xFreezeGame (filename))
+    {
+        sprintf (buf, "%s.%03d saved", def, slot);
 
-    S9xSetInfoString (buf);
-
-    S9xFreezeGame (filename);
+        S9xSetInfoString (buf);
+    }
 
     return;
 }

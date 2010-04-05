@@ -70,6 +70,9 @@ GtkBuilderWindow::signal_connection_func (GtkBuilder *builder,
                                    flags);
         }
     }
+    else
+    {
+    }
 
     return;
 }

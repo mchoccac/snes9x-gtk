@@ -478,7 +478,7 @@ event_about_clicked (GtkButton *widget, gpointer data)
     Snes9xPreferences *preferences = (Snes9xPreferences *) data;
 
     ((version_string += _("Snes9x version: ")) += VERSION) += ", ";
-    ((version_string += _("GTK port version: ")) += SNES9X_GTK_VERSION) += "\n";
+    ((version_string += _("GTK+ port version: ")) += SNES9X_GTK_VERSION) += "\n";
     (version_string += SNES9X_GTK_AUTHORS) += "\n";
     (version_string += _("English localization by Brandon Wright")) += "\n";
 

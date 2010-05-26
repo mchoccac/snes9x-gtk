@@ -1,6 +1,7 @@
 #ifndef __GTK_CONFIG_H
 #define __GTK_CONFIG_H
 
+#include <sys/time.h>
 #include <libxml/parser.h>
 #include <X11/Xlib.h>
 #ifdef USE_XRANDR
@@ -122,6 +123,9 @@ class Snes9xConfig
         int           pause_emulation_on_switch;
         int           num_threads;
         unsigned char screensaver_needs_reset;
+
+        int            pointer_is_visible;
+        struct timeval pointer_timestamp;
 
 #ifdef USE_XRANDR
         XRRScreenConfiguration *xrr_config;

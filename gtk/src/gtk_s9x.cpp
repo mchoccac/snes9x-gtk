@@ -17,6 +17,7 @@
 
 void S9xPostRomInit (void);
 void S9xSyncSpeedFinish (void);
+static void S9xCheckPointerTimer (void);
 static gboolean S9xIdleFunc (gpointer data);
 static gboolean S9xScreenSaverCheckFunc (gpointer data);
 
@@ -339,6 +340,8 @@ S9xIdleFunc (gpointer data)
     if (syncing)
         S9xSyncSpeedFinish ();
 
+    S9xCheckPointerTimer ();
+
     S9xProcessEvents (TRUE);
 
 #ifdef NETPLAY_SUPPORT
@@ -600,6 +603,23 @@ S9xSyncSpeed (void)
     }
 
     syncing = 1;
+
+    return;
+}
+
+static void
+S9xCheckPointerTimer (void)
+{
+    if (!gui_config->pointer_is_visible)
+        return;
+
+    gettimeofday (&now, NULL);
+
+    if (TIMER_DIFF (now, gui_config->pointer_timestamp) > 1000000)
+    {
+        top_level->hide_mouse_cursor ();
+        gui_config->pointer_is_visible = FALSE;
+    }
 
     return;
 }

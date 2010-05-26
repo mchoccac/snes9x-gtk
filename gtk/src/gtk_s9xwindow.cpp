@@ -159,14 +159,19 @@ event_key (GtkWidget *widget, GdkEventKey *event, gpointer data)
     }
 
     /* Provide escape key to get out of fullscreen */
-    if (event->keyval == GDK_Escape && event->type == GDK_KEY_RELEASE)
+    if (event->keyval == GDK_Escape)
     {
-        if (window->config->default_esc_behavior == ESC_EXIT_FULLSCREEN)
-            window->leave_fullscreen_mode ();
-        else if (window->config->default_esc_behavior == ESC_EXIT_SNES9X)
-            S9xExit ();
-        else
-            window->toggle_ui ();
+        if (event->type == GDK_KEY_RELEASE)
+        {
+            if (window->config->default_esc_behavior == ESC_EXIT_FULLSCREEN)
+                window->leave_fullscreen_mode ();
+            else if (window->config->default_esc_behavior == ESC_EXIT_SNES9X)
+                S9xExit ();
+            else
+                window->toggle_ui ();
+        }
+
+        return TRUE;
     }
 
     keyval = event->keyval;
@@ -216,6 +221,13 @@ event_motion_notify (GtkWidget      *widget,
     window->mouse_loc_y = (uint16)
         ((int) (event->y) - window->mouse_region_y) * SNES_HEIGHT_EXTENDED /
         (window->mouse_region_height <= 0 ? 1 : window->mouse_region_height);
+
+    if (!window->config->pointer_is_visible)
+    {
+        window->show_mouse_cursor ();
+    }
+
+    gettimeofday (&(window->config->pointer_timestamp), NULL);
 
     return FALSE;
 }
@@ -1454,12 +1466,12 @@ Snes9xWindow::configure_widgets (void)
         }
     }
 
-    if (config->rom_loaded)
+    propagate_pause_state ();
+
+    if (config->rom_loaded && !Settings.Paused)
         hide_mouse_cursor ();
     else
         show_mouse_cursor ();
-
-    propagate_pause_state ();
 
     return;
 }
@@ -1740,6 +1752,7 @@ Snes9xWindow::hide_mouse_cursor (void)
     }
 
     gdk_window_set_cursor (GTK_WIDGET (drawing_area)->window, cursor);
+    config->pointer_is_visible = FALSE;
 
     return;
 }
@@ -1748,6 +1761,7 @@ void
 Snes9xWindow::show_mouse_cursor (void)
 {
     gdk_window_set_cursor (GTK_WIDGET (drawing_area)->window, NULL);
+    config->pointer_is_visible = TRUE;
 
     return;
 }
@@ -1802,8 +1816,6 @@ Snes9xWindow::propagate_pause_state (void)
             if (config->rom_loaded)
                 enable_widget ("pause_item", TRUE);
 
-            hide_mouse_cursor ();
-
             S9xDisplayClearBuffers ();
         }
         else
@@ -1811,11 +1823,12 @@ Snes9xWindow::propagate_pause_state (void)
             S9xSoundStop ();
             enable_widget ("pause_item", FALSE);
 
-            show_mouse_cursor ();
         }
 
+        configure_widgets ();
         update_statusbar ();
     }
+
     return;
 }
 

@@ -626,7 +626,8 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
     last_width             = -1;
     last_height            = -1;
     this->config           = config;
-    cursor                 = NULL;
+    empty_cursor           = NULL;
+    default_cursor         = NULL;
     recent_menu            = NULL;
     fullscreen_state       = 0;
     maximized_state        = 0;
@@ -672,6 +673,9 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
         config->window_width = 256;
         config->window_height = 224;
     }
+
+    default_cursor = gdk_cursor_new (GDK_LEFT_PTR);
+    gdk_window_set_cursor (gtk_widget_get_window (window), default_cursor);
 
     resize (config->window_width, config->window_height);
 
@@ -1734,7 +1738,7 @@ Snes9xWindow::hide_mouse_cursor (void)
     GdkColor  fg = { 0, 0, 0, 0 };
     GdkColor  bg = { 0, 0, 0, 0 };
 
-    if (!cursor)
+    if (!empty_cursor)
     {
         cursor_pixmap = gdk_pixmap_new (NULL, 1, 1, 1);
         gc = gdk_gc_new (GDK_DRAWABLE (cursor_pixmap));
@@ -1743,7 +1747,7 @@ Snes9xWindow::hide_mouse_cursor (void)
                         gc,
                         0, 0);
 
-        cursor = gdk_cursor_new_from_pixmap (cursor_pixmap,
+        empty_cursor = gdk_cursor_new_from_pixmap (cursor_pixmap,
                                              cursor_pixmap,
                                              &fg, &bg,
                                              0, 0);
@@ -1751,7 +1755,7 @@ Snes9xWindow::hide_mouse_cursor (void)
         g_object_unref (cursor_pixmap);
     }
 
-    gdk_window_set_cursor (GTK_WIDGET (drawing_area)->window, cursor);
+    gdk_window_set_cursor (GTK_WIDGET (drawing_area)->window, empty_cursor);
     config->pointer_is_visible = FALSE;
 
     return;

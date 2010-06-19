@@ -224,7 +224,8 @@ event_motion_notify (GtkWidget      *widget,
 
     if (!window->config->pointer_is_visible)
     {
-        window->show_mouse_cursor ();
+        if (!S9xIsMousePluggedIn ())
+            window->show_mouse_cursor ();
     }
 
     gettimeofday (&(window->config->pointer_timestamp), NULL);

@@ -2,13 +2,16 @@
 #include <string.h>
 #include "gtk_builder_window.h"
 
-extern const char snes9x_ui[];
-extern const int  snes9x_ui_size;
+extern const unsigned char snes9x_ui[];
+extern const int           snes9x_ui_size;
 
 GtkBuilderWindow::GtkBuilderWindow (const char *root)
 {
     builder = gtk_builder_new ();
-    gtk_builder_add_from_string (builder, snes9x_ui, snes9x_ui_size, NULL);
+    gtk_builder_add_from_string (builder, 
+                                 (const gchar *) snes9x_ui, 
+                                 snes9x_ui_size, 
+                                 NULL);
 
     window = get_widget (root);
 

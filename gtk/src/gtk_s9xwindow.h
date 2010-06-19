@@ -80,7 +80,7 @@ class Snes9xWindow : public GtkBuilderWindow
         int            paused_from_focus_loss;
         uint16         mouse_loc_x, mouse_loc_y;
         GdkPixbuf      *icon, *splash;
-        GdkCursor      *cursor;
+        GdkCursor      *default_cursor, *empty_cursor;
         GtkDrawingArea *drawing_area;
         GtkWidget      *recent_menu;
 };

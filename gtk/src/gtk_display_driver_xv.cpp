@@ -39,7 +39,7 @@ S9xXVDisplayDriver::S9xXVDisplayDriver (Snes9xWindow *window,
 void
 S9xXVDisplayDriver::resize_window (int width, int height)
 {
-    gdk_window_unref (gdk_window);
+    g_object_unref (gdk_window);
     XDestroyWindow (display, xwindow);
     XSync (display, False);
 
@@ -495,7 +495,7 @@ S9xXVDisplayDriver::deinit (void)
     XFreeColormap (display, xcolormap);
     XFree (vi);
 
-    gdk_window_unref (gdk_window);
+    g_object_unref (gdk_window);
     XDestroyWindow (display, xwindow);
 
     free (buffer[0]);

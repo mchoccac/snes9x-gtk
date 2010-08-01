@@ -733,7 +733,7 @@ S9xOpenGLDisplayDriver::refresh (int width, int height)
 void
 S9xOpenGLDisplayDriver::resize_window (int width, int height)
 {
-    gdk_window_unref (gdk_window);
+    g_object_unref (gdk_window);
     XDestroyWindow (display, xwindow);
     XSync (display, False);
 
@@ -809,7 +809,7 @@ S9xOpenGLDisplayDriver::init_glx (void)
     if (!glx_context)
     {
         XFreeColormap (display, xcolormap);
-        gdk_window_unref (gdk_window);
+        g_object_unref (gdk_window);
         XDestroyWindow (display, xwindow);
 
         fprintf (stderr, _("Couldn't create an OpenGL context.\n"));
@@ -819,7 +819,7 @@ S9xOpenGLDisplayDriver::init_glx (void)
     if (!glXMakeCurrent (display, xwindow, glx_context))
     {
         XFreeColormap (display, xcolormap);
-        gdk_window_unref (gdk_window);
+        g_object_unref (gdk_window);
         XDestroyWindow (display, xwindow);
         glXDestroyContext (display, glx_context);
 
@@ -969,7 +969,7 @@ S9xOpenGLDisplayDriver::deinit (void)
     XFree (vi);
     XFreeColormap (display, xcolormap);
 
-    gdk_window_unref (gdk_window);
+    g_object_unref (gdk_window);
     XDestroyWindow (display, xwindow);
 
     return;

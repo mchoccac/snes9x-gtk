@@ -1692,18 +1692,27 @@ Snes9xWindow::draw_background (int rect_x, int rect_y, int rect_w, int rect_h)
                      (double) rect.height);
 
     cairo_clip (cr);
+    cairo_save (cr);
 
     cairo_set_source (cr, pattern);
 
     cairo_rectangle (cr, 0.0, 0.0, (double) w, (double) h);
     cairo_fill (cr);
 
+    cairo_restore (cr);
+
     /* Put the Snes9x logo in the center */
     gdk_cairo_set_source_pixbuf (cr, splash,
                                  (w - gdk_pixbuf_get_width (splash)) / 2,
                                  (h - gdk_pixbuf_get_height (splash)) / 2);
 
-    cairo_paint (cr);
+    cairo_rectangle (cr,
+                     (w - gdk_pixbuf_get_width (splash)) / 2,
+                     (h - gdk_pixbuf_get_height (splash)) / 2,
+                     gdk_pixbuf_get_width (splash),
+                     gdk_pixbuf_get_height (splash));
+    cairo_clip_preserve (cr);
+    cairo_fill (cr);
 
     cairo_pattern_destroy (pattern);
     cairo_destroy (cr);

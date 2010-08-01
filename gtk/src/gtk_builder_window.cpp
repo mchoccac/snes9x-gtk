@@ -8,9 +8,9 @@ extern const int           snes9x_ui_size;
 GtkBuilderWindow::GtkBuilderWindow (const char *root)
 {
     builder = gtk_builder_new ();
-    gtk_builder_add_from_string (builder, 
-                                 (const gchar *) snes9x_ui, 
-                                 snes9x_ui_size, 
+    gtk_builder_add_from_string (builder,
+                                 (const gchar *) snes9x_ui,
+                                 snes9x_ui_size,
                                  NULL);
 
     window = get_widget (root);
@@ -125,13 +125,21 @@ GtkBuilderWindow::refresh (void)
 int
 GtkBuilderWindow::get_width (void)
 {
-    return window->allocation.width;
+    int width, height;
+
+    gtk_window_get_size (GTK_WINDOW (window), &width, &height);
+
+    return width;
 }
 
 int
 GtkBuilderWindow::get_height (void)
 {
-    return window->allocation.height;
+    int width, height;
+
+    gtk_window_get_size (GTK_WINDOW (window), &width, &height);
+
+    return height;
 }
 
 void

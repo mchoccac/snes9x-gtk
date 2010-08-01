@@ -159,10 +159,13 @@ S9xOpenGLDisplayDriver::update (int width, int height)
         return;
     }
 
-    if (output_window_width  != drawing_area->allocation.width ||
-        output_window_height != drawing_area->allocation.height)
+    GtkAllocation allocation;
+    gtk_widget_get_allocation (drawing_area, &allocation);
+
+    if (output_window_width  != allocation.width ||
+        output_window_height != allocation.height)
     {
-        resize_window (drawing_area->allocation.width, drawing_area->allocation.height);
+        resize_window (allocation.width, allocation.height);
     }
 
     /* This avoids messing with the texture parameters every time */
@@ -205,7 +208,7 @@ S9xOpenGLDisplayDriver::update (int width, int height)
     }
 
     x = width; y = height;
-    w = drawing_area->allocation.width; h = drawing_area->allocation.height;
+    w = allocation.width; h = allocation.height;
     S9xApplyAspect (x, y, w, h);
 
     glViewport (x, y, w, h);
@@ -753,7 +756,7 @@ S9xOpenGLDisplayDriver::create_window (int width, int height)
     window_attr.background_pixmap = None;
 
     xwindow = XCreateWindow (display,
-                             GDK_WINDOW_XWINDOW (drawing_area->window),
+                             GDK_WINDOW_XWINDOW (gtk_widget_get_window (drawing_area)),
                              0,
                              0,
                              width,
@@ -794,7 +797,7 @@ S9xOpenGLDisplayDriver::init_glx (void)
     }
 
     xcolormap = XCreateColormap (display,
-                                GDK_WINDOW_XWINDOW (drawing_area->window),
+                                GDK_WINDOW_XWINDOW (gtk_widget_get_window (drawing_area)),
                                 vi->visual,
                                 AllocNone);
 

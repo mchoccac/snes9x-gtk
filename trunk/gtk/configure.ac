@@ -151,6 +151,8 @@ else
   CFLAGS="$CFLAGS -fomit-frame-pointer"
 fi
 
+CFLAGS="$CFLAGS -DGSEAL_ENABLE"
+
 ZSNESFX='#ZSNESFX=yes'
 ZSNESC4='#ZSNESC4=yes'
 ASMCPU=''

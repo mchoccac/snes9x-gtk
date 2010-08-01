@@ -1,6 +1,7 @@
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
 #include <gdk/gdkkeysyms.h>
+#include <cairo.h>
 
 #ifdef USE_XV
 #include <X11/extensions/XShm.h>
@@ -211,8 +212,8 @@ event_motion_notify (GtkWidget      *widget,
         return FALSE;
     }
 
-    c_width = GTK_WIDGET (window->drawing_area)->allocation.width;
-    c_height = GTK_WIDGET (window->drawing_area)->allocation.height;
+    c_width = window->get_width ();
+    c_height = window->get_height ();
 
     window->mouse_loc_x = (uint16)
         ((int) (event->x) - window->mouse_region_x) * 256 /
@@ -652,8 +653,8 @@ Snes9xWindow::Snes9xWindow (Snes9xConfig *config) :
 
     gtk_widget_realize (window);
     gtk_widget_realize (GTK_WIDGET (drawing_area));
-    gdk_window_set_back_pixmap (window->window, NULL, FALSE);
-    gdk_window_set_back_pixmap (GTK_WIDGET (drawing_area)->window, NULL, FALSE);
+    gdk_window_set_back_pixmap (gtk_widget_get_window (window), NULL, FALSE);
+    gdk_window_set_back_pixmap (gtk_widget_get_window (GTK_WIDGET (drawing_area)), NULL, FALSE);
 
     gtk_check_menu_item_set_active (
         GTK_CHECK_MENU_ITEM (get_widget ("show_statusbar_item")),
@@ -1553,7 +1554,7 @@ Snes9xWindow::enter_fullscreen_mode (void)
         }
         else
         {
-            Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
+            Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (gtk_widget_get_window (window)));
             GdkScreen *screen = gtk_widget_get_screen (window);
             GdkWindow *root = gdk_screen_get_root_window (screen);
 
@@ -1598,7 +1599,7 @@ Snes9xWindow::leave_fullscreen_mode (void)
     {
         gtk_widget_hide (window);
 
-        Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (window->window));
+        Display *display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (gtk_widget_get_window (window)));
         GdkScreen *screen = gtk_widget_get_screen (window);
         GdkWindow *root = gdk_screen_get_root_window (screen);
 
@@ -1636,13 +1637,18 @@ void
 Snes9xWindow::draw_background (int rect_x, int rect_y, int rect_w, int rect_h)
 {
     GtkWidget       *widget = GTK_WIDGET (drawing_area);
-    GdkGC           *gc     = widget->style->fg_gc[GTK_WIDGET_STATE (widget)];
-    int             w       = widget->allocation.width;
-    int             h       = widget->allocation.height;
-    GdkColor        sel     = widget->style->bg[GTK_STATE_SELECTED];
+    GtkAllocation   allocation;
+    GdkColor        sel;
+    int             w,h;
     cairo_pattern_t *pattern;
     cairo_t         *cr;
     GdkRectangle    rect;
+
+    gtk_widget_get_allocation (widget, &allocation);
+    w = allocation.width;
+    h = allocation.height;
+
+    sel = gtk_widget_get_style (widget)->bg[GTK_STATE_SELECTED];
 
     if (rect_x < 0)
     {
@@ -1659,10 +1665,10 @@ Snes9xWindow::draw_background (int rect_x, int rect_y, int rect_w, int rect_h)
         rect.height = rect_h;
     }
 
-    gdk_window_begin_paint_rect (widget->window, &rect);
+    gdk_window_begin_paint_rect (gtk_widget_get_window (widget), &rect);
 
     /* Draw a fancy-pants gradient */
-    cr = gdk_cairo_create (widget->window);
+    cr = gdk_cairo_create (gtk_widget_get_window (widget));
     pattern = cairo_pattern_create_linear (0.0,
                                            0.0,
                                            0.0,
@@ -1693,23 +1699,16 @@ Snes9xWindow::draw_background (int rect_x, int rect_y, int rect_w, int rect_h)
     cairo_fill (cr);
 
     /* Put the Snes9x logo in the center */
-    gdk_draw_pixbuf (widget->window,
-                     gc,
-                     splash,
-                     0,
-                     0,
-                     (w - gdk_pixbuf_get_width (splash)) / 2,
-                     (h - gdk_pixbuf_get_height (splash)) / 2,
-                     gdk_pixbuf_get_width (splash),
-                     gdk_pixbuf_get_height (splash),
-                     GDK_RGB_DITHER_NORMAL,
-                     0,
-                     0);
+    gdk_cairo_set_source_pixbuf (cr, splash,
+                                 (w - gdk_pixbuf_get_width (splash)) / 2,
+                                 (h - gdk_pixbuf_get_height (splash)) / 2);
+
+    cairo_paint (cr);
 
     cairo_pattern_destroy (pattern);
     cairo_destroy (cr);
 
-    gdk_window_end_paint (widget->window);
+    gdk_window_end_paint (gtk_widget_get_window (widget));
 
     return;
 }
@@ -1717,14 +1716,17 @@ Snes9xWindow::draw_background (int rect_x, int rect_y, int rect_w, int rect_h)
 void
 Snes9xWindow::resize_viewport (int width, int height)
 {
-    GtkWidget *item;
-    int       y_padding = 0;
+    GtkWidget     *item;
+    GtkAllocation allocation;
+    int           y_padding = 0;
 
     item = get_widget ("menubar");
-    y_padding += GTK_WIDGET_VISIBLE (item) ? item->allocation.height : 0;
+    gtk_widget_get_allocation (item, &allocation);
+    y_padding += gtk_widget_get_visible (item) ? allocation.height : 0;
 
     item = get_widget ("statusbar");
-    y_padding += GTK_WIDGET_VISIBLE (item) ? item->allocation.height : 0;
+    gtk_widget_get_allocation (item, &allocation);
+    y_padding += gtk_widget_get_visible (item) ? allocation.height : 0;
 
     resize (width, height + y_padding);
 
@@ -1734,29 +1736,13 @@ Snes9xWindow::resize_viewport (int width, int height)
 void
 Snes9xWindow::hide_mouse_cursor (void)
 {
-    GdkPixmap *cursor_pixmap;
-    GdkGC     *gc;
-    GdkColor  fg = { 0, 0, 0, 0 };
-    GdkColor  bg = { 0, 0, 0, 0 };
-
     if (!empty_cursor)
     {
-        cursor_pixmap = gdk_pixmap_new (NULL, 1, 1, 1);
-        gc = gdk_gc_new (GDK_DRAWABLE (cursor_pixmap));
-        gdk_gc_set_foreground (gc, &fg);
-        gdk_draw_point (GDK_DRAWABLE (cursor_pixmap),
-                        gc,
-                        0, 0);
-
-        empty_cursor = gdk_cursor_new_from_pixmap (cursor_pixmap,
-                                             cursor_pixmap,
-                                             &fg, &bg,
-                                             0, 0);
-        g_object_unref (gc);
-        g_object_unref (cursor_pixmap);
+        empty_cursor = gdk_cursor_new (GDK_BLANK_CURSOR);
     }
 
-    gdk_window_set_cursor (GTK_WIDGET (drawing_area)->window, empty_cursor);
+    gdk_window_set_cursor (gtk_widget_get_window (GTK_WIDGET (drawing_area)),
+                           empty_cursor);
     config->pointer_is_visible = FALSE;
 
     return;
@@ -1765,7 +1751,8 @@ Snes9xWindow::hide_mouse_cursor (void)
 void
 Snes9xWindow::show_mouse_cursor (void)
 {
-    gdk_window_set_cursor (GTK_WIDGET (drawing_area)->window, NULL);
+    gdk_window_set_cursor (gtk_widget_get_window (GTK_WIDGET (drawing_area)),
+                           NULL);
     config->pointer_is_visible = TRUE;
 
     return;

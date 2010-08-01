@@ -30,7 +30,7 @@ S9xXVDisplayDriver::S9xXVDisplayDriver (Snes9xWindow *window,
     this->config = config;
     this->drawing_area = GTK_WIDGET (window->drawing_area);
     display =
-        gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (drawing_area->window));
+        gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (gtk_widget_get_window (drawing_area)));
     last_known_width = last_known_height = -1;
 
     return;
@@ -60,7 +60,7 @@ S9xXVDisplayDriver::create_window (int width, int height)
     window_attr.background_pixmap = None;
 
     xwindow = XCreateWindow (display,
-                             GDK_WINDOW_XWINDOW (drawing_area->window),
+                             GDK_WINDOW_XWINDOW (gtk_widget_get_window (drawing_area)),
                              0,
                              0,
                              width,
@@ -91,9 +91,11 @@ S9xXVDisplayDriver::update (int width, int height)
     int   current_width, current_height, final_pitch;
     uint8 *final_buffer;
     int   dst_x, dst_y, dst_width, dst_height;
+    GtkAllocation allocation;
 
-    current_width = drawing_area->allocation.width;
-    current_height = drawing_area->allocation.height;
+    gtk_widget_get_allocation (drawing_area, &allocation);
+    current_width = allocation.width;
+    current_height = allocation.height;
 
     if (width <= 0)
     {
@@ -265,7 +267,7 @@ S9xXVDisplayDriver::init (void)
     /* Setup XV */
     gtk_widget_realize (drawing_area);
 
-    display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (drawing_area->window));
+    display = gdk_x11_drawable_get_xdisplay (GDK_DRAWABLE (gtk_widget_get_window (drawing_area)));
     screen = gtk_widget_get_screen (drawing_area);
     root = gdk_screen_get_root_window (screen);
 
@@ -437,7 +439,7 @@ S9xXVDisplayDriver::init (void)
 
     XSetWindowAttributes window_attr;
     xcolormap = XCreateColormap (display,
-                                GDK_WINDOW_XWINDOW (drawing_area->window),
+                                GDK_WINDOW_XWINDOW (gtk_widget_get_window (drawing_area)),
                                 vi->visual,
                                 AllocNone);
 
@@ -512,9 +514,13 @@ void
 S9xXVDisplayDriver::clear (void)
 {
     int  x, y, w, h;
-    int  width = drawing_area->allocation.width;
-    int  height = drawing_area->allocation.height;
+    int  width, height;
+    GtkAllocation allocation;
     GC   xgc = XDefaultGC (display, XDefaultScreen (display));
+
+    gtk_widget_get_allocation (drawing_area, &allocation);
+    width = allocation.width;
+    height = allocation.height;
 
     if (window->last_width <= 0 || window->last_height <= 0)
     {

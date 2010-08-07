@@ -11,6 +11,7 @@ S9xGTKDisplayDriver::S9xGTKDisplayDriver (Snes9xWindow *window,
     this->window = window;
     this->config = config;
     this->drawing_area = GTK_WIDGET (window->drawing_area);
+    this->pixbuf = NULL;
 
     return;
 }
@@ -81,8 +82,19 @@ S9xGTKDisplayDriver::output (void *src,
         gdk_buffer_width = dst_width;
         gdk_buffer_height = dst_height;
 
+        gdk_pixbuf_unref (pixbuf);
+
         padded_buffer[2] = realloc (padded_buffer[2],
                                     gdk_buffer_width * gdk_buffer_height * 3);
+        pixbuf = gdk_pixbuf_new_from_data ((guchar *) padded_buffer[2],
+                                           GDK_COLORSPACE_RGB,
+                                           FALSE,
+                                           8,
+                                           gdk_buffer_width,
+                                           gdk_buffer_height,
+                                           gdk_buffer_width * 3,
+                                           NULL,
+                                           NULL);
     }
 
     if (width != dst_width || height != dst_height)
@@ -107,18 +119,6 @@ S9xGTKDisplayDriver::output (void *src,
                     24);
     }
 
-    /* This should theoretically just wrap the data--not copy. */
-    GdkPixbuf *pixbuf =
-        gdk_pixbuf_new_from_data ((guchar *) padded_buffer[2],
-                                  GDK_COLORSPACE_RGB,
-                                  FALSE,
-                                  8,
-                                  dst_width,
-                                  dst_height,
-                                  gdk_buffer_width * 3,
-                                  NULL,
-                                  NULL);
-
     cairo_t *cr = gdk_cairo_create (gtk_widget_get_window (drawing_area));
 
     gdk_cairo_set_source_pixbuf (cr, pixbuf, x, y);
@@ -126,10 +126,7 @@ S9xGTKDisplayDriver::output (void *src,
     cairo_rectangle (cr, x, y, dst_width, dst_height);
     cairo_clip_preserve (cr);
     cairo_fill (cr);
-
     cairo_destroy (cr);
-    gdk_pixbuf_unref (pixbuf);
-
 
     window->set_mouseable_area (x, y, width, height);
 
@@ -156,6 +153,16 @@ S9xGTKDisplayDriver::init (void)
     gdk_buffer_height = allocation.height;
 
     padded_buffer[2] = malloc (gdk_buffer_width * gdk_buffer_height * 3);
+    pixbuf = gdk_pixbuf_new_from_data ((guchar *) padded_buffer[2],
+                                       GDK_COLORSPACE_RGB,
+                                       FALSE,
+                                       8,
+                                       gdk_buffer_width,
+                                       gdk_buffer_height,
+                                       gdk_buffer_width * 3,
+                                       NULL,
+                                       NULL);
+
     S9xSetEndianess (ENDIAN_MSB);
 
     memset (buffer[0], 0, image_padded_size);
@@ -175,6 +182,8 @@ S9xGTKDisplayDriver::deinit (void)
 
     free (buffer[0]);
     free (buffer[1]);
+
+    gdk_pixbuf_unref (pixbuf);
     free (padded_buffer[2]);
 
     return;
@@ -192,6 +201,7 @@ S9xGTKDisplayDriver::clear (void)
     height = allocation.height;
 
     cairo_t *cr = gdk_cairo_create (gtk_widget_get_window (drawing_area));
+
     cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
 
     if (window->last_width <= 0 || window->last_height <= 0)
@@ -202,7 +212,6 @@ S9xGTKDisplayDriver::clear (void)
         return;
     }
 
-    /* Get width of modified display */
     x = window->last_width;
     y = window->last_height;
     get_filter_scale (x, y);
@@ -229,7 +238,6 @@ S9xGTKDisplayDriver::clear (void)
 
     cairo_clip_preserve (cr);
     cairo_fill (cr);
-
     cairo_destroy (cr);
 
     return;

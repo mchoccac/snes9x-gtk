@@ -185,10 +185,11 @@ S9xGetDirectory (enum s9x_getdirtype dirtype)
     }
 
     /* Try and mkdir, whether it exists or not */
-    mkdir (path, 0777);
-    chmod (path, 0777);
-
-    /* printf ("path: %s\n", path); */
+    if (dirtype != HOME_DIR)
+    {
+        mkdir (path, 0755);
+        chmod (path, 0755);
+    }
 
     return path;
 }

@@ -185,7 +185,7 @@ S9xGetDirectory (enum s9x_getdirtype dirtype)
     }
 
     /* Try and mkdir, whether it exists or not */
-    if (dirtype != HOME_DIR)
+    if (dirtype != HOME_DIR && path[0] != '\0')
     {
         mkdir (path, 0755);
         chmod (path, 0755);

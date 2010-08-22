@@ -146,6 +146,7 @@ class Snes9xConfig
         unsigned char use_shaders;
         char          fragment_shader[PATH_MAX];
         char          vertex_shader[PATH_MAX];
+        unsigned char sync_every_frame;
 #endif
 
 #ifdef USE_JOYSTICK

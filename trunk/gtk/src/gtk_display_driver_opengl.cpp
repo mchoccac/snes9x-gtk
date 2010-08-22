@@ -929,6 +929,11 @@ S9xOpenGLDisplayDriver::gl_swap (void)
 {
     glXSwapBuffers (display, xwindow);
 
+    if (config->sync_every_frame)
+    {
+        glFinish ();
+    }
+
     return;
 }
 

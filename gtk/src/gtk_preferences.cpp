@@ -731,6 +731,7 @@ Snes9xPreferences::move_settings_to_dialog (void)
 #ifdef USE_OPENGL
     set_check ("bilinear_filter",           config->bilinear_filter);
     set_check ("sync_to_vblank",            config->sync_to_vblank);
+    set_check ("sync_every_frame",          config->sync_every_frame);
     set_check ("use_pbos",                  config->use_pbos);
     set_combo ("pixel_format",              config->pbo_format);
     set_check ("npot_textures",             config->npot_textures);
@@ -861,6 +862,7 @@ Snes9xPreferences::get_settings_from_dialog (void)
     config->use_pbos                  = get_check ("use_pbos");
     config->npot_textures             = get_check ("npot_textures");
     config->use_shaders               = get_check ("use_shaders");
+    config->sync_every_frame          = get_check ("sync_every_frame");
 
     strncpy (config->fragment_shader, get_entry_text ("fragment_shader"), PATH_MAX);
     strncpy (config->vertex_shader, get_entry_text ("vertex_shader"), PATH_MAX);

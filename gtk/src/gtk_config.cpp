@@ -182,6 +182,7 @@ Snes9xConfig::load_defaults (void)
     use_shaders = 0;
     fragment_shader[0] = '\0';
     vertex_shader[0] = '\0';
+    sync_every_frame = FALSE;
 #endif
 
     /* Snes9X Variables */
@@ -325,6 +326,7 @@ Snes9xConfig::save_config_file (void)
 #ifdef USE_OPENGL
     xml_out_int (xml, "bilinear_filter", bilinear_filter);
     xml_out_int (xml, "sync_to_vblank", sync_to_vblank);
+    xml_out_int (xml, "sync_every_frame", sync_every_frame);
     xml_out_int (xml, "use_pbos", use_pbos);
     xml_out_int (xml, "pbo_format", pbo_format);
     xml_out_int (xml, "npot_textures", npot_textures);
@@ -506,6 +508,12 @@ Snes9xConfig::set_option (const char *name, const char *value)
     {
 #ifdef USE_OPENGL
         sync_to_vblank = atoi (value);
+#endif
+    }
+    else if (!strcasecmp (name, "sync_every_frame"))
+    {
+#ifdef USE_OPENGL
+        sync_every_frame = atoi (value);
 #endif
     }
     else if (!strcasecmp (name, "use_pbos"))

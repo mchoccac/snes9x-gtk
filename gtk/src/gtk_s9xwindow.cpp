@@ -1499,7 +1499,7 @@ Snes9xWindow::reset_screensaver (void)
     if (!focused)
         return;
 
-    XResetScreenSaver (GDK_DISPLAY ());
+    XResetScreenSaver (GDK_DISPLAY_XDISPLAY (gdk_display_get_default ()));
 
     config->screensaver_needs_reset = FALSE;
 

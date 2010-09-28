@@ -1,4 +1,4 @@
-#summary The Snes9x source code git repository.
+#summary The Snes9x source code repository
 
 = Getting the source =
 
